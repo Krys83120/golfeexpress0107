@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { SettingsTable } from "@/components/SettingsTable";
-import { SettingEditModal } from "@/components/SettingEditModal";
+import { SettingsTable } from "../components/SettingsTable";
+import { SettingEditModal } from "../components/SettingEditModal";
 import { useAdminSettingsStore } from "@/store/useAdminSettingsStore";
 import type { GlobalSettingRow } from "@/services/settingsApi";
 

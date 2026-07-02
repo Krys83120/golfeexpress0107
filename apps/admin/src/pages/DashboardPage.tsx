@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { StatCard } from "@/components/StatCard";
+import { StatCard } from "../components/StatCard";
 import { GlobalRevenueChart } from "@/components/GlobalRevenueChart";
 import { LiveMapCard } from "@/components/LiveMapCard";
 import { ValidationCard } from "@/components/ValidationCard";

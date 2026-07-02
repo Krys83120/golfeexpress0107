@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Sidebar } from "@/components/Sidebar";
-import { DashboardPage } from "@/pages/DashboardPage";
-import { ValidationsPage } from "@/pages/ValidationsPage";
-import { UsersPage } from "@/pages/UsersPage";
-import { ProsPage } from "@/pages/ProsPage";
-import { RidersPage } from "@/pages/RidersPage";
-import { AdminFinancesPage } from "@/pages/AdminFinancesPage";
-import { AdminSettingsPage } from "@/pages/AdminSettingsPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { useAdminDashboardStore } from "@/store/useAdminDashboardStore";
-import { useAuthStore } from "@/store/useAuthStore";
+import { Sidebar } from "./components/Sidebar";
+import { DashboardPage } from "./pages/DashboardPage";
+import { ValidationsPage } from "./pages/ValidationsPage";
+import { UsersPage } from "./pages/UsersPage";
+import { ProsPage } from "./pages/ProsPage";
+import { RidersPage } from "./pages/RidersPage";
+import { AdminFinancesPage } from "./pages/AdminFinancesPage";
+import { AdminSettingsPage } from "./pages/AdminSettingsPage";
+import { LoginPage } from "./pages/LoginPage";
+import { useAdminDashboardStore } from "./store/useAdminDashboardStore";
+import { useAuthStore } from "./store/useAuthStore";
 
 function MainApp() {
   const [activePage, setActivePage] = useState("dashboard");
