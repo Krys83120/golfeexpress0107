@@ -1,0 +1,30 @@
+{
+  "name": "golfeexpress",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "overrides": {
+    "react-native": "0.74.5"
+  },
+  "scripts": {
+    "dev:client": "npm run start --workspace=apps/client",
+    "dev:livreur": "npm run start --workspace=apps/livreur",
+    "dev:pro": "npm run dev --workspace=apps/pro",
+    "dev:admin": "npm run dev --workspace=apps/admin",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "build:pro": "npm run build --workspace=apps/pro",
+    "build:admin": "npm run build --workspace=apps/admin",
+    "build:api": "npm run build --workspace=apps/api",
+    "prisma:generate": "npm run prisma:generate --workspace=apps/api",
+    "prisma:migrate": "npm run prisma:migrate --workspace=apps/api",
+    "prisma:studio": "npm run prisma:studio --workspace=apps/api",
+    "prisma:seed": "npm run prisma:seed --workspace=apps/api",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  }
+}

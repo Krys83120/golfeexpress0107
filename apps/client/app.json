@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "GolfeExpress",
+    "slug": "golfeexpress-client",
+    "scheme": "golfeexpress-client",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#2ECC71"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "fr.golfeexpress.client"
+    },
+    "android": {
+      "package": "fr.golfeexpress.client"
+    },
+    "plugins": []
+  }
+}

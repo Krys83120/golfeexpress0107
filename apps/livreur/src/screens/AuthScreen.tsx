@@ -1,0 +1,161 @@
+import React, { useState } from "react";
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuthStore } from "@/store/useAuthStore";
+
+type Mode = "login" | "signup";
+
+export function AuthScreen() {
+  const [mode, setMode] = useState<Mode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [confirmationMessage, setConfirmationMessage] = useState<string | null>(null);
+
+  const login = useAuthStore((s) => s.login);
+  const signup = useAuthStore((s) => s.signup);
+
+  async function handleSubmit() {
+    setLocalError(null);
+    setConfirmationMessage(null);
+
+    if (!email.trim() || !password.trim()) {
+      setLocalError("Email et mot de passe requis.");
+      return;
+    }
+    if (mode === "signup" && (!firstName.trim() || !lastName.trim() || !phone.trim())) {
+      setLocalError("Merci de compléter tous les champs.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      if (mode === "login") {
+        await login(email.trim(), password);
+      } else {
+        const result = await signup({ email: email.trim(), password, firstName, lastName, phone });
+        if (result.requiresEmailConfirmation) {
+          setConfirmationMessage("Compte créé ! Vérifiez vos emails pour confirmer votre adresse avant de vous connecter.");
+          setMode("login");
+        }
+      }
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : "Une erreur est survenue.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }} keyboardShouldPersistTaps="handled">
+          <View className="mb-8 items-center">
+            <Text style={{ fontSize: 56 }}>🦎</Text>
+            <Text className="mt-3 font-heading text-2xl font-extrabold text-nuit">GolfeExpress</Text>
+            <Text className="mt-1 text-sm text-gris">Espace Livreur</Text>
+            <Text className="mt-1 text-sm text-gris">
+              {mode === "login" ? "Connectez-vous pour livrer" : "Devenez livreur GolfeExpress"}
+            </Text>
+          </View>
+
+          {confirmationMessage && (
+            <View className="mb-4 rounded-sm bg-golfe-green/10 p-3.5">
+              <Text className="text-[13px] text-golfe-green">{confirmationMessage}</Text>
+            </View>
+          )}
+
+          {localError && (
+            <View className="mb-4 rounded-sm bg-red-50 p-3.5">
+              <Text className="text-[13px] text-red-500">{localError}</Text>
+            </View>
+          )}
+
+          {mode === "signup" && (
+            <View className="mb-3 flex-row gap-3">
+              <TextInput
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="Prénom"
+                placeholderTextColor="#6B7280"
+                className="flex-1 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+              />
+              <TextInput
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Nom"
+                placeholderTextColor="#6B7280"
+                className="flex-1 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+              />
+            </View>
+          )}
+
+          {mode === "signup" && (
+            <TextInput
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="Téléphone"
+              placeholderTextColor="#6B7280"
+              keyboardType="phone-pad"
+              className="mb-3 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+            />
+          )}
+
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Email"
+            placeholderTextColor="#6B7280"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            className="mb-3 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+          />
+
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Mot de passe"
+            placeholderTextColor="#6B7280"
+            secureTextEntry
+            className="mb-5 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+          />
+
+          <Pressable
+            onPress={handleSubmit}
+            disabled={submitting}
+            className="items-center rounded bg-golfe-green py-4"
+            style={{ opacity: submitting ? 0.7 : 1 }}
+          >
+            {submitting ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text className="text-base font-bold text-white">
+                {mode === "login" ? "Se connecter" : "Créer mon compte livreur"}
+              </Text>
+            )}
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              setMode(mode === "login" ? "signup" : "login");
+              setLocalError(null);
+              setConfirmationMessage(null);
+            }}
+            className="mt-5 items-center"
+          >
+            <Text className="text-sm text-gris">
+              {mode === "login" ? "Pas encore livreur ? " : "Déjà un compte ? "}
+              <Text className="font-semibold text-golfe-green">
+                {mode === "login" ? "S'inscrire" : "Se connecter"}
+              </Text>
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}

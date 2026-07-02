@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "GolfeExpress Livreur",
+    "slug": "golfeexpress-livreur",
+    "scheme": "golfeexpress-livreur",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#1A1A2E"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "fr.golfeexpress.livreur",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "GolfeExpress utilise votre position pour vous proposer des commandes à proximité et partager votre trajet avec le client.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "GolfeExpress a besoin de votre position en arrière-plan pendant une livraison en cours."
+      }
+    },
+    "android": {
+      "package": "fr.golfeexpress.livreur",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"]
+    },
+    "plugins": []
+  }
+}
