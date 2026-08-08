@@ -54,16 +54,17 @@ export function computeTopProducts(orders: Order[], limit = 4): TopProductAgg[] 
   for (const order of orders) {
     if (order.status === OrderStatus.CANCELLED) continue;
     for (const item of order.items ?? []) {
+      const itemRevenue = Number(item.totalPrice);
       const existing = byProduct.get(item.productName);
       if (existing) {
         existing.salesCount += item.quantity;
-        existing.revenue += item.totalPrice;
+        existing.revenue += itemRevenue;
       } else {
         byProduct.set(item.productName, {
           name: item.productName,
           emoji: "🍽️", // OrderItem ne porte pas l'emoji du produit (snapshot au moment de la commande)
           salesCount: item.quantity,
-          revenue: item.totalPrice,
+          revenue: itemRevenue,
         });
       }
     }

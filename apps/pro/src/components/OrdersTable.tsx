@@ -54,7 +54,7 @@ export function OrdersTable({ orders, onViewAll }: OrdersTableProps) {
                     <td className="py-3 pr-4 text-sm font-semibold text-nuit">{order.orderNumber}</td>
                     <td className="py-3 pr-4 text-sm text-nuit">{clientName}</td>
                     <td className="py-3 pr-4 text-sm text-gris">{itemsSummary}</td>
-                    <td className="py-3 pr-4 text-sm font-bold text-nuit">{order.total.toFixed(2)} €</td>
+                    <td className="py-3 pr-4 text-sm font-bold text-nuit">{Number(order.total).toFixed(2)} €</td>
                     <td className="py-3 pr-4">
                       <span
                         className="rounded-full px-2.5 py-1 text-xs font-semibold"

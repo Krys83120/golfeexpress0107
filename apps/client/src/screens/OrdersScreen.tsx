@@ -130,7 +130,7 @@ export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
                   <Text className="mt-3 text-[13px] text-gris">{itemsSummary}</Text>
 
                   <View className="mt-3 flex-row items-center justify-between border-t border-gris-light pt-3">
-                    <Text className="text-sm font-bold text-nuit">{order.total.toFixed(2).replace(".", ",")} €</Text>
+                    <Text className="text-sm font-bold text-nuit">{Number(order.total).toFixed(2).replace(".", ",")} €</Text>
 
                     {isActive ? (
                       <Pressable

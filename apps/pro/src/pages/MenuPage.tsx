@@ -124,7 +124,7 @@ export function MenuPage() {
                   <p className="mb-3 line-clamp-2 text-xs text-gris">{product.description}</p>
 
                   <div className="flex items-center justify-between border-t border-gris-light pt-3">
-                    <p className="font-bold text-golfe-green">{product.price.toFixed(2)} €</p>
+                    <p className="font-bold text-golfe-green">{Number(product.price).toFixed(2)} €</p>
                     <label className="flex items-center gap-1.5 text-xs text-gris">
                       <input
                         type="checkbox"

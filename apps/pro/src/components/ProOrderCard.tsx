@@ -68,7 +68,7 @@ export function ProOrderCard({ order, onAdvance, onCancel }: ProOrderCardProps) 
       </div>
 
       <div className="flex items-center justify-between border-t border-gris-light pt-3">
-        <p className="text-sm font-bold text-nuit">{order.total.toFixed(2)} €</p>
+        <p className="text-sm font-bold text-nuit">{Number(order.total).toFixed(2)} €</p>
         {!isTerminal && (
           <div className="flex gap-2">
             {canCancel && (

@@ -123,7 +123,7 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
                   <Text className="text-[15px] font-semibold text-nuit">{product.name}</Text>
                   <Text className="mb-1.5 mt-1 text-xs leading-4 text-gris">{product.description}</Text>
                   <Text className="text-[15px] font-bold text-golfe-green">
-                    {product.price.toFixed(2).replace(".", ",")} €
+                    {Number(product.price).toFixed(2).replace(".", ",")} €
                   </Text>
                 </View>
                 <Pressable
