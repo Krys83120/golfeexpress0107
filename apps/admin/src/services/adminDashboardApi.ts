@@ -40,3 +40,14 @@ export async function fetchLiveRiders(): Promise<LiveRiderPosition[]> {
   const data = await apiFetch<{ riders: LiveRiderPosition[] }>("/api/admin/live-riders");
   return data.riders;
 }
+
+export interface AdminFinances {
+  gmv30d: number;
+  platformRevenue30d: number;
+  recipients: { id: string; recipientType: "PRO" | "RIDER"; recipientName: string; amount: number }[];
+}
+
+/** GET /api/admin/finances */
+export async function fetchAdminFinances(): Promise<AdminFinances> {
+  return apiFetch<AdminFinances>("/api/admin/finances");
+}

@@ -16,6 +16,22 @@ export async function fetchAdminUsers(params: FetchUsersParams = {}): Promise<Us
   return data.users;
 }
 
+export interface UpdateAdminUserPayload {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  role?: User["role"];
+  status?: User["status"];
+}
+
+/** PATCH /api/admin/users/:userId */
+export async function updateAdminUser(userId: string, payload: UpdateAdminUserPayload): Promise<User> {
+  return apiFetch<User>(`/api/admin/users/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export interface AdminProRow extends Omit<Pro, "addresses" | "user"> {
   user: Pick<User, "firstName" | "lastName" | "email">;
   addresses: { city: string }[];

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { StatCard } from "@/components/StatCard";
 import { fetchAdminStats, type AdminStats } from "@/services/adminDashboardApi";
 import { PRO_CATEGORY_EMOJIS } from "@/services/proLabels";
-import { MOCK_PLATFORM_PAYOUTS } from "@/services/mockAdminFinances";
+import { fetchAdminFinances, type AdminFinances } from "@/services/adminDashboardApi";
 import type { ProCategory } from "@golfeexpress/types";
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -19,11 +19,15 @@ const CATEGORY_NAMES: Record<string, string> = {
 
 export function AdminFinancesPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [finances, setFinances] = useState<AdminFinances | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchAdminStats()
-      .then(setStats)
+    Promise.all([fetchAdminStats(), fetchAdminFinances()])
+      .then(([statsData, financesData]) => {
+        setStats(statsData);
+        setFinances(financesData);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Impossible de charger les finances."));
   }, []);
 
@@ -99,44 +103,35 @@ export function AdminFinancesPage() {
         </div>
       </div>
 
-      {/* NOTE: pas de modèle Payout en base — la table ci-dessous reste un
-          mock illustratif. Les chiffres globaux ci-dessus sont en revanche
-          réels, dérivés des commandes livrées. */}
+      {/* Pas de table Payout / virement bancaire automatique en base pour
+          l'instant : ce tableau montre ce qui est réellement dû à chaque
+          bénéficiaire sur les commandes livrées des 30 derniers jours
+          (calculé à la volée), pas un historique de virements exécutés. */}
       <div className="rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
-        <h3 className="mb-4 font-heading text-base font-bold text-nuit">💸 Derniers versements</h3>
-        <p className="mb-4 text-xs text-gris">
-          Exemple illustratif — les versements automatiques ne sont pas encore implémentés côté backend.
-        </p>
-        <table className="w-full text-left opacity-50">
+        <h3 className="mb-4 font-heading text-base font-bold text-nuit">💸 Montants dus par bénéficiaire (30j)</h3>
+        <table className="w-full text-left">
           <thead>
             <tr className="border-b border-gris-light text-xs uppercase tracking-wide text-gris">
               <th className="py-2 pr-4 font-medium">Type</th>
               <th className="py-2 pr-4 font-medium">Bénéficiaire</th>
               <th className="py-2 pr-4 font-medium">Montant</th>
-              <th className="py-2 pr-4 font-medium">Statut</th>
-              <th className="py-2 pr-4 font-medium">Date</th>
             </tr>
           </thead>
           <tbody>
-            {MOCK_PLATFORM_PAYOUTS.map((payout) => (
-              <tr key={payout.id} className="border-b border-gris-light last:border-0">
-                <td className="py-3 pr-4 text-sm text-nuit">{payout.recipientType === "PRO" ? "🏪 Commerçant" : "🛵 Livreur"}</td>
-                <td className="py-3 pr-4 text-sm font-semibold text-nuit">{payout.recipientName}</td>
-                <td className="py-3 pr-4 text-sm font-bold text-nuit">{payout.amount.toFixed(2)} €</td>
-                <td className="py-3 pr-4">
-                  <span
-                    className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                    style={{
-                      backgroundColor: payout.status === "paid" ? "#E8F5E9" : "#FFF3E0",
-                      color: payout.status === "paid" ? "#2ECC71" : "#FF6B35",
-                    }}
-                  >
-                    {payout.status === "paid" ? "Versé" : "En attente"}
-                  </span>
-                </td>
-                <td className="py-3 pr-4 text-sm text-gris">{payout.dateLabel}</td>
+            {finances?.recipients.map((r) => (
+              <tr key={`${r.recipientType}-${r.id}`} className="border-b border-gris-light last:border-0">
+                <td className="py-3 pr-4 text-sm text-nuit">{r.recipientType === "PRO" ? "🏪 Commerçant" : "🛵 Livreur"}</td>
+                <td className="py-3 pr-4 text-sm font-semibold text-nuit">{r.recipientName}</td>
+                <td className="py-3 pr-4 text-sm font-bold text-nuit">{r.amount.toFixed(2)} €</td>
               </tr>
             ))}
+            {finances && finances.recipients.length === 0 && (
+              <tr>
+                <td colSpan={3} className="py-6 text-center text-sm text-gris">
+                  Aucune commande livrée sur les 30 derniers jours.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

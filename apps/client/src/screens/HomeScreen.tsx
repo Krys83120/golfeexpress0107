@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { CATEGORY_CHIPS } from "@/services/mockCategories";
+import { CATEGORY_CHIPS } from "@/services/categoryChips";
 import { ProCard } from "@/components/ProCard";
 import { NearbyItem } from "@/components/NearbyItem";
 import { FloatingCart } from "@/components/FloatingCart";

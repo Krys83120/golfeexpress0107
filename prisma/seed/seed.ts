@@ -14,6 +14,7 @@
 
 import { PrismaClient, OrderStatus, PaymentStatus } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 const prisma = new PrismaClient();
 
@@ -26,7 +27,13 @@ if (!supabaseUrl || !serviceRoleKey) {
 }
 
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+  realtime: {
+    transport: ws as any,
+  },
 });
 
 const PASSWORD = "GolfeTest2026!"; // Mot de passe commun pour tous les comptes de test
@@ -73,14 +80,39 @@ async function createAuthUser(user: SeedUser): Promise<string> {
   return data.user.id;
 }
 
-/** Attend que le trigger SQL ait créé la ligne public."User". */
+/** Attend que le trigger SQL ait créé la ligne public."User".
+ * Si le trigger ne fonctionne pas, crée la ligne manuellement en secours.
+ */
 async function waitForUser(id: string, maxRetries = 10): Promise<void> {
   for (let i = 0; i < maxRetries; i++) {
-    const user = await prisma.user.findUnique({ where: { id } });
-    if (user) return;
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (existing) return;
     await new Promise((r) => setTimeout(r, 500));
   }
-  throw new Error(`Timeout : public."User" non créé pour ${id} après ${maxRetries} tentatives`);
+
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(id);
+
+  if (error || !data.user?.email) {
+    throw new Error(`Impossible de récupérer l'utilisateur Auth ${id}`);
+  }
+
+  const meta = data.user.user_metadata || {};
+
+  await prisma.user.upsert({
+    where: { id },
+    update: {},
+    create: {
+      id,
+      email: data.user.email,
+      phone: meta.phone ?? "",
+      firstName: meta.firstName ?? "",
+      lastName: meta.lastName ?? "",
+      role: meta.role ?? "CLIENT",
+      status: "ACTIVE",
+    },
+  });
+
+  console.log(`  ✅ User créé manuellement : ${data.user.email}`);
 }
 
 async function main() {

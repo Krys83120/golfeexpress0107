@@ -78,16 +78,58 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
   };
   const extraField = timestampField[nextStatus];
 
-  const updated = await prisma.order.update({
-    where: { id: order.id },
-    data: {
-      status: nextStatus,
-      ...(extraField ? { [extraField]: new Date() } : {}),
-      statusHistory: {
-        create: { status: nextStatus, changedBy: auth.userId, note },
+  // À la livraison : on matérialise le gain du livreur (table Earning) et on
+  // crédite son solde + compteurs, et on crédite les points de fidélité du
+  // client. Tout se fait dans la même transaction que la mise à jour du
+  // statut pour ne jamais avoir un Order DELIVERED sans Earning associé (ou
+  // inversement).
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.order.update({
+      where: { id: order.id },
+      data: {
+        status: nextStatus,
+        ...(extraField ? { [extraField]: new Date() } : {}),
+        statusHistory: {
+          create: { status: nextStatus, changedBy: auth.userId, note },
+        },
       },
-    },
-    include: { items: true, statusHistory: { orderBy: { changedAt: "asc" } } },
+      include: { items: true, statusHistory: { orderBy: { changedAt: "asc" } } },
+    });
+
+    if (nextStatus === OrderStatus.DELIVERED) {
+      if (result.riderId) {
+        await tx.earning.create({
+          data: {
+            riderId: result.riderId,
+            orderId: result.id,
+            amount: result.riderEarnings,
+            type: "DELIVERY_FEE",
+            status: "AVAILABLE",
+          },
+        });
+        await tx.rider.update({
+          where: { id: result.riderId },
+          data: {
+            balance: { increment: result.riderEarnings },
+            totalEarnings: { increment: result.riderEarnings },
+            totalDeliveries: { increment: 1 },
+          },
+        });
+      }
+
+      // 1 point de fidélité par euro dépensé (arrondi à l'entier inférieur) —
+      // règle simple, à externaliser vers GlobalSetting si elle doit devenir
+      // configurable depuis l'admin.
+      const pointsEarned = Math.floor(Number(result.total));
+      if (pointsEarned > 0) {
+        await tx.client.update({
+          where: { id: result.clientId },
+          data: { fidelityPoints: { increment: pointsEarned } },
+        });
+      }
+    }
+
+    return result;
   });
 
   return NextResponse.json({ order: updated });

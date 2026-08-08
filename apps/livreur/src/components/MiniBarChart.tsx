@@ -1,6 +1,10 @@
 import React from "react";
 import { View, Text } from "react-native";
-import type { WeeklyDeliveryPoint } from "@/services/mockStats";
+
+export interface WeeklyDeliveryPoint {
+  label: string;
+  deliveries: number;
+}
 
 interface MiniBarChartProps {
   data: WeeklyDeliveryPoint[];

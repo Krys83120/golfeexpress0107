@@ -1,26 +1,36 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  MOCK_FIDELITY_REWARDS,
-  MOCK_FIDELITY_HISTORY,
-  FIDELITY_DEMO,
-  type FidelityReward,
-} from "@/services/mockFidelity";
+import { FIDELITY_REWARDS, FIDELITY_TIER, type FidelityReward } from "@/services/fidelityCatalog";
+import { fetchFidelityHistory, type FidelityHistoryEntry } from "@/services/fidelityApi";
 import { useAuthStore } from "@/store/useAuthStore";
+
+function formatDateLabel(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isToday) return "Aujourd'hui";
+  if (date.toDateString() === yesterday.toDateString()) return "Hier";
+  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+}
 
 export function FidelityScreen() {
   const profile = useAuthStore((s) => s.profile);
+  const [history, setHistory] = useState<FidelityHistoryEntry[]>([]);
 
-  // currentPoints et referralCode viennent du vrai profil Client (API) ;
-  // pointsToNextTier/nextTierName/récompenses/historique restent en mock —
-  // aucune route API dédiée à la logique de paliers/récompenses pour
-  // l'instant (TODO backend : GET /api/clients/me/fidelity).
+  useEffect(() => {
+    fetchFidelityHistory()
+      .then(setHistory)
+      .catch(() => setHistory([]));
+  }, []);
+
   const currentPoints = profile?.fidelityPoints ?? 0;
   const referralCode = profile?.referralCode ?? "—";
-
-  const progressRatio = currentPoints / (currentPoints + FIDELITY_DEMO.pointsToNextTier);
+  const pointsRemaining = Math.max(0, FIDELITY_TIER.pointsToNextTier - currentPoints);
+  const progressRatio = currentPoints / FIDELITY_TIER.pointsToNextTier;
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
@@ -41,7 +51,9 @@ export function FidelityScreen() {
             />
           </View>
           <Text className="mt-2 text-xs text-white/60">
-            {FIDELITY_DEMO.pointsToNextTier} points avant le {FIDELITY_DEMO.nextTierName} 🏆
+            {pointsRemaining > 0
+              ? `${pointsRemaining} points avant le ${FIDELITY_TIER.nextTierName} 🏆`
+              : `${FIDELITY_TIER.nextTierName} débloqué 🏆`}
           </Text>
         </View>
 
@@ -63,7 +75,7 @@ export function FidelityScreen() {
         <View className="mt-6 px-5">
           <Text className="mb-3 font-heading text-base font-bold text-nuit">🏅 Récompenses disponibles</Text>
           <View className="flex-row flex-wrap gap-3">
-            {MOCK_FIDELITY_REWARDS.map((reward) => (
+            {FIDELITY_REWARDS.map((reward) => (
               <RewardCard key={reward.id} reward={reward} userPoints={currentPoints} />
             ))}
           </View>
@@ -72,21 +84,22 @@ export function FidelityScreen() {
         {/* History */}
         <View className="mt-6 px-5">
           <Text className="mb-3 font-heading text-base font-bold text-nuit">📜 Historique</Text>
-          {MOCK_FIDELITY_HISTORY.map((entry) => (
-            <View key={entry.id} className="mb-2.5 flex-row items-center justify-between rounded-sm bg-gris-light p-3.5">
-              <View>
-                <Text className="text-sm font-medium text-nuit">{entry.label}</Text>
-                <Text className="text-xs text-gris">{entry.dateLabel}</Text>
-              </View>
-              <Text
-                className="text-sm font-bold"
-                style={{ color: entry.points > 0 ? "#2ECC71" : "#F44336" }}
-              >
-                {entry.points > 0 ? "+" : ""}
-                {entry.points} pts
-              </Text>
+          {history.length === 0 ? (
+            <View className="items-center py-8">
+              <Text style={{ fontSize: 32 }}>📦</Text>
+              <Text className="mt-2 text-sm text-gris">Passez commande pour gagner vos premiers points</Text>
             </View>
-          ))}
+          ) : (
+            history.map((entry) => (
+              <View key={entry.orderNumber} className="mb-2.5 flex-row items-center justify-between rounded-sm bg-gris-light p-3.5">
+                <View>
+                  <Text className="text-sm font-medium text-nuit">Commande {entry.orderNumber}</Text>
+                  <Text className="text-xs text-gris">{formatDateLabel(entry.date)}</Text>
+                </View>
+                <Text className="text-sm font-bold text-golfe-green">+{entry.points} pts</Text>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
