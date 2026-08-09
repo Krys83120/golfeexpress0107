@@ -54,12 +54,14 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
           ) : (
             <Text style={{ fontSize: 64 }}>{pro.emoji}</Text>
           )}
-          <Pressable
-            onPress={onClose}
-            className="absolute left-4 top-4 h-10 w-10 items-center justify-center rounded-full bg-white/90"
-          >
-            <Ionicons name="close" size={18} color="#1A1A2E" />
-          </Pressable>
+          <View className="absolute left-4 top-4">
+            <Pressable
+              onPress={onClose}
+              className="h-10 w-10 items-center justify-center rounded-full bg-white/90"
+            >
+              <Ionicons name="close" size={18} color="#1A1A2E" />
+            </Pressable>
+          </View>
         </View>
 
         <View className="mx-5 mt-4">
@@ -67,7 +69,7 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
           <View className="mt-1 flex-row items-center gap-3">
             <View className="flex-row items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5">
               <Ionicons name="star" size={11} color="#FF6B35" />
-              <Text className="text-xs font-bold text-corail">{pro.rating?.toFixed(1) ?? "—"}</Text>
+              <Text className="text-xs font-bold text-corail">{Number(pro.rating)?.toFixed(1) ?? "—"}</Text>
             </View>
             <Text className="text-[13px] text-gris">
               <Ionicons name="time-outline" size={12} /> {pro.estimatedMinMinutes}-{pro.estimatedMaxMinutes} min

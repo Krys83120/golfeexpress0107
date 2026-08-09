@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { OrderStatus } from "@golfeexpress/types";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
@@ -44,53 +44,48 @@ export function CurrentDeliveryCard() {
   }
 
   return (
-    <View className="mx-5 mt-5 rounded p-5" style={{ backgroundColor: "#1A1A2E" }}>
-      <View className="mb-4 flex-row items-center justify-between">
-        <Text className="font-heading text-base font-bold text-white">🛵 Livraison en cours</Text>
-        <View className="rounded-full bg-corail px-3 py-1">
-          <Text className="text-[11px] font-bold text-white">{activeDelivery.orderNumber}</Text>
+    <View style={[styles.card, { backgroundColor: "#1A1A2E" }]}>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>🛵 Livraison en cours</Text>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{activeDelivery.orderNumber}</Text>
         </View>
       </View>
 
-      <View className="mb-4 flex-row items-center gap-3">
-        <View className="h-[50px] w-[50px] items-center justify-center rounded-full bg-corail">
+      <View style={styles.proRow}>
+        <View style={styles.iconCircle}>
           <Text style={{ fontSize: 24 }}>{emoji}</Text>
         </View>
         <View>
-          <Text className="font-bold text-white">{activeDelivery.pro?.businessName ?? "Commerçant"}</Text>
-          <Text className="text-xs text-white/70">{routeLabel}</Text>
+          <Text style={styles.proName}>{activeDelivery.pro?.businessName ?? "Commerçant"}</Text>
+          <Text style={styles.routeLabel}>{routeLabel}</Text>
         </View>
-        <View className="ml-auto items-end">
-          <Text className="font-heading text-xl font-extrabold text-white">
-            {Number(activeDelivery.riderEarnings).toFixed(2).replace(".", ",")}€
-          </Text>
+        <View style={{ marginLeft: "auto", alignItems: "flex-end" }}>
+          <Text style={styles.earnings}>{Number(activeDelivery.riderEarnings).toFixed(2).replace(".", ",")}€</Text>
         </View>
       </View>
 
       {error && (
-        <View className="mb-3 rounded-sm bg-red-500/10 p-3">
-          <Text className="text-[13px] text-red-300">{error}</Text>
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
 
-      <View className="mb-4 flex-row justify-between">
+      <View style={styles.stepsRow}>
         {STEP_LABELS.map((label, i) => {
           const isCompleted = i < stepIndex;
           const isActive = i === stepIndex;
           return (
-            <View key={label} className="flex-1 items-center">
+            <View key={label} style={styles.step}>
               <View
-                className="h-8 w-8 items-center justify-center rounded-full"
-                style={{
-                  backgroundColor: isCompleted ? "#2ECC71" : isActive ? "#FF6B35" : "rgba(255,255,255,0.1)",
-                }}
+                style={[
+                  styles.stepDot,
+                  { backgroundColor: isCompleted ? "#2ECC71" : isActive ? "#FF6B35" : "rgba(255,255,255,0.1)" },
+                ]}
               >
                 {isCompleted && <Ionicons name="checkmark" size={16} color="white" />}
               </View>
-              <Text
-                className="mt-1 text-center text-[10px]"
-                style={{ color: isCompleted || isActive ? "white" : "rgba(255,255,255,0.5)" }}
-              >
+              <Text style={[styles.stepLabel, { color: isCompleted || isActive ? "white" : "rgba(255,255,255,0.5)" }]}>
                 {label}
               </Text>
             </View>
@@ -98,14 +93,30 @@ export function CurrentDeliveryCard() {
         })}
       </View>
 
-      <Pressable
-        onPress={handleAction}
-        disabled={submitting}
-        className="items-center rounded-sm bg-golfe-green py-3.5"
-        style={{ opacity: submitting ? 0.7 : 1 }}
-      >
-        <Text className="font-bold text-white">{ACTION_LABELS[activeDelivery.status] ?? "Continuer"}</Text>
+      <Pressable onPress={handleAction} disabled={submitting} style={[styles.actionBtn, { opacity: submitting ? 0.7 : 1 }]}>
+        <Text style={styles.actionText}>{ACTION_LABELS[activeDelivery.status] ?? "Continuer"}</Text>
       </Pressable>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  card: { marginHorizontal: 20, marginTop: 20, borderRadius: 16, padding: 20 },
+  headerRow: { marginBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  title: { fontSize: 16, fontWeight: "700", color: "white" },
+  badge: { borderRadius: 999, backgroundColor: "#F97316", paddingHorizontal: 12, paddingVertical: 4 },
+  badgeText: { fontSize: 11, fontWeight: "700", color: "white" },
+  proRow: { marginBottom: 16, flexDirection: "row", alignItems: "center", gap: 12 },
+  iconCircle: { height: 50, width: 50, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: "#F97316" },
+  proName: { fontWeight: "700", color: "white" },
+  routeLabel: { fontSize: 12, color: "rgba(255,255,255,0.7)" },
+  earnings: { fontSize: 20, fontWeight: "800", color: "white" },
+  errorBox: { marginBottom: 12, borderRadius: 4, backgroundColor: "rgba(239,68,68,0.1)", padding: 12 },
+  errorText: { fontSize: 13, color: "#FCA5A5" },
+  stepsRow: { marginBottom: 16, flexDirection: "row", justifyContent: "space-between" },
+  step: { flex: 1, alignItems: "center" },
+  stepDot: { height: 32, width: 32, alignItems: "center", justifyContent: "center", borderRadius: 999 },
+  stepLabel: { marginTop: 4, textAlign: "center", fontSize: 10 },
+  actionBtn: { alignItems: "center", borderRadius: 8, backgroundColor: "#2ECC71", paddingVertical: 14 },
+  actionText: { fontWeight: "700", color: "white" },
+});

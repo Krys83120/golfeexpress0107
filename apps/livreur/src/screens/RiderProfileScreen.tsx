@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, Pressable } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { VEHICLE_LABELS } from "@/services/vehicleLabels";
@@ -53,65 +53,49 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+    <SafeAreaView style={styles.root} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        <View className="items-center px-5 pb-2 pt-6">
-          <AvatarUpload
-            currentImageUrl={user?.avatar}
-            initials={`${firstName[0]}${lastName[0] ?? ""}`}
-            onUpload={handleAvatarUpload}
-          />
-          <Text className="mt-3 font-heading text-lg font-bold text-nuit">
+        <View style={styles.headerWrap}>
+          <AvatarUpload currentImageUrl={user?.avatar} initials={`${firstName[0]}${lastName[0] ?? ""}`} onUpload={handleAvatarUpload} />
+          <Text style={styles.name}>
             {firstName} {lastName}
           </Text>
-          <Text className="text-sm text-gris">{user?.email}</Text>
+          <Text style={styles.subtle}>{user?.email}</Text>
 
-          <View
-            className="mt-2 flex-row items-center gap-1.5 rounded-full px-3 py-1"
-            style={{ backgroundColor: isVerified ? "#E8F5E9" : "#FFF3E0" }}
-          >
-            <Ionicons
-              name={isVerified ? "checkmark-circle" : "time"}
-              size={13}
-              color={isVerified ? "#2ECC71" : "#FF6B35"}
-            />
-            <Text className="text-xs font-semibold" style={{ color: isVerified ? "#2ECC71" : "#FF6B35" }}>
+          <View style={[styles.badge, { backgroundColor: isVerified ? "#E8F5E9" : "#FFF3E0" }]}>
+            <Ionicons name={isVerified ? "checkmark-circle" : "time"} size={13} color={isVerified ? "#2ECC71" : "#FF6B35"} />
+            <Text style={[styles.badgeText, { color: isVerified ? "#2ECC71" : "#FF6B35" }]}>
               {isVerified ? "Compte vérifié" : "Validation en attente"}
             </Text>
           </View>
         </View>
 
-        {/* Vehicle card */}
-        <View className="mx-5 mt-4 flex-row items-center gap-3 rounded-sm bg-gris-light p-4">
+        <View style={styles.infoCard}>
           <Text style={{ fontSize: 28 }}>{vehicleMeta.emoji}</Text>
-          <View className="flex-1">
-            <Text className="text-sm font-bold text-nuit">{vehicleMeta.label}</Text>
-            <Text className="text-xs text-gris">Plaque {profile?.vehiclePlate ?? "non renseignée"}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.infoTitle}>{vehicleMeta.label}</Text>
+            <Text style={styles.subtle}>Plaque {profile?.vehiclePlate ?? "non renseignée"}</Text>
           </View>
         </View>
 
-        {/* IBAN */}
-        <View className="mx-5 mt-3 flex-row items-center gap-3 rounded-sm bg-gris-light p-4">
+        <View style={[styles.infoCard, { marginTop: 12 }]}>
           <Ionicons name="card" size={22} color="#1A1A2E" />
-          <View className="flex-1">
-            <Text className="text-sm font-bold text-nuit">{profile?.iban ? maskIban(profile.iban) : "Non renseigné"}</Text>
-            <Text className="text-xs text-gris">Compte de versement des gains</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.infoTitle}>{profile?.iban ? maskIban(profile.iban) : "Non renseigné"}</Text>
+            <Text style={styles.subtle}>Compte de versement des gains</Text>
           </View>
         </View>
 
         <MenuSection title="Mon compte" rows={ACCOUNT_ROWS} />
         <MenuSection title="Aide & support" rows={SUPPORT_ROWS} />
 
-        <View className="mt-6 px-5">
-          <Pressable
-            onPress={onLogout}
-            className="flex-row items-center justify-center gap-2 rounded-sm border-2 border-red-100 bg-red-50 py-3.5"
-          >
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <Pressable onPress={onLogout} style={styles.logoutBtn}>
             <Ionicons name="log-out-outline" size={18} color="#F44336" />
-            <Text className="text-sm font-bold text-red-500">Se déconnecter</Text>
+            <Text style={styles.logoutText}>Se déconnecter</Text>
           </Pressable>
 
-          <Text className="mt-4 text-center text-xs text-gris">GolfeExpress Livreur v0.1.0 🦎</Text>
+          <Text style={styles.version}>GolfeExpress Livreur v0.1.0 🦎</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -120,17 +104,13 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
 
 function MenuSection({ title, rows }: { title: string; rows: MenuRow[] }) {
   return (
-    <View className="mt-6 px-5">
-      <Text className="mb-3 text-xs font-semibold uppercase tracking-wide text-gris">{title}</Text>
-      <View className="rounded-sm bg-gris-light">
+    <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={{ borderRadius: 8, backgroundColor: "#F3F4F6" }}>
         {rows.map((row, index) => (
-          <Pressable
-            key={row.label}
-            className="flex-row items-center gap-3 px-4 py-3.5"
-            style={{ borderTopWidth: index === 0 ? 0 : 1, borderTopColor: "#E5E7EB" }}
-          >
+          <Pressable key={row.label} style={[styles.menuRow, { borderTopWidth: index === 0 ? 0 : 1, borderTopColor: "#E5E7EB" }]}>
             <Ionicons name={row.icon} size={18} color="#1A1A2E" />
-            <Text className="flex-1 text-sm text-nuit">{row.label}</Text>
+            <Text style={{ flex: 1, fontSize: 14, color: "#1A1A2E" }}>{row.label}</Text>
             <Ionicons name="chevron-forward" size={16} color="#6B7280" />
           </Pressable>
         ))}
@@ -138,3 +118,19 @@ function MenuSection({ title, rows }: { title: string; rows: MenuRow[] }) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "white" },
+  headerWrap: { alignItems: "center", paddingHorizontal: 20, paddingBottom: 8, paddingTop: 24 },
+  name: { marginTop: 12, fontSize: 18, fontWeight: "700", color: "#1A1A2E" },
+  subtle: { fontSize: 12, color: "#6B7280" },
+  badge: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
+  badgeText: { fontSize: 12, fontWeight: "600" },
+  infoCard: { marginHorizontal: 20, marginTop: 16, flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 8, backgroundColor: "#F3F4F6", padding: 16 },
+  infoTitle: { fontSize: 14, fontWeight: "700", color: "#1A1A2E" },
+  sectionTitle: { marginBottom: 12, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, color: "#6B7280" },
+  menuRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, borderWidth: 2, borderColor: "#FEE2E2", backgroundColor: "#FEF2F2", paddingVertical: 14 },
+  logoutText: { fontSize: 14, fontWeight: "700", color: "#EF4444" },
+  version: { marginTop: 16, textAlign: "center", fontSize: 12, color: "#6B7280" },
+});

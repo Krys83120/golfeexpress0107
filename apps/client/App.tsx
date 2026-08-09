@@ -1,4 +1,4 @@
-//import "./global.css";
+import "./global.css";
 import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, Modal, ActivityIndicator } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";

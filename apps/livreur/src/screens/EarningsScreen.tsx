@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, Modal, ActivityIndicator, TextInput, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, Modal, ActivityIndicator, TextInput, Alert, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useEarningsStore } from "@/store/useEarningsStore";
@@ -32,63 +32,51 @@ export function EarningsScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+    <SafeAreaView style={styles.root} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        <View className="px-5 pb-2 pt-4">
-          <Text className="font-heading text-xl font-bold text-nuit">💰 Mes gains</Text>
+        <View style={styles.headerWrap}>
+          <Text style={styles.headerTitle}>💰 Mes gains</Text>
         </View>
 
         {status === "loading" && !summary ? (
-          <View className="mt-10 items-center">
+          <View style={{ marginTop: 40, alignItems: "center" }}>
             <ActivityIndicator color="#2ECC71" />
           </View>
         ) : (
           <>
-            {/* Balance card */}
-            <View className="mx-5 mt-3 rounded p-5" style={{ backgroundColor: "#1A1A2E" }}>
-              <Text className="text-[13px] text-white/70">Solde disponible</Text>
-              <Text className="mt-1 font-heading text-[32px] font-extrabold text-white">
-                {(summary?.availableBalance ?? 0).toFixed(2).replace(".", ",")} €
-              </Text>
+            <View style={[styles.balanceCard, { backgroundColor: "#1A1A2E" }]}>
+              <Text style={styles.balanceLabel}>Solde disponible</Text>
+              <Text style={styles.balanceAmount}>{(summary?.availableBalance ?? 0).toFixed(2).replace(".", ",")} €</Text>
               {(summary?.pendingBalance ?? 0) > 0 && (
-                <Text className="mt-1 text-xs text-white/50">
-                  + {(summary?.pendingBalance ?? 0).toFixed(2).replace(".", ",")} € en attente
-                </Text>
+                <Text style={styles.pendingText}>+ {(summary?.pendingBalance ?? 0).toFixed(2).replace(".", ",")} € en attente</Text>
               )}
 
               <Pressable
                 onPress={() => setWithdrawModalOpen(true)}
                 disabled={!summary || summary.availableBalance <= 0}
-                className="mt-4 items-center rounded-sm bg-golfe-green py-3"
-                style={{ opacity: !summary || summary.availableBalance <= 0 ? 0.5 : 1 }}
+                style={[styles.withdrawBtn, { opacity: !summary || summary.availableBalance <= 0 ? 0.5 : 1 }]}
               >
-                <Text className="text-sm font-bold text-white">💸 Retirer mes gains</Text>
+                <Text style={styles.withdrawBtnText}>💸 Retirer mes gains</Text>
               </Pressable>
             </View>
 
-            {/* Quick stats */}
-            <View className="mx-5 mt-4 flex-row gap-3">
-              <View className="flex-1 rounded-sm bg-gris-light p-4">
-                <Text className="text-xs text-gris">Cette semaine</Text>
-                <Text className="mt-1 font-heading text-lg font-bold text-nuit">
-                  {(summary?.weekTotal ?? 0).toFixed(2).replace(".", ",")} €
-                </Text>
+            <View style={styles.quickStatsRow}>
+              <View style={styles.quickStat}>
+                <Text style={styles.quickStatLabel}>Cette semaine</Text>
+                <Text style={styles.quickStatValue}>{(summary?.weekTotal ?? 0).toFixed(2).replace(".", ",")} €</Text>
               </View>
-              <View className="flex-1 rounded-sm bg-gris-light p-4">
-                <Text className="text-xs text-gris">Ce mois</Text>
-                <Text className="mt-1 font-heading text-lg font-bold text-nuit">
-                  {(summary?.monthTotal ?? 0).toFixed(2).replace(".", ",")} €
-                </Text>
+              <View style={styles.quickStat}>
+                <Text style={styles.quickStatLabel}>Ce mois</Text>
+                <Text style={styles.quickStatValue}>{(summary?.monthTotal ?? 0).toFixed(2).replace(".", ",")} €</Text>
               </View>
             </View>
 
-            {/* Tabs */}
-            <View className="mx-5 mt-5 flex-row gap-2 rounded-sm bg-gris-light p-1">
+            <View style={styles.tabsWrap}>
               <TabButton label="Historique" active={tab === "history"} onPress={() => setTab("history")} />
               <TabButton label="Retraits" active={tab === "withdrawals"} onPress={() => setTab("withdrawals")} />
             </View>
 
-            <View className="mt-4 px-5">
+            <View style={{ marginTop: 16, paddingHorizontal: 20 }}>
               {tab === "history" &&
                 (earnings.length === 0 ? (
                   <EmptyState emoji="💰" label="Aucun gain pour le moment" />
@@ -96,20 +84,18 @@ export function EarningsScreen() {
                   earnings.map((entry) => {
                     const meta = EARNING_TYPE_LABELS[entry.type];
                     return (
-                      <View key={entry.id} className="mb-2.5 flex-row items-center gap-3 rounded-sm bg-gris-light p-3.5">
-                        <View className="h-10 w-10 items-center justify-center rounded-full bg-white">
+                      <View key={entry.id} style={styles.listRow}>
+                        <View style={styles.listIconCircle}>
                           <Text style={{ fontSize: 18 }}>{meta.emoji}</Text>
                         </View>
-                        <View className="flex-1">
-                          <Text className="text-sm font-semibold text-nuit">{meta.label}</Text>
-                          <Text className="text-xs text-gris">
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.listTitle}>{meta.label}</Text>
+                          <Text style={styles.listSubtitle}>
                             {entry.orderNumber !== "—" ? `${entry.orderNumber} · ` : ""}
                             {formatDateLabel(entry.createdAt)}
                           </Text>
                         </View>
-                        <Text className="text-sm font-bold text-golfe-green">
-                          +{entry.amount.toFixed(2).replace(".", ",")} €
-                        </Text>
+                        <Text style={styles.listAmount}>+{entry.amount.toFixed(2).replace(".", ",")} €</Text>
                       </View>
                     );
                   })
@@ -122,16 +108,12 @@ export function EarningsScreen() {
                   withdrawals.map((entry) => {
                     const meta = WITHDRAWAL_STATUS_LABELS[entry.status];
                     return (
-                      <View key={entry.id} className="mb-2.5 flex-row items-center justify-between rounded-sm bg-gris-light p-3.5">
+                      <View key={entry.id} style={[styles.listRow, { justifyContent: "space-between" }]}>
                         <View>
-                          <Text className="text-sm font-semibold text-nuit">
-                            {entry.amount.toFixed(2).replace(".", ",")} €
-                          </Text>
-                          <Text className="text-xs text-gris">{formatDateLabel(entry.createdAt)}</Text>
+                          <Text style={styles.listTitle}>{entry.amount.toFixed(2).replace(".", ",")} €</Text>
+                          <Text style={styles.listSubtitle}>{formatDateLabel(entry.createdAt)}</Text>
                         </View>
-                        <Text className="text-xs font-bold" style={{ color: meta.color }}>
-                          {meta.label}
-                        </Text>
+                        <Text style={{ fontSize: 12, fontWeight: "700", color: meta.color }}>{meta.label}</Text>
                       </View>
                     );
                   })
@@ -150,23 +132,17 @@ export function EarningsScreen() {
 
 function EmptyState({ emoji, label }: { emoji: string; label: string }) {
   return (
-    <View className="items-center py-10">
+    <View style={{ alignItems: "center", paddingVertical: 40 }}>
       <Text style={{ fontSize: 36 }}>{emoji}</Text>
-      <Text className="mt-2 text-sm text-gris">{label}</Text>
+      <Text style={{ marginTop: 8, fontSize: 14, color: "#6B7280" }}>{label}</Text>
     </View>
   );
 }
 
 function TabButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
-    <Pressable
-      onPress={onPress}
-      className="flex-1 items-center rounded-sm py-2.5"
-      style={{ backgroundColor: active ? "white" : "transparent" }}
-    >
-      <Text className="text-[13px] font-semibold" style={{ color: active ? "#1A1A2E" : "#6B7280" }}>
-        {label}
-      </Text>
+    <Pressable onPress={onPress} style={[styles.tabBtn, { backgroundColor: active ? "white" : "transparent" }]}>
+      <Text style={[styles.tabBtnText, { color: active ? "#1A1A2E" : "#6B7280" }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -189,49 +165,72 @@ function WithdrawModal({ onClose, availableBalance }: { onClose: () => void; ava
   }
 
   return (
-    <View className="flex-1 justify-end bg-black/40">
-      <View className="rounded-t-2xl bg-white p-5 pb-10">
-        <View className="mb-4 flex-row items-center justify-between">
-          <Text className="font-heading text-lg font-bold text-nuit">💸 Retirer mes gains</Text>
-          <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-gris-light">
+    <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}>
+      <View style={styles.modalCard}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>💸 Retirer mes gains</Text>
+          <Pressable onPress={onClose} style={styles.modalClose}>
             <Ionicons name="close" size={16} color="#1A1A2E" />
           </Pressable>
         </View>
 
-        <View className="mb-4 rounded-sm bg-gris-light p-4">
-          <Text className="text-xs text-gris">Montant disponible</Text>
-          <Text className="font-heading text-2xl font-extrabold text-nuit">
-            {availableBalance.toFixed(2).replace(".", ",")} €
-          </Text>
+        <View style={styles.modalBalanceBox}>
+          <Text style={{ fontSize: 12, color: "#6B7280" }}>Montant disponible</Text>
+          <Text style={styles.modalBalanceAmount}>{availableBalance.toFixed(2).replace(".", ",")} €</Text>
         </View>
 
-        <Text className="mb-1 text-xs font-semibold text-gris">Montant à retirer</Text>
-        <TextInput
-          value={amountText}
-          onChangeText={setAmountText}
-          keyboardType="decimal-pad"
-          className="mb-3 rounded-sm border border-gris-light px-3 py-2.5 text-base text-nuit"
-        />
+        <Text style={{ marginBottom: 4, fontSize: 12, fontWeight: "600", color: "#6B7280" }}>Montant à retirer</Text>
+        <TextInput value={amountText} onChangeText={setAmountText} keyboardType="decimal-pad" style={styles.modalInput} />
 
-        <Text className="mb-2 text-xs text-gris">
+        <Text style={{ marginBottom: 8, fontSize: 12, color: "#6B7280" }}>
           Le virement sera effectué sur votre IBAN enregistré, sous 1 à 3 jours ouvrés.
         </Text>
 
         <Pressable
           onPress={handleConfirm}
           disabled={!isValid || withdrawStatus === "loading"}
-          className="mt-3 items-center rounded-sm bg-golfe-green py-4"
-          style={{ opacity: !isValid || withdrawStatus === "loading" ? 0.5 : 1 }}
+          style={[styles.modalConfirmBtn, { opacity: !isValid || withdrawStatus === "loading" ? 0.5 : 1 }]}
         >
           {withdrawStatus === "loading" ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-base font-bold text-white">
-              Confirmer le retrait de {(isValid ? amount : 0).toFixed(2).replace(".", ",")} €
-            </Text>
+            <Text style={styles.modalConfirmText}>Confirmer le retrait de {(isValid ? amount : 0).toFixed(2).replace(".", ",")} €</Text>
           )}
         </Pressable>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "white" },
+  headerWrap: { paddingHorizontal: 20, paddingBottom: 8, paddingTop: 16 },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A2E" },
+  balanceCard: { marginHorizontal: 20, marginTop: 12, borderRadius: 16, padding: 20 },
+  balanceLabel: { fontSize: 13, color: "rgba(255,255,255,0.7)" },
+  balanceAmount: { marginTop: 4, fontSize: 32, fontWeight: "800", color: "white" },
+  pendingText: { marginTop: 4, fontSize: 12, color: "rgba(255,255,255,0.5)" },
+  withdrawBtn: { marginTop: 16, alignItems: "center", borderRadius: 8, backgroundColor: "#2ECC71", paddingVertical: 12 },
+  withdrawBtnText: { fontSize: 14, fontWeight: "700", color: "white" },
+  quickStatsRow: { marginHorizontal: 20, marginTop: 16, flexDirection: "row", gap: 12 },
+  quickStat: { flex: 1, borderRadius: 8, backgroundColor: "#F3F4F6", padding: 16 },
+  quickStatLabel: { fontSize: 12, color: "#6B7280" },
+  quickStatValue: { marginTop: 4, fontSize: 18, fontWeight: "700", color: "#1A1A2E" },
+  tabsWrap: { marginHorizontal: 20, marginTop: 20, flexDirection: "row", gap: 8, borderRadius: 8, backgroundColor: "#F3F4F6", padding: 4 },
+  tabBtn: { flex: 1, alignItems: "center", borderRadius: 8, paddingVertical: 10 },
+  tabBtnText: { fontSize: 13, fontWeight: "600" },
+  listRow: { marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 8, backgroundColor: "#F3F4F6", padding: 14 },
+  listIconCircle: { height: 40, width: 40, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: "white" },
+  listTitle: { fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  listSubtitle: { fontSize: 12, color: "#6B7280" },
+  listAmount: { fontSize: 14, fontWeight: "700", color: "#2ECC71" },
+  modalCard: { borderTopLeftRadius: 20, borderTopRightRadius: 20, backgroundColor: "white", padding: 20, paddingBottom: 40 },
+  modalHeader: { marginBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A2E" },
+  modalClose: { height: 36, width: 36, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: "#F3F4F6" },
+  modalBalanceBox: { marginBottom: 16, borderRadius: 8, backgroundColor: "#F3F4F6", padding: 16 },
+  modalBalanceAmount: { fontSize: 24, fontWeight: "800", color: "#1A1A2E" },
+  modalInput: { marginBottom: 12, borderRadius: 8, borderWidth: 1, borderColor: "#E5E7EB", paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: "#1A1A2E" },
+  modalConfirmBtn: { marginTop: 12, alignItems: "center", borderRadius: 8, backgroundColor: "#2ECC71", paddingVertical: 16 },
+  modalConfirmText: { fontSize: 16, fontWeight: "700", color: "white" },
+});

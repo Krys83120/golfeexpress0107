@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, Image, ActivityIndicator, Alert } from "react-native";
+import { View, Text, Pressable, Image, ActivityIndicator, Alert, StyleSheet } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -45,18 +45,36 @@ export function AvatarUpload({ currentImageUrl, initials, onUpload }: AvatarUplo
   const displayUri = previewUri ?? currentImageUrl;
 
   return (
-    <Pressable onPress={handlePick} disabled={uploading} className="relative">
-      <View className="h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-golfe-green">
+    <Pressable onPress={handlePick} disabled={uploading} style={{ position: "relative" }}>
+      <View style={styles.circle}>
         {displayUri ? (
           <Image source={{ uri: displayUri }} style={{ width: 80, height: 80 }} />
         ) : (
-          <Text className="font-heading text-2xl font-extrabold text-white">{initials}</Text>
+          <Text style={styles.initials}>{initials}</Text>
         )}
       </View>
 
-      <View className="absolute bottom-0 right-0 h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-nuit">
+      <View style={styles.badge}>
         {uploading ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="camera" size={13} color="white" />}
       </View>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  circle: { height: 80, width: 80, alignItems: "center", justifyContent: "center", overflow: "hidden", borderRadius: 999, backgroundColor: "#2ECC71" },
+  initials: { fontSize: 24, fontWeight: "800", color: "white" },
+  badge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    height: 28,
+    width: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: "white",
+    backgroundColor: "#1A1A2E",
+  },
+});

@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -51,45 +61,43 @@ export function AuthScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
+    <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }} keyboardShouldPersistTaps="handled">
-          <View className="mb-8 items-center">
+          <View style={styles.header}>
             <Text style={{ fontSize: 56 }}>🦎</Text>
-            <Text className="mt-3 font-heading text-2xl font-extrabold text-nuit">GolfeExpress</Text>
-            <Text className="mt-1 text-sm text-gris">Espace Livreur</Text>
-            <Text className="mt-1 text-sm text-gris">
-              {mode === "login" ? "Connectez-vous pour livrer" : "Devenez livreur GolfeExpress"}
-            </Text>
+            <Text style={styles.title}>GolfeExpress</Text>
+            <Text style={styles.subtitle}>Espace Livreur</Text>
+            <Text style={styles.subtitle}>{mode === "login" ? "Connectez-vous pour livrer" : "Devenez livreur GolfeExpress"}</Text>
           </View>
 
           {confirmationMessage && (
-            <View className="mb-4 rounded-sm bg-golfe-green/10 p-3.5">
-              <Text className="text-[13px] text-golfe-green">{confirmationMessage}</Text>
+            <View style={styles.successBox}>
+              <Text style={styles.successText}>{confirmationMessage}</Text>
             </View>
           )}
 
           {localError && (
-            <View className="mb-4 rounded-sm bg-red-50 p-3.5">
-              <Text className="text-[13px] text-red-500">{localError}</Text>
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{localError}</Text>
             </View>
           )}
 
           {mode === "signup" && (
-            <View className="mb-3 flex-row gap-3">
+            <View style={styles.row}>
               <TextInput
                 value={firstName}
                 onChangeText={setFirstName}
                 placeholder="Prénom"
                 placeholderTextColor="#6B7280"
-                className="flex-1 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+                style={[styles.input, { flex: 1 }]}
               />
               <TextInput
                 value={lastName}
                 onChangeText={setLastName}
                 placeholder="Nom"
                 placeholderTextColor="#6B7280"
-                className="flex-1 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+                style={[styles.input, { flex: 1 }]}
               />
             </View>
           )}
@@ -101,7 +109,7 @@ export function AuthScreen() {
               placeholder="Téléphone"
               placeholderTextColor="#6B7280"
               keyboardType="phone-pad"
-              className="mb-3 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+              style={styles.input}
             />
           )}
 
@@ -112,7 +120,7 @@ export function AuthScreen() {
             placeholderTextColor="#6B7280"
             keyboardType="email-address"
             autoCapitalize="none"
-            className="mb-3 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+            style={styles.input}
           />
 
           <TextInput
@@ -121,21 +129,14 @@ export function AuthScreen() {
             placeholder="Mot de passe"
             placeholderTextColor="#6B7280"
             secureTextEntry
-            className="mb-5 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+            style={[styles.input, { marginBottom: 20 }]}
           />
 
-          <Pressable
-            onPress={handleSubmit}
-            disabled={submitting}
-            className="items-center rounded bg-golfe-green py-4"
-            style={{ opacity: submitting ? 0.7 : 1 }}
-          >
+          <Pressable onPress={handleSubmit} disabled={submitting} style={[styles.submitBtn, { opacity: submitting ? 0.7 : 1 }]}>
             {submitting ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-base font-bold text-white">
-                {mode === "login" ? "Se connecter" : "Créer mon compte livreur"}
-              </Text>
+              <Text style={styles.submitText}>{mode === "login" ? "Se connecter" : "Créer mon compte livreur"}</Text>
             )}
           </Pressable>
 
@@ -145,13 +146,11 @@ export function AuthScreen() {
               setLocalError(null);
               setConfirmationMessage(null);
             }}
-            className="mt-5 items-center"
+            style={{ marginTop: 20, alignItems: "center" }}
           >
-            <Text className="text-sm text-gris">
+            <Text style={styles.switchText}>
               {mode === "login" ? "Pas encore livreur ? " : "Déjà un compte ? "}
-              <Text className="font-semibold text-golfe-green">
-                {mode === "login" ? "S'inscrire" : "Se connecter"}
-              </Text>
+              <Text style={styles.switchLink}>{mode === "login" ? "S'inscrire" : "Se connecter"}</Text>
             </Text>
           </Pressable>
         </ScrollView>
@@ -159,3 +158,20 @@ export function AuthScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "white" },
+  header: { marginBottom: 32, alignItems: "center" },
+  title: { marginTop: 12, fontSize: 24, fontWeight: "800", color: "#1A1A2E" },
+  subtitle: { marginTop: 4, fontSize: 14, color: "#6B7280" },
+  successBox: { marginBottom: 16, borderRadius: 4, backgroundColor: "rgba(46,204,113,0.1)", padding: 14 },
+  successText: { fontSize: 13, color: "#2ECC71" },
+  errorBox: { marginBottom: 16, borderRadius: 4, backgroundColor: "#FEF2F2", padding: 14 },
+  errorText: { fontSize: 13, color: "#EF4444" },
+  row: { marginBottom: 12, flexDirection: "row", gap: 12 },
+  input: { marginBottom: 12, borderRadius: 8, backgroundColor: "#F3F4F6", paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: "#1A1A2E" },
+  submitBtn: { alignItems: "center", borderRadius: 16, backgroundColor: "#2ECC71", paddingVertical: 16 },
+  submitText: { fontSize: 16, fontWeight: "700", color: "white" },
+  switchText: { fontSize: 14, color: "#6B7280" },
+  switchLink: { fontWeight: "600", color: "#2ECC71" },
+});

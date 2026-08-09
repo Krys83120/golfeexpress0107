@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, Switch, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, Switch, ActivityIndicator, StyleSheet } from "react-native";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
 
 export function OnlineToggleHeader() {
@@ -10,30 +10,26 @@ export function OnlineToggleHeader() {
 
   return (
     <View style={{ backgroundColor: "#1A1A2E" }}>
-      <View className="flex-row items-center justify-between px-5 pb-4 pt-2">
-        <View className="flex-row items-center gap-2">
+      <View style={styles.row}>
+        <View style={styles.brand}>
           <Text style={{ fontSize: 22 }}>🦎</Text>
           <View>
-            <Text className="font-heading text-base font-extrabold text-white">GolfeExpress</Text>
-            <Text className="text-[11px] text-white/60">Espace Livreur</Text>
+            <Text style={styles.brandName}>GolfeExpress</Text>
+            <Text style={styles.brandSub}>Espace Livreur</Text>
           </View>
         </View>
 
         <Pressable
           onPress={toggleOnline}
           disabled={isTogglingOnline}
-          className="flex-row items-center gap-2 rounded-full px-3.5 py-2"
-          style={{ backgroundColor: isOnline ? "rgba(46,204,113,0.15)" : "rgba(255,255,255,0.08)" }}
+          style={[styles.toggle, { backgroundColor: isOnline ? "rgba(46,204,113,0.15)" : "rgba(255,255,255,0.08)" }]}
         >
           {isTogglingOnline ? (
             <ActivityIndicator size="small" color={isOnline ? "#2ECC71" : "white"} />
           ) : (
-            <View
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: isOnline ? "#2ECC71" : "#6B7280" }}
-            />
+            <View style={[styles.dot, { backgroundColor: isOnline ? "#2ECC71" : "#6B7280" }]} />
           )}
-          <Text className="text-[13px] font-semibold" style={{ color: isOnline ? "#2ECC71" : "#9CA3AF" }}>
+          <Text style={[styles.toggleLabel, { color: isOnline ? "#2ECC71" : "#9CA3AF" }]}>
             {isOnline ? "En ligne" : "Hors ligne"}
           </Text>
           <Switch
@@ -48,10 +44,29 @@ export function OnlineToggleHeader() {
       </View>
 
       {toggleOnlineError && (
-        <View className="mx-5 mb-3 rounded-sm bg-red-500/10 p-3">
-          <Text className="text-[13px] text-red-300">{toggleOnlineError}</Text>
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{toggleOnlineError}</Text>
         </View>
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    paddingTop: 8,
+  },
+  brand: { flexDirection: "row", alignItems: "center", gap: 8 },
+  brandName: { fontSize: 16, fontWeight: "800", color: "white" },
+  brandSub: { fontSize: 11, color: "rgba(255,255,255,0.6)" },
+  toggle: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
+  dot: { height: 8, width: 8, borderRadius: 999 },
+  toggleLabel: { fontSize: 13, fontWeight: "600" },
+  errorBox: { marginHorizontal: 20, marginBottom: 12, borderRadius: 4, backgroundColor: "rgba(239,68,68,0.1)", padding: 12 },
+  errorText: { fontSize: 13, color: "#FCA5A5" },
+});

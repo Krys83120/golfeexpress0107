@@ -1,6 +1,5 @@
-import "./global.css";
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,25 +38,22 @@ function MainApp() {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View style={styles.root}>
       {renderTabContent()}
 
       {/* BOTTOM NAV */}
-      <SafeAreaView edges={["bottom"]} className="border-t border-gris-light bg-white">
-        <View className="flex-row justify-around py-3">
+      <SafeAreaView edges={["bottom"]} style={styles.navSafeArea}>
+        <View style={styles.navRow}>
           {TABS.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
               <Pressable
                 key={tab.key}
                 onPress={() => setActiveTab(tab.key)}
-                className="items-center gap-1 rounded-xl px-3 py-1"
-                style={{ backgroundColor: isActive ? "rgba(46,204,113,0.08)" : "transparent" }}
+                style={[styles.navItem, { backgroundColor: isActive ? "rgba(46,204,113,0.08)" : "transparent" }]}
               >
                 <Ionicons name={tab.icon as any} size={22} color={isActive ? "#2ECC71" : "#6B7280"} />
-                <Text className="text-[11px]" style={{ color: isActive ? "#2ECC71" : "#6B7280" }}>
-                  {tab.label}
-                </Text>
+                <Text style={[styles.navLabel, { color: isActive ? "#2ECC71" : "#6B7280" }]}>{tab.label}</Text>
               </Pressable>
             );
           })}
@@ -79,7 +75,7 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="light" />
       {status === "idle" || status === "loading" ? (
-        <View className="flex-1 items-center justify-center bg-white">
+        <View style={styles.loadingRoot}>
           <ActivityIndicator color="#2ECC71" size="large" />
         </View>
       ) : status === "authenticated" ? (
@@ -90,3 +86,12 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "white" },
+  loadingRoot: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "white" },
+  navSafeArea: { borderTopWidth: 1, borderTopColor: "#E5E7EB", backgroundColor: "white" },
+  navRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: 12 },
+  navItem: { alignItems: "center", gap: 4, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 },
+  navLabel: { fontSize: 11 },
+});

@@ -1,14 +1,9 @@
 import React, { useEffect } from "react";
-import { View, Text, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MiniBarChart } from "@/components/MiniBarChart";
 import { useRiderStatsStore } from "@/store/useRiderStatsStore";
 
-/**
- * Badges dérivés des stats réelles (pas de table Badge en base) : chaque
- * seuil est évalué côté client à partir de totalDeliveries/rating. Simple et
- * suffisant tant qu'il n'y a pas besoin de badges "événementiels" custom.
- */
 function computeBadges(totalDeliveries: number, rating: number | null) {
   return [
     { emoji: "🏆", title: "Top livreur", description: "100 livraisons effectuées", unlocked: totalDeliveries >= 100 },
@@ -27,7 +22,7 @@ export function StatsScreen() {
 
   if (status === "loading" && !stats) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+      <SafeAreaView style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "white" }}>
         <ActivityIndicator color="#2ECC71" />
       </SafeAreaView>
     );
@@ -36,21 +31,16 @@ export function StatsScreen() {
   const badges = computeBadges(stats?.totalDeliveries ?? 0, stats?.rating ?? null);
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+    <SafeAreaView style={styles.root} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        <View className="px-5 pb-2 pt-4">
-          <Text className="font-heading text-xl font-bold text-nuit">📊 Statistiques</Text>
-          {stats && <Text className="text-xs text-gris">Membre depuis {stats.memberSinceLabel}</Text>}
+        <View style={styles.headerWrap}>
+          <Text style={styles.headerTitle}>📊 Statistiques</Text>
+          {stats && <Text style={styles.subtle}>Membre depuis {stats.memberSinceLabel}</Text>}
         </View>
 
-        {/* Key metrics */}
-        <View className="mx-5 mt-4 flex-row flex-wrap gap-3">
+        <View style={styles.metricsRow}>
           <MetricCard icon="🛵" value={String(stats?.totalDeliveries ?? 0)} label="Livraisons totales" />
-          <MetricCard
-            icon="⭐"
-            value={stats?.rating != null ? stats.rating.toFixed(1) : "—"}
-            label={`${stats?.ratingCount ?? 0} avis`}
-          />
+          <MetricCard icon="⭐" value={stats?.rating != null ? stats.rating.toFixed(1) : "—"} label={`${stats?.ratingCount ?? 0} avis`} />
           <MetricCard
             icon="⏱️"
             value={stats?.avgDeliveryMinutes != null ? `${stats.avgDeliveryMinutes} min` : "—"}
@@ -58,25 +48,22 @@ export function StatsScreen() {
           />
         </View>
 
-        {/* Weekly chart */}
-        <View className="mx-5 mt-5 rounded-sm bg-gris-light p-4">
-          <Text className="mb-3 font-heading text-base font-bold text-nuit">📈 Livraisons cette semaine</Text>
+        <View style={styles.chartCard}>
+          <Text style={styles.sectionTitle}>📈 Livraisons cette semaine</Text>
           <MiniBarChart data={stats?.weeklyDeliveries ?? []} />
         </View>
 
-        {/* Badges */}
-        <View className="mt-6 px-5">
-          <Text className="mb-3 font-heading text-base font-bold text-nuit">🏅 Récompenses</Text>
-          <View className="flex-row flex-wrap gap-3">
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <Text style={styles.sectionTitle}>🏅 Récompenses</Text>
+          <View style={styles.badgesRow}>
             {badges.map((badge) => (
               <View
                 key={badge.title}
-                className="w-[47%] rounded-sm p-4"
-                style={{ backgroundColor: badge.unlocked ? "#E8F5E9" : "#F3F4F6", opacity: badge.unlocked ? 1 : 0.5 }}
+                style={[styles.badgeCard, { backgroundColor: badge.unlocked ? "#E8F5E9" : "#F3F4F6", opacity: badge.unlocked ? 1 : 0.5 }]}
               >
                 <Text style={{ fontSize: 26 }}>{badge.emoji}</Text>
-                <Text className="mt-2 text-sm font-bold text-nuit">{badge.title}</Text>
-                <Text className="mt-0.5 text-xs text-gris">{badge.description}</Text>
+                <Text style={styles.badgeTitle}>{badge.title}</Text>
+                <Text style={styles.badgeDesc}>{badge.description}</Text>
               </View>
             ))}
           </View>
@@ -88,10 +75,26 @@ export function StatsScreen() {
 
 function MetricCard({ icon, value, label }: { icon: string; value: string; label: string }) {
   return (
-    <View className="w-[47%] rounded-sm bg-gris-light p-4">
+    <View style={styles.metricCard}>
       <Text style={{ fontSize: 22 }}>{icon}</Text>
-      <Text className="mt-2 font-heading text-xl font-extrabold text-nuit">{value}</Text>
-      <Text className="mt-0.5 text-xs text-gris">{label}</Text>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.subtle}>{label}</Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "white" },
+  headerWrap: { paddingHorizontal: 20, paddingBottom: 8, paddingTop: 16 },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A2E" },
+  subtle: { fontSize: 12, color: "#6B7280" },
+  metricsRow: { marginHorizontal: 20, marginTop: 16, flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  metricCard: { width: "47%", borderRadius: 8, backgroundColor: "#F3F4F6", padding: 16 },
+  metricValue: { marginTop: 8, fontSize: 20, fontWeight: "800", color: "#1A1A2E" },
+  chartCard: { marginHorizontal: 20, marginTop: 20, borderRadius: 8, backgroundColor: "#F3F4F6", padding: 16 },
+  sectionTitle: { marginBottom: 12, fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
+  badgesRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  badgeCard: { width: "47%", borderRadius: 8, padding: 16 },
+  badgeTitle: { marginTop: 8, fontSize: 14, fontWeight: "700", color: "#1A1A2E" },
+  badgeDesc: { marginTop: 2, fontSize: 12, color: "#6B7280" },
+});

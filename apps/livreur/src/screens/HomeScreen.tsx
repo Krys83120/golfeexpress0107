@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, ScrollView, ActivityIndicator, Pressable } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { OnlineToggleHeader } from "@/components/OnlineToggleHeader";
 import { EarningsCard } from "@/components/EarningsCard";
@@ -25,10 +25,6 @@ export function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Rafraîchit la liste des commandes disponibles tant qu'en ligne et sans
-  // livraison active. TODO: remplacer par une souscription Supabase
-  // Realtime (postgres_changes sur Order, filter status=eq.READY) — voir
-  // apps/api/REALTIME.md.
   useEffect(() => {
     if (!isOnline || activeDelivery) return;
     const interval = setInterval(loadAvailableOrders, 10000);
@@ -39,25 +35,20 @@ export function HomeScreen() {
     try {
       await handleAcceptOrder(orderId);
     } catch {
-      // L'erreur la plus probable est un 409 (commande déjà prise par un
-      // autre livreur) — on rafraîchit simplement la liste pour refléter
-      // l'état réel plutôt que d'afficher une alerte bloquante.
       loadAvailableOrders();
     }
   }
 
   if (riderStatus === "PENDING") {
     return (
-      <View className="flex-1 bg-white">
-        <SafeAreaView edges={["top"]} style={{ backgroundColor: "#1A1A2E" }}>
+      <View style={styles.root}>
+        <SafeAreaView edges={["top"]} style={styles.headerSafeArea}>
           <OnlineToggleHeader />
         </SafeAreaView>
-        <View className="flex-1 items-center justify-center px-8">
-          <Text style={{ fontSize: 48 }}>⏳</Text>
-          <Text className="mt-3 text-center font-heading text-lg font-bold text-nuit">
-            Compte en attente de validation
-          </Text>
-          <Text className="mt-2 text-center text-sm text-gris">
+        <View style={styles.pendingWrap}>
+          <Text style={styles.pendingEmoji}>⏳</Text>
+          <Text style={styles.pendingTitle}>Compte en attente de validation</Text>
+          <Text style={styles.pendingBody}>
             Notre équipe vérifie vos documents. Vous pourrez passer en ligne dès que votre compte sera validé.
           </Text>
         </View>
@@ -66,9 +57,9 @@ export function HomeScreen() {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View style={styles.root}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        <SafeAreaView edges={["top"]} style={{ backgroundColor: "#1A1A2E" }}>
+        <SafeAreaView edges={["top"]} style={styles.headerSafeArea}>
           <OnlineToggleHeader />
         </SafeAreaView>
 
@@ -78,39 +69,38 @@ export function HomeScreen() {
           <CurrentDeliveryCard />
         ) : (
           <>
-            {/* MAP — placeholder, à remplacer par react-native-maps + position GPS temps réel */}
-            <View className="mx-5 mt-5 h-40 items-center justify-center rounded" style={{ backgroundColor: "#E8F5E9" }}>
-              <Text style={{ fontSize: 32 }}>🗺️</Text>
-              <Text className="mt-1 text-[13px] text-gris">
+            <View style={styles.mapPlaceholder}>
+              <Text style={styles.mapEmoji}>🗺️</Text>
+              <Text style={styles.mapCaption}>
                 {isOnline ? "Recherche de commandes à proximité..." : "Passez en ligne pour recevoir des commandes"}
               </Text>
             </View>
 
-            <View className="mt-6 px-5">
-              <Text className="mb-3 font-heading text-lg font-bold text-nuit">
+            <View style={styles.ordersSection}>
+              <Text style={styles.ordersTitle}>
                 📋 Commandes disponibles {isOnline && availableOrdersStatus === "loaded" ? `(${availableOrders.length})` : ""}
               </Text>
 
               {!isOnline ? (
-                <View className="items-center py-12">
-                  <Text style={{ fontSize: 40 }}>😴</Text>
-                  <Text className="mt-2 text-gris">Vous êtes hors ligne</Text>
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyEmoji}>😴</Text>
+                  <Text style={styles.emptyText}>Vous êtes hors ligne</Text>
                 </View>
               ) : availableOrdersStatus === "loading" ? (
-                <View className="items-center py-12">
+                <View style={styles.emptyState}>
                   <ActivityIndicator color="#2ECC71" />
                 </View>
               ) : availableOrdersStatus === "error" ? (
-                <View className="rounded-sm bg-red-50 p-4">
-                  <Text className="text-sm text-red-500">Impossible de charger les commandes disponibles.</Text>
-                  <Pressable onPress={loadAvailableOrders} className="mt-2">
-                    <Text className="text-sm font-semibold text-golfe-green">Réessayer</Text>
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>Impossible de charger les commandes disponibles.</Text>
+                  <Pressable onPress={loadAvailableOrders} style={{ marginTop: 8 }}>
+                    <Text style={styles.retryText}>Réessayer</Text>
                   </Pressable>
                 </View>
               ) : availableOrders.length === 0 ? (
-                <View className="items-center py-12">
-                  <Text style={{ fontSize: 36 }}>🔍</Text>
-                  <Text className="mt-2 text-gris">Aucune commande disponible pour le moment</Text>
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyEmoji}>🔍</Text>
+                  <Text style={styles.emptyText}>Aucune commande disponible pour le moment</Text>
                 </View>
               ) : (
                 availableOrders.map((order) => (
@@ -118,10 +108,7 @@ export function HomeScreen() {
                     key={order.id}
                     order={order}
                     onAccept={() => handleAccept(order.id)}
-                    onDecline={() => {
-                      /* Pas d'action serveur nécessaire : la commande reste
-                         visible pour les autres livreurs, on l'ignore juste localement. */
-                    }}
+                    onDecline={() => {}}
                   />
                 ))
               )}
@@ -132,3 +119,31 @@ export function HomeScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "white" },
+  headerSafeArea: { backgroundColor: "#1A1A2E" },
+  pendingWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
+  pendingEmoji: { fontSize: 48 },
+  pendingTitle: { marginTop: 12, textAlign: "center", fontSize: 18, fontWeight: "700", color: "#1A1A2E" },
+  pendingBody: { marginTop: 8, textAlign: "center", fontSize: 14, color: "#6B7280" },
+  mapPlaceholder: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    height: 160,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    backgroundColor: "#E8F5E9",
+  },
+  mapEmoji: { fontSize: 32 },
+  mapCaption: { marginTop: 4, fontSize: 13, color: "#6B7280" },
+  ordersSection: { marginTop: 24, paddingHorizontal: 20 },
+  ordersTitle: { marginBottom: 12, fontSize: 18, fontWeight: "700", color: "#1A1A2E" },
+  emptyState: { alignItems: "center", paddingVertical: 48 },
+  emptyEmoji: { fontSize: 40 },
+  emptyText: { marginTop: 8, color: "#6B7280" },
+  errorBox: { borderRadius: 8, backgroundColor: "#FEF2F2", padding: 16 },
+  errorText: { fontSize: 14, color: "#EF4444" },
+  retryText: { fontSize: 14, fontWeight: "600", color: "#2ECC71" },
+});

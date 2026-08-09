@@ -1,0 +1,27 @@
+--- a/node_modules/expo/node_modules/expo-asset/build/AssetUris.js
++++ b/node_modules/expo/node_modules/expo-asset/build/AssetUris.js
+@@ -42,16 +42,14 @@
+     else if (nextProtocol === 'exps:') {
+         nextProtocol = 'https:';
+     }
+-    urlObject.protocol = nextProtocol;
+     // Trim filename, query parameters, and fragment, if any
+     const directory = urlObject.pathname.substring(0, urlObject.pathname.lastIndexOf('/') + 1);
+-    urlObject.pathname = directory;
+-    urlObject.search = '';
+-    urlObject.hash = '';
+-    // The URL spec doesn't allow for changing the protocol to `http` or `https`
+-    // without a port set so instead, we'll just swap the protocol manually.
+-    return urlObject.protocol !== nextProtocol
+-        ? urlObject.href.replace(urlObject.protocol, nextProtocol)
+-        : urlObject.href;
++    // NOTE: patched — some URL implementations (notably the built-in `URL`
++    // now shipped by Hermes/React Native 0.81+) expose protocol/pathname/
++    // search/hash as read-only getters, so assigning to them throws
++    // "Cannot assign to property '<x>' which has only a getter". We avoid
++    // ever mutating `urlObject` and instead rebuild the base URL string
++    // manually from its already-parsed parts.
++    return `${nextProtocol}//${urlObject.host}${directory}`;
+ }
+ //# sourceMappingURL=AssetUris.js.map
+\ No newline at end of file

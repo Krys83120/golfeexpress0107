@@ -33,7 +33,7 @@ export function NearbyItem({ pro, onPress }: NearbyItemProps) {
         <View className="flex-row items-center gap-3">
           <View className="flex-row items-center gap-1">
             <Ionicons name="star" size={11} color="#FF6B35" />
-            <Text className="text-xs font-bold text-corail">{pro.rating?.toFixed(1)}</Text>
+            <Text className="text-xs font-bold text-corail">{Number(pro.rating)?.toFixed(1)}</Text>
           </View>
           <View className="flex-row items-center gap-1">
             <Ionicons name="time-outline" size={11} color="#6B7280" />

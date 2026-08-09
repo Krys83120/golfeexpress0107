@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { Order } from "@golfeexpress/types";
 import { getCategoryEmoji, haversineDistanceKm } from "@/services/categoryVisuals";
@@ -28,62 +28,59 @@ export function OrderCard({ order, riderLat, riderLng, onAccept, onDecline }: Or
 
   return (
     <View
-      className="mb-4 overflow-hidden rounded bg-white"
-      style={{ elevation: 2, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 3 } }}
+      style={[
+        styles.card,
+        { elevation: 2, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 3 } },
+      ]}
     >
-      <View className="flex-row items-center gap-3 p-4" style={{ backgroundColor: "#FFF3E0" }}>
-        <View className="h-12 w-12 items-center justify-center rounded-full bg-corail">
+      <View style={[styles.headerRow, { backgroundColor: "#FFF3E0" }]}>
+        <View style={styles.iconCircle}>
           <Text style={{ fontSize: 22 }}>{emoji}</Text>
         </View>
-        <View className="flex-1">
-          <Text className="font-heading text-[15px] font-bold text-nuit">{order.pro?.businessName ?? "Commerçant"}</Text>
-          <Text className="text-xs text-gris">{order.fromAddress?.city}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.proName}>{order.pro?.businessName ?? "Commerçant"}</Text>
+          <Text style={styles.subtle}>{order.fromAddress?.city}</Text>
         </View>
-        <View className="items-end">
-          <Text className="font-heading text-lg font-extrabold text-nuit">
-            {Number(order.riderEarnings).toFixed(2).replace(".", ",")}€
-          </Text>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={styles.earnings}>{Number(order.riderEarnings).toFixed(2).replace(".", ",")}€</Text>
         </View>
       </View>
 
-      <View className="p-4">
-        <View className="flex-row gap-3">
-          <View className="items-center">
-            <View className="h-2.5 w-2.5 rounded-full bg-golfe-green" />
-            <View className="my-1 w-0.5 flex-1 bg-gris-light" style={{ minHeight: 32 }} />
-            <View className="h-2.5 w-2.5 rounded-full bg-corail" />
+      <View style={{ padding: 16 }}>
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <View style={{ alignItems: "center" }}>
+            <View style={styles.dotGreen} />
+            <View style={[styles.line, { minHeight: 32 }]} />
+            <View style={styles.dotOrange} />
           </View>
-          <View className="flex-1">
-            <View className="mb-2">
-              <Text className="text-[13px] font-bold text-nuit">Récupérer ici</Text>
-              <Text className="text-xs text-gris">
+          <View style={{ flex: 1 }}>
+            <View style={{ marginBottom: 8 }}>
+              <Text style={styles.addrTitle}>Récupérer ici</Text>
+              <Text style={styles.subtle}>
                 {order.fromAddress?.street}, {order.fromAddress?.city}
                 {pickupDistanceKm !== null ? ` — ${pickupDistanceKm} km` : ""}
               </Text>
             </View>
             <View>
-              <Text className="text-[13px] font-bold text-nuit">Livrer ici</Text>
-              <Text className="text-xs text-gris">
+              <Text style={styles.addrTitle}>Livrer ici</Text>
+              <Text style={styles.subtle}>
                 {order.toAddress?.street}, {order.toAddress?.city}
               </Text>
             </View>
           </View>
         </View>
 
-        <View className="mt-3.5 flex-row gap-4 border-t border-gris-light pt-3.5">
+        <View style={styles.metaRow}>
           {totalDistanceKm !== null && <MetaItem icon="navigate-outline" label={`${totalDistanceKm} km`} />}
           <MetaItem icon="cube-outline" label={`${itemCount} articles`} />
         </View>
       </View>
 
-      <View className="flex-row gap-3 p-4 pt-0">
-        <Pressable onPress={onAccept} className="flex-1 items-center rounded-sm bg-golfe-green py-3.5">
-          <Text className="font-bold text-white">✅ Accepter</Text>
+      <View style={styles.actionsRow}>
+        <Pressable onPress={onAccept} style={styles.acceptBtn}>
+          <Text style={styles.acceptText}>✅ Accepter</Text>
         </Pressable>
-        <Pressable
-          onPress={onDecline}
-          className="h-[46px] w-[46px] items-center justify-center rounded-sm border-2 border-gris-light"
-        >
+        <Pressable onPress={onDecline} style={styles.declineBtn}>
           <Ionicons name="close" size={18} color="#1A1A2E" />
         </Pressable>
       </View>
@@ -93,9 +90,27 @@ export function OrderCard({ order, riderLat, riderLng, onAccept, onDecline }: Or
 
 function MetaItem({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
   return (
-    <View className="flex-row items-center gap-1.5">
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
       <Ionicons name={icon} size={13} color="#6B7280" />
-      <Text className="text-xs text-gris">{label}</Text>
+      <Text style={styles.subtle}>{label}</Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  card: { marginBottom: 16, overflow: "hidden", borderRadius: 16, backgroundColor: "white" },
+  headerRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
+  iconCircle: { height: 48, width: 48, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: "#F97316" },
+  proName: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+  subtle: { fontSize: 12, color: "#6B7280" },
+  earnings: { fontSize: 18, fontWeight: "800", color: "#1A1A2E" },
+  dotGreen: { height: 10, width: 10, borderRadius: 999, backgroundColor: "#2ECC71" },
+  line: { marginVertical: 4, width: 2, flex: 1, backgroundColor: "#E5E7EB" },
+  dotOrange: { height: 10, width: 10, borderRadius: 999, backgroundColor: "#F97316" },
+  addrTitle: { fontSize: 13, fontWeight: "700", color: "#1A1A2E" },
+  metaRow: { marginTop: 14, flexDirection: "row", gap: 16, borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingTop: 14 },
+  actionsRow: { flexDirection: "row", gap: 12, padding: 16, paddingTop: 0 },
+  acceptBtn: { flex: 1, alignItems: "center", borderRadius: 8, backgroundColor: "#2ECC71", paddingVertical: 14 },
+  acceptText: { fontWeight: "700", color: "white" },
+  declineBtn: { height: 46, width: 46, alignItems: "center", justifyContent: "center", borderRadius: 8, borderWidth: 2, borderColor: "#E5E7EB" },
+});

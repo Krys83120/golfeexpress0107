@@ -33,9 +33,11 @@ export function ProCard({ pro, onPress }: ProCardProps) {
           <Text className="text-[11px] font-bold text-white">{pro.isOpen ? "Ouvert" : "Fermé"}</Text>
         </View>
 
-        <Pressable className="absolute right-3 top-3 h-8 w-8 items-center justify-center rounded-full bg-white/90">
-          <Ionicons name="heart-outline" size={16} color="#1A1A2E" />
-        </Pressable>
+        <View className="absolute right-3 top-3">
+          <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-white/90">
+            <Ionicons name="heart-outline" size={16} color="#1A1A2E" />
+          </Pressable>
+        </View>
       </View>
 
       {/* Info */}
@@ -45,7 +47,7 @@ export function ProCard({ pro, onPress }: ProCardProps) {
         <View className="mt-1 flex-row items-center gap-3">
           <View className="flex-row items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5">
             <Ionicons name="star" size={11} color="#FF6B35" />
-            <Text className="text-xs font-bold text-corail">{pro.rating?.toFixed(1)}</Text>
+            <Text className="text-xs font-bold text-corail">{Number(pro.rating)?.toFixed(1)}</Text>
           </View>
           <View className="flex-row items-center gap-1">
             <Ionicons name="time-outline" size={12} color="#6B7280" />

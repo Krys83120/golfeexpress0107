@@ -87,7 +87,7 @@ export function MapScreen({ onClose, onOpenPro }: MapScreenProps) {
             <View className="flex-1">
               <Text className="font-heading text-[15px] font-bold text-nuit">{selectedPro.businessName}</Text>
               <View className="mt-1 flex-row items-center gap-3">
-                <Text className="text-xs text-gris">⭐ {selectedPro.rating?.toFixed(1) ?? "—"}</Text>
+                <Text className="text-xs text-gris">⭐ {Number(selectedPro.rating)?.toFixed(1) ?? "—"}</Text>
                 <Text className="text-xs text-gris">
                   {selectedPro.estimatedMinMinutes}-{selectedPro.estimatedMaxMinutes} min
                 </Text>
