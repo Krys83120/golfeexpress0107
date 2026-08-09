@@ -1,3 +1,0 @@
-EXPO_PUBLIC_API_URL="https://golfeexpress0107-api-krys-projects-cc226fd7.vercel.app"
-EXPO_PUBLIC_SUPABASE_URL="https://hqofwdrgtxvpnfwhaefn.supabase.co"
-EXPO_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxb2Z3ZHJndHh2cG5md2hhZWZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxOTA1MzcsImV4cCI6MjEwMTc2NjUzN30.CszLTpoVQfLdbDoh_nSjQNEBZabdjbw1hbaRDpxGfy8"
