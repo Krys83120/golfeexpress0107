@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Linking, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { OrderStatus } from "@golfeexpress/types";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
@@ -19,6 +19,27 @@ const ACTION_LABELS: Record<OrderStatus, string> = {
   [OrderStatus.IN_DELIVERY]: "🎉 Commande livrée !",
 } as Record<OrderStatus, string>;
 
+/**
+ * Ouvre l'app de navigation (Google Maps sur Android, Apple/Google Maps au
+ * choix de l'utilisateur sur iOS) avec un itinéraire vers les coordonnées
+ * données. On utilise le schéma d'URL universel Google Maps (fonctionne
+ * aussi bien en ouvrant l'app native si installée qu'en fallback web sinon).
+ */
+function openDirections(lat: number, lng: number, label?: string) {
+  const query = `${lat},${lng}`;
+  const url =
+    Platform.OS === "ios"
+      ? `maps://?daddr=${query}&dirflg=d`
+      : `google.navigation:q=${query}&mode=d`;
+  const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${query}${
+    label ? `&destination_place_id=${encodeURIComponent(label)}` : ""
+  }`;
+
+  Linking.canOpenURL(url)
+    .then((supported) => Linking.openURL(supported ? url : fallbackUrl))
+    .catch(() => Linking.openURL(fallbackUrl));
+}
+
 export function CurrentDeliveryCard() {
   const activeDelivery = useRiderSessionStore((s) => s.activeDelivery);
   const advanceDeliveryStep = useRiderSessionStore((s) => s.advanceDeliveryStep);
@@ -31,6 +52,17 @@ export function CurrentDeliveryCard() {
   const emoji = activeDelivery.pro ? getCategoryEmoji(activeDelivery.pro.category) : "🏪";
   const routeLabel = `${activeDelivery.fromAddress?.city ?? "?"} → ${activeDelivery.toAddress?.city ?? "?"}`;
 
+  // Avant récupération -> direction le commerçant. Après -> direction le client.
+  const isHeadingToPickup = activeDelivery.status === OrderStatus.RIDER_ASSIGNED;
+  const destinationAddress = isHeadingToPickup ? activeDelivery.fromAddress : activeDelivery.toAddress;
+
+  // Cas de la recherche anticipée : le livreur a été assigné PENDANT la
+  // préparation et peut être en route, mais la commande n'est pas encore
+  // physiquement prête (le Pro n'a pas encore cliqué "Marquer prête") — on
+  // bloque l'action "récupéré" tant que ce n'est pas le cas, pour éviter
+  // une confirmation prématurée.
+  const isWaitingForFoodToBeReady = activeDelivery.status === OrderStatus.RIDER_ASSIGNED && !activeDelivery.readyAt;
+
   async function handleAction() {
     setError(null);
     setSubmitting(true);
@@ -41,6 +73,11 @@ export function CurrentDeliveryCard() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleDirections() {
+    if (!destinationAddress) return;
+    openDirections(Number(destinationAddress.lat), Number(destinationAddress.lng), destinationAddress.street);
   }
 
   return (
@@ -64,6 +101,21 @@ export function CurrentDeliveryCard() {
           <Text style={styles.earnings}>{Number(activeDelivery.riderEarnings).toFixed(2).replace(".", ",")}€</Text>
         </View>
       </View>
+
+      {destinationAddress && (
+        <Pressable onPress={handleDirections} style={styles.directionsBtn}>
+          <Ionicons name="navigate" size={16} color="#1A1A2E" />
+          <Text style={styles.directionsText}>
+            {isHeadingToPickup ? "Itinéraire vers le commerçant" : "Itinéraire vers le client"}
+          </Text>
+        </Pressable>
+      )}
+
+      {isWaitingForFoodToBeReady && (
+        <View style={styles.waitingBox}>
+          <Text style={styles.waitingText}>👨‍🍳 Commande en préparation — vous pouvez déjà vous mettre en route</Text>
+        </View>
+      )}
 
       {error && (
         <View style={styles.errorBox}>
@@ -93,8 +145,14 @@ export function CurrentDeliveryCard() {
         })}
       </View>
 
-      <Pressable onPress={handleAction} disabled={submitting} style={[styles.actionBtn, { opacity: submitting ? 0.7 : 1 }]}>
-        <Text style={styles.actionText}>{ACTION_LABELS[activeDelivery.status] ?? "Continuer"}</Text>
+      <Pressable
+        onPress={handleAction}
+        disabled={submitting || isWaitingForFoodToBeReady}
+        style={[styles.actionBtn, { opacity: submitting || isWaitingForFoodToBeReady ? 0.5 : 1 }]}
+      >
+        <Text style={styles.actionText}>
+          {isWaitingForFoodToBeReady ? "⏳ En attente que ce soit prêt..." : ACTION_LABELS[activeDelivery.status] ?? "Continuer"}
+        </Text>
       </Pressable>
     </View>
   );
@@ -111,6 +169,19 @@ const styles = StyleSheet.create({
   proName: { fontWeight: "700", color: "white" },
   routeLabel: { fontSize: 12, color: "rgba(255,255,255,0.7)" },
   earnings: { fontSize: 20, fontWeight: "800", color: "white" },
+  directionsBtn: {
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 8,
+    backgroundColor: "white",
+    paddingVertical: 12,
+  },
+  directionsText: { fontSize: 14, fontWeight: "700", color: "#1A1A2E" },
+  waitingBox: { marginBottom: 16, borderRadius: 8, backgroundColor: "rgba(255,107,53,0.15)", padding: 12 },
+  waitingText: { fontSize: 13, fontWeight: "600", color: "#FF6B35" },
   errorBox: { marginBottom: 12, borderRadius: 4, backgroundColor: "rgba(239,68,68,0.1)", padding: 12 },
   errorText: { fontSize: 13, color: "#FCA5A5" },
   stepsRow: { marginBottom: 16, flexDirection: "row", justifyContent: "space-between" },

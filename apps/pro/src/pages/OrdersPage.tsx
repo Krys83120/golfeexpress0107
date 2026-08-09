@@ -27,16 +27,14 @@ export function OrdersPage() {
   const error = useProOrdersStore((s) => s.error);
   const loadOrders = useProOrdersStore((s) => s.loadOrders);
   const advanceStatus = useProOrdersStore((s) => s.advanceStatus);
+  const markReady = useProOrdersStore((s) => s.markReady);
   const cancelOrder = useProOrdersStore((s) => s.cancelOrder);
 
   useEffect(() => {
-    loadOrders();
-    // Rafraîchit la liste toutes les 15s pour voir apparaître les nouvelles
-    // commandes sans recharger la page. TODO: remplacer par une
-    // souscription Supabase Realtime (postgres_changes sur Order, filter
-    // proId=eq.<idDuPro>) — voir apps/api/REALTIME.md.
-    const interval = setInterval(loadOrders, 15000);
-    return () => clearInterval(interval);
+    // Le chargement initial + le rafraîchissement périodique sont gérés au
+    // niveau racine de l'app (voir App.tsx) pour continuer même quand
+    // cette page n'est pas affichée — pas besoin de dupliquer ici.
+    if (status === "idle") loadOrders();
   }, []);
 
   return (
@@ -79,7 +77,13 @@ export function OrdersPage() {
                     </div>
                   ) : (
                     columnOrders.map((order) => (
-                      <ProOrderCard key={order.id} order={order} onAdvance={advanceStatus} onCancel={cancelOrder} />
+                      <ProOrderCard
+                        key={order.id}
+                        order={order}
+                        onAdvance={advanceStatus}
+                        onMarkReady={markReady}
+                        onCancel={cancelOrder}
+                      />
                     ))
                   )}
                 </div>

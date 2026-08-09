@@ -72,6 +72,32 @@ export async function uploadProductImage(proId: string, productId: string, file:
 }
 
 /**
+ * Upload une photo supplémentaire (galerie) d'un produit. Chemin
+ * "{proId}/{productId}-gallery-{uuid}.ext" — un nom unique par photo
+ * (contrairement à la photo principale) puisqu'il peut y en avoir
+ * plusieurs simultanément pour le même produit.
+ */
+export async function uploadProductGalleryImage(proId: string, productId: string, file: File): Promise<string> {
+  assertValidImage(file);
+
+  const supabase = getSupabaseClient();
+  const ext = extensionFor(file);
+  const path = `${proId}/${productId}-gallery-${crypto.randomUUID()}.${ext}`;
+
+  const { error } = await supabase.storage.from("product-images").upload(path, file, {
+    upsert: true,
+    contentType: file.type,
+  });
+
+  if (error) {
+    throw new UploadError(`Échec de l'upload : ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/**
  * Ajoute un paramètre de cache-busting à une URL d'image pour forcer le
  * rechargement après un remplacement (le chemin de fichier reste identique
  * avec upsert, donc le navigateur servirait sinon l'ancienne version

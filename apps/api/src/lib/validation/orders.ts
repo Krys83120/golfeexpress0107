@@ -27,6 +27,9 @@ export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export const updateOrderStatusSchema = z.object({
   status: z.nativeEnum(OrderStatus),
   note: z.string().optional(),
+  // Fourni par le Pro en passant une commande en PREPARING — sert à
+  // calculer quand lancer la recherche de livreur (voir riderSearchWindow.ts).
+  estimatedPrepMinutes: z.number().int().positive().max(180).optional(),
 });
 
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;

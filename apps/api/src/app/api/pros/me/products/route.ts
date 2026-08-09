@@ -3,6 +3,7 @@ import { UserRole } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { createProductSchema } from "@/lib/validation/products";
+import { serializeProduct, serializeProductWithoutOptions } from "@/lib/serializeProduct";
 
 /**
  * GET /api/pros/me/products
@@ -23,7 +24,11 @@ async function getHandler(req: NextRequest) {
     orderBy: { category: "asc" },
   });
 
-  return NextResponse.json({ products });
+  // Decimal Prisma (price, priceModifier) -> nombres JS, sinon sérialisés
+  // en texte côté JSON et cassent les calculs/affichages côté front.
+  const serialized = products.map(serializeProduct);
+
+  return NextResponse.json({ products: serialized });
 }
 
 /**
@@ -49,7 +54,7 @@ async function postHandler(req: NextRequest) {
     data: { ...parsed.data, proId: pro.id },
   });
 
-  return NextResponse.json({ product }, { status: 201 });
+  return NextResponse.json({ product: serializeProductWithoutOptions(product) }, { status: 201 });
 }
 
 export const GET = withErrorHandling(getHandler);

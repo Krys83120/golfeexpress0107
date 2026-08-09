@@ -6,11 +6,27 @@ import { MenuPage } from "@/pages/MenuPage";
 import { FinancesPage } from "@/pages/FinancesPage";
 import { ReviewsPage } from "@/pages/ReviewsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { NotificationsPage } from "@/pages/NotificationsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useProOrdersStore } from "@/store/useProOrdersStore";
+import { useNewOrderNotifications } from "@/hooks/useNewOrderNotifications";
 
 function MainApp() {
   const [activePage, setActivePage] = useState("dashboard");
+  const loadOrders = useProOrdersStore((s) => s.loadOrders);
+
+  // Rafraîchit les commandes en continu au niveau racine (pas seulement
+  // dans OrdersPage) pour que la détection de nouvelles commandes — et donc
+  // le son de notification — fonctionne même quand le Pro consulte une
+  // autre page (Menu, Finances...).
+  useEffect(() => {
+    loadOrders();
+    const interval = setInterval(loadOrders, 15000);
+    return () => clearInterval(interval);
+  }, [loadOrders]);
+
+  useNewOrderNotifications();
 
   function renderPage() {
     switch (activePage) {
@@ -24,6 +40,8 @@ function MainApp() {
         return <FinancesPage />;
       case "reviews":
         return <ReviewsPage />;
+      case "notifications":
+        return <NotificationsPage />;
       case "settings":
         return <SettingsPage />;
       default:

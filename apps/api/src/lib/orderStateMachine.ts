@@ -11,7 +11,7 @@ import { OrderStatus, UserRole } from "@golfeexpress/types";
 const FORWARD_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PENDING]: [OrderStatus.CONFIRMED],
   [OrderStatus.CONFIRMED]: [OrderStatus.PREPARING],
-  [OrderStatus.PREPARING]: [OrderStatus.READY],
+  [OrderStatus.PREPARING]: [OrderStatus.READY, OrderStatus.RIDER_ASSIGNED],
   [OrderStatus.READY]: [OrderStatus.RIDER_ASSIGNED],
   [OrderStatus.RIDER_ASSIGNED]: [OrderStatus.PICKED_UP],
   [OrderStatus.PICKED_UP]: [OrderStatus.IN_DELIVERY],

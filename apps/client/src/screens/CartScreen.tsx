@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useCartStore } from "@/store/useCartStore";
@@ -22,6 +22,7 @@ export function CartScreen({ onClose, onOrderCreated }: CartScreenProps) {
   const pickupAddressId = useCartStore((s) => s.pickupAddressId);
   const subtotal = useCartStore((s) => s.subtotal());
   const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const removeItem = useCartStore((s) => s.removeItem);
   const clearCart = useCartStore((s) => s.clear);
 
   const activeAddress = useAddressStore((s) => s.activeAddress);
@@ -80,11 +81,20 @@ export function CartScreen({ onClose, onOrderCreated }: CartScreenProps) {
           ) : (
             items.map((item) => (
               <View key={item.id} className="flex-row gap-3 border-b border-gris-light py-3.5">
-                <View className="h-[60px] w-[60px] items-center justify-center rounded-sm bg-gris-light">
-                  <Text style={{ fontSize: 26 }}>{item.emoji}</Text>
+                <View className="h-[60px] w-[60px] items-center justify-center overflow-hidden rounded-sm bg-gris-light">
+                  {item.emoji.startsWith("http") ? (
+                    <Image source={{ uri: item.emoji }} style={{ width: 60, height: 60 }} resizeMode="cover" />
+                  ) : (
+                    <Text style={{ fontSize: 26 }}>{item.emoji}</Text>
+                  )}
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sm font-semibold text-nuit">{item.name}</Text>
+                  <View className="flex-row items-start justify-between">
+                    <Text className="flex-1 text-sm font-semibold text-nuit">{item.name}</Text>
+                    <Pressable onPress={() => removeItem(item.id)} className="ml-2 p-1">
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    </Pressable>
+                  </View>
                   {item.optionsLabel ? (
                     <Text className="mt-0.5 text-xs text-gris">{item.optionsLabel}</Text>
                   ) : null}
@@ -94,7 +104,7 @@ export function CartScreen({ onClose, onOrderCreated }: CartScreenProps) {
                 </View>
                 <View className="flex-row items-center gap-2.5">
                   <Pressable
-                    onPress={() => updateQuantity(item.id, -1)}
+                    onPress={() => (item.quantity === 1 ? removeItem(item.id) : updateQuantity(item.id, -1))}
                     className="h-7 w-7 items-center justify-center rounded-full border-2 border-gris-light"
                   >
                     <Text className="font-bold text-nuit">−</Text>

@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { Order } from "@golfeexpress/types";
+import { OrderStatus, type Order } from "@golfeexpress/types";
 import { getCategoryEmoji, haversineDistanceKm } from "@/services/categoryVisuals";
 
 interface OrderCardProps {
@@ -12,9 +12,26 @@ interface OrderCardProps {
   onDecline: () => void;
 }
 
+function formatPrepBadge(order: Order): { label: string; color: string; bg: string } | null {
+  if (order.status === OrderStatus.READY) {
+    return { label: "✅ Prête maintenant", color: "#2ECC71", bg: "#E8F5E9" };
+  }
+  if (order.status === OrderStatus.PREPARING && order.preparingStartedAt && order.estimatedPrepMinutes) {
+    const readyAtMs = new Date(order.preparingStartedAt).getTime() + order.estimatedPrepMinutes * 60_000;
+    const remainingMin = Math.max(0, Math.round((readyAtMs - Date.now()) / 60_000));
+    return {
+      label: remainingMin > 0 ? `👨‍🍳 En préparation — prête dans ~${remainingMin} min` : "👨‍🍳 En préparation — bientôt prête",
+      color: "#FF6B35",
+      bg: "#FFF3E0",
+    };
+  }
+  return null;
+}
+
 export function OrderCard({ order, riderLat, riderLng, onAccept, onDecline }: OrderCardProps) {
   const emoji = order.pro ? getCategoryEmoji(order.pro.category) : "🏪";
   const itemCount = order.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+  const prepBadge = formatPrepBadge(order);
 
   const pickupDistanceKm =
     riderLat !== undefined && riderLng !== undefined && order.fromAddress
@@ -45,6 +62,12 @@ export function OrderCard({ order, riderLat, riderLng, onAccept, onDecline }: Or
           <Text style={styles.earnings}>{Number(order.riderEarnings).toFixed(2).replace(".", ",")}€</Text>
         </View>
       </View>
+
+      {prepBadge && (
+        <View style={{ marginHorizontal: 16, marginTop: 12, borderRadius: 8, backgroundColor: prepBadge.bg, paddingHorizontal: 10, paddingVertical: 6 }}>
+          <Text style={{ fontSize: 12, fontWeight: "700", color: prepBadge.color }}>{prepBadge.label}</Text>
+        </View>
+      )}
 
       <View style={{ padding: 16 }}>
         <View style={{ flexDirection: "row", gap: 12 }}>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy } from "lucide-react";
 import { useProMenuStore } from "@/store/useProMenuStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ProductFormModal } from "@/components/ProductFormModal";
@@ -23,10 +23,13 @@ export function MenuPage() {
   const deleteProduct = useProMenuStore((s) => s.deleteProduct);
   const addProduct = useProMenuStore((s) => s.addProduct);
   const updateProduct = useProMenuStore((s) => s.updateProduct);
+  const duplicateProduct = useProMenuStore((s) => s.duplicateProduct);
   const profile = useAuthStore((s) => s.profile);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
 
   useEffect(() => {
     loadProducts();
@@ -39,6 +42,29 @@ export function MenuPage() {
     } else {
       await addProduct(data);
       setCreating(false);
+    }
+  }
+
+  async function handleDelete(productId: string) {
+    setDeleteError(null);
+    try {
+      await deleteProduct(productId);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Impossible de supprimer ce produit.");
+    }
+  }
+
+  async function handleDuplicate(product: Product) {
+    setDuplicating(product.id);
+    try {
+      const copy = await duplicateProduct(product);
+      // Ouvre directement la copie en édition — il ne reste plus qu'à
+      // changer la photo, le nom, la description et le prix.
+      setEditingProduct(copy);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Impossible de dupliquer ce produit.");
+    } finally {
+      setDuplicating(null);
     }
   }
 
@@ -68,6 +94,15 @@ export function MenuPage() {
           {error}{" "}
           <button onClick={loadProducts} className="font-semibold underline">
             Réessayer
+          </button>
+        </div>
+      )}
+
+      {deleteError && (
+        <div className="mb-6 flex items-center justify-between rounded-sm bg-red-50 p-4 text-sm text-red-500">
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="ml-4 font-semibold underline">
+            Fermer
           </button>
         </div>
       )}
@@ -103,13 +138,21 @@ export function MenuPage() {
                     <ProductThumbnail image={product.image} />
                     <div className="flex gap-1">
                       <button
+                        onClick={() => handleDuplicate(product)}
+                        disabled={duplicating === product.id}
+                        title="Dupliquer"
+                        className="rounded-sm p-1.5 text-gris hover:bg-gris-light disabled:opacity-50"
+                      >
+                        <Copy size={14} />
+                      </button>
+                      <button
                         onClick={() => setEditingProduct(product)}
                         className="rounded-sm p-1.5 text-gris hover:bg-gris-light"
                       >
                         <Pencil size={14} />
                       </button>
                       <button
-                        onClick={() => deleteProduct(product.id)}
+                        onClick={() => handleDelete(product.id)}
                         className="rounded-sm p-1.5 text-red-400 hover:bg-red-50"
                       >
                         <Trash2 size={14} />

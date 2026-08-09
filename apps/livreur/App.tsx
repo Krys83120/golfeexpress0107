@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuthStore } from "@/store/useAuthStore";
+import { useLocationTracking } from "@/hooks/useLocationTracking";
 import { AuthScreen } from "@/screens/AuthScreen";
 import { HomeScreen } from "@/screens/HomeScreen";
 import { EarningsScreen } from "@/screens/EarningsScreen";
@@ -23,6 +24,7 @@ const TABS: { key: Tab; icon: keyof typeof Ionicons.glyphMap; label: string }[] 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const logout = useAuthStore((s) => s.logout);
+  useLocationTracking();
 
   function renderTabContent() {
     switch (activeTab) {

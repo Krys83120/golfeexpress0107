@@ -5,6 +5,7 @@ import {
   UtensilsCrossed,
   Wallet,
   Star,
+  Bell,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -23,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "menu", label: "Mon menu", icon: <UtensilsCrossed size={18} /> },
   { key: "finances", label: "Finances", icon: <Wallet size={18} /> },
   { key: "reviews", label: "Avis clients", icon: <Star size={18} /> },
+  { key: "notifications", label: "Notifications", icon: <Bell size={18} /> },
   { key: "settings", label: "Paramètres", icon: <Settings size={18} /> },
 ];
 

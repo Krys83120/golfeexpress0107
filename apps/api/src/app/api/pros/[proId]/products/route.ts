@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
+import { serializeProduct } from "@/lib/serializeProduct";
 
 /**
  * GET /api/pros/[proId]/products
@@ -21,7 +22,11 @@ async function getHandler(req: NextRequest, ctx: { params: { proId: string } }) 
     orderBy: { category: "asc" },
   });
 
-  return NextResponse.json({ products });
+  // Decimal Prisma (price, priceModifier) -> nombres JS, sinon sérialisés
+  // en texte côté JSON et cassent .toFixed()/les calculs côté app Client.
+  const serialized = products.map(serializeProduct);
+
+  return NextResponse.json({ products: serialized });
 }
 
 export const GET = withErrorHandling(getHandler);

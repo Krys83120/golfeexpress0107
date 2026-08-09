@@ -81,7 +81,7 @@ export function MapView({ pins, height = 260, emptyLabel = "Aucune position à a
 
   return (
     <div style={{ height, borderRadius: 8, overflow: "hidden" }}>
-      <MapContainer center={GOLFE_CENTER} zoom={12} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
+      <MapContainer center={GOLFE_CENTER} zoom={12} style={{ height: "100%", width: "100%" }} scrollWheelZoom={true}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

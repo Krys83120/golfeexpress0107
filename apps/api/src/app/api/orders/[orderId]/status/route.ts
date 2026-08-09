@@ -29,7 +29,7 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
     throw new ApiError(400, parsed.error.issues.map((i) => i.message).join(" "));
   }
 
-  const { status: nextStatus, note } = parsed.data;
+  const { status: nextStatus, note, estimatedPrepMinutes } = parsed.data;
 
   const order = await prisma.order.findUnique({ where: { id: ctx.params.orderId } });
   if (!order) {
@@ -78,6 +78,14 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
   };
   const extraField = timestampField[nextStatus];
 
+  // En passant en préparation, le Pro doit indiquer un temps de préparation
+  // estimé — c'est ce qui permet de calculer quand ouvrir la recherche de
+  // livreur (voir riderSearchWindow.ts) sans attendre que la commande soit
+  // officiellement marquée prête.
+  if (nextStatus === OrderStatus.PREPARING && !estimatedPrepMinutes) {
+    throw new ApiError(400, "Merci d'indiquer un temps de préparation estimé.");
+  }
+
   // À la livraison : on matérialise le gain du livreur (table Earning) et on
   // crédite son solde + compteurs, et on crédite les points de fidélité du
   // client. Tout se fait dans la même transaction que la mise à jour du
@@ -89,6 +97,9 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
       data: {
         status: nextStatus,
         ...(extraField ? { [extraField]: new Date() } : {}),
+        ...(nextStatus === OrderStatus.PREPARING
+          ? { preparingStartedAt: new Date(), estimatedPrepMinutes }
+          : {}),
         statusHistory: {
           create: { status: nextStatus, changedBy: auth.userId, note },
         },

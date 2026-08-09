@@ -14,13 +14,24 @@ async function getHandler(req: NextRequest) {
 
   const riders = await prisma.rider.findMany({
     include: {
-      user: { select: { firstName: true, lastName: true, email: true } },
+      user: { select: { firstName: true, lastName: true, email: true, phone: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
 
-  return NextResponse.json({ riders });
+  // Champs Decimal -> nombres JS (sinon sérialisés en texte côté JSON,
+  // cassant .toFixed()/calculs et le placement sur la carte).
+  const serialized = riders.map((r) => ({
+    ...r,
+    currentLat: r.currentLat !== null ? Number(r.currentLat) : null,
+    currentLng: r.currentLng !== null ? Number(r.currentLng) : null,
+    rating: r.rating !== null ? Number(r.rating) : null,
+    totalEarnings: Number(r.totalEarnings),
+    balance: Number(r.balance),
+  }));
+
+  return NextResponse.json({ riders: serialized });
 }
 
 export const GET = withErrorHandling(getHandler);

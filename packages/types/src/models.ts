@@ -143,6 +143,7 @@ export interface Product {
   description?: string | null;
   price: number;
   image?: string | null;
+  additionalImages?: string[];
   category: string;
   isAvailable: boolean;
   isFeatured: boolean;
@@ -202,6 +203,8 @@ export interface Order {
 
   placedAt: string;
   acceptedAt?: string | null;
+  estimatedPrepMinutes?: number | null;
+  preparingStartedAt?: string | null;
   readyAt?: string | null;
   pickedUpAt?: string | null;
   deliveredAt?: string | null;

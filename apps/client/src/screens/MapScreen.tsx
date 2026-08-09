@@ -4,69 +4,53 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { ProWithUi } from "@/services/prosApi";
 import { useProsStore } from "@/store/useProsStore";
+import { ClientMapView, type MapPinData } from "@/components/ClientMapView";
 
 interface MapScreenProps {
   onClose: () => void;
   onOpenPro: (pro: ProWithUi) => void;
 }
 
-/**
- * Carte interactive — placeholder visuel avec pins positionnés de façon
- * illustrative (pas encore les vraies coordonnées projetées sur une carte).
- * À remplacer par une vraie carte (Mapbox GL / react-native-maps) utilisant
- * Pro.addresses[0].lat/lng une fois ce composant cartographique choisi.
- */
 export function MapScreen({ onClose, onOpenPro }: MapScreenProps) {
   const pros = useProsStore((s) => s.pros);
   const [selectedPro, setSelectedPro] = useState<ProWithUi | null>(null);
 
-  function handlePinPress(pro: ProWithUi) {
-    setSelectedPro(pro);
+  const prosWithLocation = pros.filter((p) => p.addresses?.[0]);
+
+  const pins: MapPinData[] = prosWithLocation.map((pro) => ({
+    id: pro.id,
+    lat: pro.addresses![0].lat,
+    lng: pro.addresses![0].lng,
+    emoji: pro.emoji,
+    color: pro.gradientTo,
+    label: pro.businessName,
+  }));
+
+  function handlePinPress(proId: string) {
+    const pro = prosWithLocation.find((p) => p.id === proId);
+    if (pro) setSelectedPro(pro);
   }
 
   return (
     <View className="flex-1 bg-white">
-      <View className="relative flex-1" style={{ backgroundColor: "#E8F5E9" }}>
-        {pros.map((pro, index) => {
-          // Distribution illustrative des pins sur la zone (placeholder visuel)
-          const left = 10 + ((index * 17) % 75);
-          const top = 15 + ((index * 23) % 60);
-          const isSelected = selectedPro?.id === pro.id;
-          return (
-            <Pressable
-              key={pro.id}
-              onPress={() => handlePinPress(pro)}
-              className="absolute items-center"
-              style={{ left: `${left}%`, top: `${top}%` }}
-            >
-              <View
-                className="h-11 w-11 items-center justify-center rounded-full border-2 border-white"
-                style={{
-                  backgroundColor: pro.gradientTo,
-                  transform: [{ scale: isSelected ? 1.2 : 1 }],
-                  elevation: 4,
-                  shadowColor: "#000",
-                  shadowOpacity: 0.15,
-                  shadowRadius: 6,
-                }}
-              >
-                <Text style={{ fontSize: 18 }}>{pro.emoji}</Text>
-              </View>
-            </Pressable>
-          );
-        })}
+      <View className="relative flex-1">
+        {pins.length > 0 ? (
+          <ClientMapView pins={pins} onPinPress={handlePinPress} />
+        ) : (
+          <View className="flex-1 items-center justify-center" style={{ backgroundColor: "#E8F5E9" }}>
+            <Text className="text-sm text-gris">Aucun commerçant géolocalisé pour le moment.</Text>
+          </View>
+        )}
 
-        <SafeAreaView edges={["top"]} className="absolute left-0 right-0 top-0">
+        <SafeAreaView edges={["top"]} className="absolute left-0 right-0 top-0" pointerEvents="box-none">
           <View className="flex-row items-center justify-between px-5 pt-2">
             <Pressable onPress={onClose} className="h-10 w-10 items-center justify-center rounded-full bg-white shadow">
               <Ionicons name="arrow-back" size={18} color="#1A1A2E" />
             </Pressable>
             <View className="rounded-full bg-white px-4 py-2 shadow">
-              <Text className="text-sm font-semibold text-nuit">{pros.length} commerçants</Text>
+              <Text className="text-sm font-semibold text-nuit">{prosWithLocation.length} commerçants</Text>
             </View>
-            <Pressable className="h-10 w-10 items-center justify-center rounded-full bg-white shadow">
-              <Ionicons name="locate" size={18} color="#2ECC71" />
-            </Pressable>
+            <View className="h-10 w-10" />
           </View>
         </SafeAreaView>
       </View>
@@ -102,10 +86,10 @@ export function MapScreen({ onClose, onOpenPro }: MapScreenProps) {
               Commerçants visibles sur la carte
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-              {pros.map((pro) => (
+              {prosWithLocation.map((pro) => (
                 <Pressable
                   key={pro.id}
-                  onPress={() => handlePinPress(pro)}
+                  onPress={() => setSelectedPro(pro)}
                   className="w-[100px] items-center rounded-sm bg-gris-light p-3"
                 >
                   <View

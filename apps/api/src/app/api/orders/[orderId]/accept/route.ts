@@ -2,15 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { OrderStatus, UserRole, RiderStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
+import { isWithinRiderSearchWindow } from "@/lib/riderSearchWindow";
 
 /**
  * POST /api/orders/[orderId]/accept
  *
- * Un Rider accepte une commande prête (status=READY, riderId=null) et se
- * l'assigne. Implémenté comme un update conditionnel atomique (la clause
- * `where` inclut `riderId: null`) pour éviter une race condition si deux
- * livreurs tentent d'accepter la même commande au même instant — seul le
- * premier appel qui arrive en base gagne, le second échoue avec 409.
+ * Un Rider accepte une commande et se l'assigne. Deux cas sont acceptés :
+ *  - status=READY (commande déjà physiquement prête, flux "classique")
+ *  - status=PREPARING, à condition d'être dans la fenêtre de recherche
+ *    anticipée (voir riderSearchWindow.ts) — le livreur peut alors se
+ *    mettre en route AVANT que la commande soit prête, pour arriver au bon
+ *    moment plutôt que d'ajouter son propre temps de trajet après coup.
+ *
+ * Implémenté comme un update conditionnel atomique (la clause `where`
+ * inclut `riderId: null`) pour éviter une race condition si deux livreurs
+ * tentent d'accepter la même commande au même instant — seul le premier
+ * appel qui arrive en base gagne, le second échoue avec 409.
  */
 async function postHandler(req: NextRequest, ctx: { params: { orderId: string } }) {
   const auth = await requireAuth(req, [UserRole.RIDER]);
@@ -30,16 +37,25 @@ async function postHandler(req: NextRequest, ctx: { params: { orderId: string } 
   if (!order) {
     throw new ApiError(404, "Commande introuvable.");
   }
-  if (order.status !== OrderStatus.READY || order.riderId) {
+
+  const isReady = order.status === OrderStatus.READY;
+  const isPreparingAndSearchable =
+    order.status === OrderStatus.PREPARING &&
+    order.preparingStartedAt !== null &&
+    order.estimatedPrepMinutes !== null &&
+    isWithinRiderSearchWindow(order.preparingStartedAt, order.estimatedPrepMinutes);
+
+  if ((!isReady && !isPreparingAndSearchable) || order.riderId) {
     throw new ApiError(409, "Cette commande n'est plus disponible (déjà prise par un autre livreur).");
   }
 
   // updateMany avec une clause where stricte = l'équivalent d'un UPDATE ...
-  // WHERE id = ? AND rider_id IS NULL atomique côté Postgres. Si un autre
-  // rider a accepté entre notre `findUnique` ci-dessus et cet appel,
-  // `count` sera 0 et on renvoie 409 plutôt que de désassigner par erreur.
+  // WHERE id = ? AND rider_id IS NULL AND status = ? atomique côté
+  // Postgres. Si un autre rider a accepté entre notre `findUnique`
+  // ci-dessus et cet appel, `count` sera 0 et on renvoie 409 plutôt que de
+  // désassigner par erreur.
   const result = await prisma.order.updateMany({
-    where: { id: order.id, riderId: null, status: OrderStatus.READY },
+    where: { id: order.id, riderId: null, status: order.status },
     data: { status: OrderStatus.RIDER_ASSIGNED, riderId: rider.id },
   });
 

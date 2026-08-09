@@ -22,6 +22,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
       items: input.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
+        options: item.options,
       })),
     },
   });

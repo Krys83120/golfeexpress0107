@@ -67,15 +67,37 @@ async function postHandler(req: NextRequest) {
   // retour de prisma.product.findMany — utile aussi en environnement où le
   // client n'a pas pu être généré avec son moteur natif.
   const productIds = items.map((i) => i.productId);
-  const products: Array<{
-    id: string;
-    proId: string;
-    name: string;
-    price: unknown; // Prisma.Decimal à l'exécution, converti via Number()
-    isAvailable: boolean;
-  }> = await prisma.product.findMany({ where: { id: { in: productIds } } });
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    include: { options: { include: { choices: true } } },
+  });
 
   const productById = new Map(products.map((p) => [p.id, p]));
+
+  /**
+   * Calcule le supplément de prix total pour les options choisies sur un
+   * article. `selectedOptions` associe le nom d'un groupe d'options (ex:
+   * "La taille") au(x) nom(s) du/des choix sélectionné(s) — plusieurs choix
+   * pour un groupe à choix multiples sont séparés par ", " (voir le format
+   * envoyé par l'app Client, ProductOptionsModal.tsx).
+   */
+  function computeOptionsSurcharge(
+    product: (typeof products)[number],
+    selectedOptions: Record<string, string> | undefined
+  ): number {
+    if (!selectedOptions) return 0;
+    let surcharge = 0;
+    for (const [groupName, selectedChoiceNames] of Object.entries(selectedOptions)) {
+      const group = product.options.find((o) => o.name === groupName);
+      if (!group) continue;
+      const chosenNames = selectedChoiceNames.split(",").map((n) => n.trim());
+      for (const choiceName of chosenNames) {
+        const choice = group.choices.find((c) => c.name === choiceName);
+        if (choice) surcharge += Number(choice.priceModifier);
+      }
+    }
+    return surcharge;
+  }
 
   let subtotal = 0;
   const orderItemsData = items.map((item) => {
@@ -87,7 +109,7 @@ async function postHandler(req: NextRequest) {
       throw new ApiError(400, `"${product.name}" n'est plus disponible.`);
     }
 
-    const unitPrice = Number(product.price);
+    const unitPrice = Number(product.price) + computeOptionsSurcharge(product, item.options);
     const totalPrice = unitPrice * item.quantity;
     subtotal += totalPrice;
 
@@ -182,7 +204,7 @@ async function getHandler(req: NextRequest) {
       items: true,
       client: { select: { id: true, user: { select: { firstName: true, lastName: true, phone: true } } } },
       pro: { select: { id: true, businessName: true, logo: true, category: true } },
-      rider: { select: { id: true, userId: true } },
+      rider: { select: { id: true, userId: true, currentLat: true, currentLng: true, vehicleType: true } },
       fromAddress: true,
       toAddress: true,
     },
@@ -190,7 +212,21 @@ async function getHandler(req: NextRequest) {
     take: 50,
   });
 
-  return NextResponse.json({ orders });
+  // rider.currentLat/currentLng sont des Decimal Prisma -> sérialisés en
+  // texte par défaut en JSON, ce qui casserait leur usage direct comme
+  // coordonnées sur la carte de suivi côté Client. On les caste ici.
+  const serialized = orders.map((order) => ({
+    ...order,
+    rider: order.rider
+      ? {
+          ...order.rider,
+          currentLat: order.rider.currentLat !== null ? Number(order.rider.currentLat) : null,
+          currentLng: order.rider.currentLng !== null ? Number(order.rider.currentLng) : null,
+        }
+      : null,
+  }));
+
+  return NextResponse.json({ orders: serialized });
 }
 
 export const POST = withErrorHandling(postHandler);

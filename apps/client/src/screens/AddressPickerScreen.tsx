@@ -23,9 +23,11 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
   const status = useAddressStore((s) => s.status);
   const error = useAddressStore((s) => s.error);
   const loadAddresses = useAddressStore((s) => s.loadAddresses);
+  const removeAddress = useAddressStore((s) => s.removeAddress);
 
   const [search, setSearch] = useState("");
   const [addFormOpen, setAddFormOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadAddresses();
@@ -34,6 +36,17 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
   function handleSelect(address: Address) {
     setActiveAddress(address);
     onSelected(address);
+  }
+
+  async function handleDelete(addressId: string) {
+    setDeletingId(addressId);
+    try {
+      await removeAddress(addressId);
+    } catch {
+      // Échec silencieux acceptable ici — l'adresse reste simplement affichée, le Client peut réessayer.
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   const filtered = addresses.filter((a) =>
@@ -117,6 +130,20 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
                     </Text>
                   </View>
                   {isActive && <Ionicons name="checkmark-circle" size={20} color="#2ECC71" />}
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      handleDelete(address.id);
+                    }}
+                    hitSlop={8}
+                    className="ml-1 p-1"
+                  >
+                    {deletingId === address.id ? (
+                      <ActivityIndicator size="small" color="#EF4444" />
+                    ) : (
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    )}
+                  </Pressable>
                 </Pressable>
               );
             })}

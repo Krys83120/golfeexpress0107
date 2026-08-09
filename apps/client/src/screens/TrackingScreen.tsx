@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { OrderStatus, type Order } from "@golfeexpress/types";
 import { apiFetch } from "@/services/apiClient";
+import { TrackingMap } from "@/components/TrackingMap";
 
 interface TrackingScreenProps {
   order: Order;
@@ -22,8 +23,6 @@ const TIMELINE: TimelineStep[] = [
   { status: OrderStatus.DELIVERED, title: "Livré" },
 ];
 
-// Ordre de progression global, utilisé pour savoir quelles étapes du
-// TIMELINE ci-dessus sont déjà "complétées" par rapport au statut courant.
 const STATUS_ORDER: OrderStatus[] = [
   OrderStatus.PENDING,
   OrderStatus.CONFIRMED,
@@ -36,13 +35,14 @@ const STATUS_ORDER: OrderStatus[] = [
 ];
 
 /**
- * Rafraîchit le statut de la commande par polling toutes les 8 secondes.
+ * Rafraîchit le statut de la commande (et la position du livreur, incluse
+ * dans le même payload via order.rider.currentLat/Lng) par polling toutes
+ * les 8 secondes.
  *
- * TODO: remplacer par une souscription Supabase Realtime
- * (postgres_changes sur Order, filter id=eq.<orderId>) — voir
- * apps/api/REALTIME.md. La logique d'affichage ci-dessous (dérivation du
- * timeline depuis `order.status`) reste identique, seule la source de la
- * mise à jour change.
+ * TODO: remplacer par une souscription Supabase Realtime (postgres_changes
+ * sur Order pour le statut, et sur Rider pour la position) — voir
+ * apps/api/REALTIME.md. La logique d'affichage ci-dessous reste identique,
+ * seule la source de la mise à jour change.
  */
 function usePolledOrder(initialOrder: Order) {
   const [order, setOrder] = useState(initialOrder);
@@ -72,6 +72,17 @@ export function TrackingScreen({ order: initialOrder, onClose }: TrackingScreenP
 
   const isCancelled = order.status === OrderStatus.CANCELLED || order.status === OrderStatus.REFUNDED;
 
+  // Position du livreur disponible uniquement s'il a été assigné et a déjà
+  // communiqué sa position au moins une fois (currentLat/Lng non nuls).
+  const riderPosition =
+    order.rider && order.rider.currentLat !== null && order.rider.currentLng !== null
+      ? { lat: Number(order.rider.currentLat), lng: Number(order.rider.currentLng) }
+      : null;
+
+  // Avant récupération -> le livreur va vers le commerçant. Après -> vers le client.
+  const isHeadingToPickup = order.status === OrderStatus.RIDER_ASSIGNED;
+  const destination = isHeadingToPickup ? order.fromAddress : order.toAddress;
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
       <View className="flex-1 px-5 pt-5">
@@ -93,12 +104,25 @@ export function TrackingScreen({ order: initialOrder, onClose }: TrackingScreenP
           </View>
         ) : (
           <>
-            {/* Mini carte placeholder — à remplacer par react-native-maps +
-                position rider temps réel (Supabase Realtime sur TrackingEvent) */}
-            <View className="mb-5 h-44 items-center justify-center rounded bg-[#E8F5E9]">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-corail">
-                <Text style={{ fontSize: 18 }}>🛵</Text>
-              </View>
+            <View className="mb-5" style={{ height: 180 }}>
+              {riderPosition ? (
+                <TrackingMap
+                  riderLat={riderPosition.lat}
+                  riderLng={riderPosition.lng}
+                  destinationLat={destination ? Number(destination.lat) : undefined}
+                  destinationLng={destination ? Number(destination.lng) : undefined}
+                  height={180}
+                />
+              ) : (
+                <View className="h-full items-center justify-center rounded bg-[#E8F5E9]">
+                  <View className="h-10 w-10 items-center justify-center rounded-full bg-corail">
+                    <Text style={{ fontSize: 18 }}>🛵</Text>
+                  </View>
+                  <Text className="mt-2 text-xs text-gris">
+                    {order.riderId ? "Position du livreur en attente..." : "Recherche d'un livreur..."}
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View className="mb-5 flex-row items-center gap-3">
@@ -107,7 +131,7 @@ export function TrackingScreen({ order: initialOrder, onClose }: TrackingScreenP
               </View>
               <View>
                 <Text className="font-bold text-nuit">
-                  {order.riderId ? "Rocco est en route !" : "Recherche d'un livreur..."}
+                  {order.riderId ? "Votre livreur est en route !" : "Recherche d'un livreur..."}
                 </Text>
                 {order.estimatedDelivery && (
                   <Text className="text-[13px] text-gris">

@@ -7,7 +7,9 @@ export interface CartItem {
   emoji: string;
   unitPrice: number;
   quantity: number;
-  optionsLabel?: string; // ex: "+ Avocat extra"
+  optionsLabel?: string; // ex: "Medium, Sauce soja sucrée"
+  /** Groupe d'options -> nom(s) du/des choix sélectionné(s), envoyé tel quel à l'API. */
+  options?: Record<string, string>;
 }
 
 interface CartState {

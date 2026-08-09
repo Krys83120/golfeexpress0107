@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { ProWithUi } from "@/services/prosApi";
 import { useProsStore } from "@/store/useProsStore";
 import { useCartStore } from "@/store/useCartStore";
+import { ProductOptionsModal } from "@/components/ProductOptionsModal";
 import type { Product } from "@golfeexpress/types";
 
 interface ProDetailScreenProps {
@@ -17,6 +18,7 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
   const productsByPro = useProsStore((s) => s.productsByPro);
   const productsStatus = useProsStore((s) => s.productsStatus[pro.id]);
   const loadProductsForPro = useProsStore((s) => s.loadProductsForPro);
+  const [optionsModalProduct, setOptionsModalProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     loadProductsForPro(pro.id);
@@ -37,12 +39,52 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
         productId: product.id,
         name: product.name,
         emoji: product.image ?? "🍽️",
-        unitPrice: product.price,
+        unitPrice: Number(product.price),
       },
       pro.id,
       pro.businessName,
       pro.pickupAddressId
     );
+  }
+
+  function handlePressProduct(product: Product) {
+    // Produit avec des options (taille, base, sauce...) -> on ouvre l'écran
+    // de sélection avant d'ajouter au panier. Sinon, ajout direct comme avant.
+    if (product.options && product.options.length > 0) {
+      setOptionsModalProduct(product);
+    } else {
+      handleAdd(product);
+    }
+  }
+
+  function handleConfirmOptions(selection: { options: Record<string, string>; optionsLabel: string; extraPrice: number }) {
+    const product = optionsModalProduct;
+    if (!product) return;
+
+    // Un id de ligne de panier différent par combinaison d'options choisie
+    // (deux "Poke Saumon" avec des tailles différentes doivent rester deux
+    // lignes distinctes), en combinant l'id produit avec les options triées.
+    const optionsKey = Object.entries(selection.options)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}:${v}`)
+      .join("|");
+    const lineId = optionsKey ? `${product.id}__${optionsKey}` : product.id;
+
+    addItem(
+      {
+        id: lineId,
+        productId: product.id,
+        name: product.name,
+        emoji: product.image ?? "🍽️",
+        unitPrice: Number(product.price) + selection.extraPrice,
+        optionsLabel: selection.optionsLabel || undefined,
+        options: Object.keys(selection.options).length > 0 ? selection.options : undefined,
+      },
+      pro.id,
+      pro.businessName,
+      pro.pickupAddressId
+    );
+    setOptionsModalProduct(null);
   }
 
   return (
@@ -108,7 +150,7 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
             {items.map((product) => (
               <Pressable
                 key={product.id}
-                onPress={() => handleAdd(product)}
+                onPress={() => handlePressProduct(product)}
                 className="mb-2.5 flex-row gap-3.5 rounded-sm bg-gris-light p-3.5"
               >
                 <View
@@ -126,10 +168,13 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
                   <Text className="mb-1.5 mt-1 text-xs leading-4 text-gris">{product.description}</Text>
                   <Text className="text-[15px] font-bold text-golfe-green">
                     {Number(product.price).toFixed(2).replace(".", ",")} €
+                    {product.options && product.options.length > 0 && (
+                      <Text className="text-xs font-normal text-gris"> • options</Text>
+                    )}
                   </Text>
                 </View>
                 <Pressable
-                  onPress={() => handleAdd(product)}
+                  onPress={() => handlePressProduct(product)}
                   className="h-8 w-8 self-center items-center justify-center rounded-full bg-golfe-green"
                 >
                   <Ionicons name="add" size={18} color="white" />
@@ -139,6 +184,14 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
           </View>
         ))}
       </ScrollView>
+
+      {optionsModalProduct && (
+        <ProductOptionsModal
+          product={optionsModalProduct}
+          onClose={() => setOptionsModalProduct(null)}
+          onConfirm={handleConfirmOptions}
+        />
+      )}
     </SafeAreaView>
   );
 }

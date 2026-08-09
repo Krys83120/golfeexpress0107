@@ -49,7 +49,17 @@ async function getHandler(req: NextRequest) {
     take: 50,
   });
 
-  return NextResponse.json({ pros });
+  // Decimal Prisma (rating, commissionRate, addresses[].lat/lng) -> nombres
+  // JS, sinon sérialisés en texte côté JSON — cassait silencieusement le
+  // calcul de distance (haversine) et l'affichage de la carte côté Client.
+  const serialized = pros.map((p) => ({
+    ...p,
+    rating: p.rating !== null ? Number(p.rating) : null,
+    commissionRate: Number(p.commissionRate),
+    addresses: p.addresses.map((a) => ({ ...a, lat: Number(a.lat), lng: Number(a.lng) })),
+  }));
+
+  return NextResponse.json({ pros: serialized });
 }
 
 export const GET = withErrorHandling(getHandler);

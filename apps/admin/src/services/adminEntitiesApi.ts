@@ -45,11 +45,26 @@ export async function fetchAdminPros(): Promise<AdminProRow[]> {
 }
 
 export interface AdminRiderRow extends Omit<Rider, "user"> {
-  user: Pick<User, "firstName" | "lastName" | "email">;
+  user: Pick<User, "firstName" | "lastName" | "email" | "phone">;
 }
 
 /** GET /api/admin/riders */
 export async function fetchAdminRiders(): Promise<AdminRiderRow[]> {
   const data = await apiFetch<{ riders: AdminRiderRow[] }>("/api/admin/riders");
   return data.riders;
+}
+
+export interface UpdateAdminRiderPayload {
+  vehicleType?: Rider["vehicleType"];
+  vehiclePlate?: string | null;
+  status?: Rider["status"];
+}
+
+/** PATCH /api/admin/riders/:riderId */
+export async function updateAdminRider(riderId: string, payload: UpdateAdminRiderPayload): Promise<AdminRiderRow> {
+  const data = await apiFetch<{ rider: AdminRiderRow }>(`/api/admin/riders/${riderId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+  return data.rider;
 }
