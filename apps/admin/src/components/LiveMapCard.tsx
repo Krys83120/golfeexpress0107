@@ -34,7 +34,7 @@ export function LiveMapCard({ riders }: LiveMapCardProps) {
         </span>
       </div>
 
-      <MapView pins={pins} height={260} emptyLabel="Aucun livreur en ligne actuellement" />
+      <MapView pins={pins} height={480} emptyLabel="Aucun livreur en ligne actuellement" />
 
       <div className="mt-3 text-right text-xs text-gris">📍 {riders.length} livreurs actifs</div>
     </div>

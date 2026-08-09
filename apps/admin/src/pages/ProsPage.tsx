@@ -54,7 +54,7 @@ export function ProsPage() {
 
       <div className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
         <h3 className="mb-4 font-heading text-base font-bold text-nuit">🗺️ Répartition géographique</h3>
-        <MapView pins={pins} height={280} emptyLabel="Aucun commerçant géolocalisé" />
+        <MapView pins={pins} height={480} emptyLabel="Aucun commerçant géolocalisé" />
       </div>
 
       <div className="mb-4 flex items-center gap-2 rounded-sm border border-gris-light bg-white px-3 py-2">
