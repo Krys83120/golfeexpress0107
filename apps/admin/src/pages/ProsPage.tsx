@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Search, MoreVertical, Star } from "lucide-react";
 import { PRO_STATUS_LABELS, SUBSCRIPTION_LABELS, PRO_CATEGORY_EMOJIS } from "@/services/proLabels";
 import { fetchAdminPros, type AdminProRow } from "@/services/adminEntitiesApi";
+import { MapView, type MapPin } from "@/components/MapView";
 
 export function ProsPage() {
   const [search, setSearch] = useState("");
@@ -25,6 +26,23 @@ export function ProsPage() {
     `${p.businessName} ${p.addresses[0]?.city ?? ""}`.toLowerCase().includes(search.toLowerCase())
   );
 
+  const pins: MapPin[] = pros
+    .filter((p) => p.addresses[0])
+    .map((p) => ({
+      id: p.id,
+      lat: p.addresses[0].lat,
+      lng: p.addresses[0].lng,
+      label: PRO_CATEGORY_EMOJIS[p.category] ?? "📦",
+      color: "#2ECC71",
+      popupContent: (
+        <div>
+          <strong>{p.businessName}</strong>
+          <br />
+          {p.addresses[0].city}
+        </div>
+      ),
+    }));
+
   return (
     <div className="flex-1 p-8">
       <div className="mb-6 flex items-center justify-between">
@@ -32,6 +50,11 @@ export function ProsPage() {
           <h1 className="font-heading text-2xl font-extrabold text-nuit">Commerçants</h1>
           <p className="text-sm text-gris">{pros.length} commerçants sur la plateforme</p>
         </div>
+      </div>
+
+      <div className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+        <h3 className="mb-4 font-heading text-base font-bold text-nuit">🗺️ Répartition géographique</h3>
+        <MapView pins={pins} height={280} emptyLabel="Aucun commerçant géolocalisé" />
       </div>
 
       <div className="mb-4 flex items-center gap-2 rounded-sm border border-gris-light bg-white px-3 py-2">

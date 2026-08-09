@@ -23,7 +23,19 @@ async function getHandler(req: NextRequest) {
     take: 200,
   });
 
-  return NextResponse.json({ pros });
+  // Les champs Decimal (lat/lng, rating, commissionRate...) sérialisent en
+  // texte par défaut via Prisma -> JSON. On caste explicitement les champs
+  // utilisés côté carte pour éviter un .toFixed()/calcul cassé côté front.
+  const serialized = pros.map((pro) => ({
+    ...pro,
+    addresses: pro.addresses.map((addr) => ({
+      ...addr,
+      lat: Number(addr.lat),
+      lng: Number(addr.lng),
+    })),
+  }));
+
+  return NextResponse.json({ pros: serialized });
 }
 
 export const GET = withErrorHandling(getHandler);

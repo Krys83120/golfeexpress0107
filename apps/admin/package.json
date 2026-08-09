@@ -12,12 +12,15 @@
   "dependencies": {
     "@golfeexpress/types": "*",
     "@golfeexpress/ui-tokens": "*",
+    "@supabase/supabase-js": "^2.45.4",
+    "@types/leaflet": "^1.9.22",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.383.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "zustand": "^4.5.4",
+    "react-leaflet": "^4.2.1",
     "recharts": "^2.12.7",
-    "lucide-react": "^0.383.0",
-    "@supabase/supabase-js": "^2.45.4"
+    "zustand": "^4.5.4"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

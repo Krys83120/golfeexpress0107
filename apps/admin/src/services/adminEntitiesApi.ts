@@ -34,7 +34,7 @@ export async function updateAdminUser(userId: string, payload: UpdateAdminUserPa
 
 export interface AdminProRow extends Omit<Pro, "addresses" | "user"> {
   user: Pick<User, "firstName" | "lastName" | "email">;
-  addresses: { city: string }[];
+  addresses: { city: string; lat: number; lng: number }[];
   _count: { orders: number };
 }
 
