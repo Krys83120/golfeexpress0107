@@ -19,7 +19,14 @@ async function getHandler(req: NextRequest) {
     throw new ApiError(404, "Profil commerçant introuvable.");
   }
 
-  return NextResponse.json({ pro });
+  return NextResponse.json({
+    pro: {
+      ...pro,
+      commissionRate: Number(pro.commissionRate),
+      rating: pro.rating !== null ? Number(pro.rating) : null,
+      googleRating: pro.googleRating !== null ? Number(pro.googleRating) : null,
+    },
+  });
 }
 
 /**
@@ -49,7 +56,14 @@ async function patchHandler(req: NextRequest) {
     data: parsed.data,
   });
 
-  return NextResponse.json({ pro });
+  return NextResponse.json({
+    pro: {
+      ...pro,
+      commissionRate: Number(pro.commissionRate),
+      rating: pro.rating !== null ? Number(pro.rating) : null,
+      googleRating: pro.googleRating !== null ? Number(pro.googleRating) : null,
+    },
+  });
 }
 
 export const GET = withErrorHandling(getHandler);

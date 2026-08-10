@@ -179,6 +179,22 @@ model Pro {
   rating            Decimal?    @db.Decimal(2,1)
   ratingCount     Int      @default(0) @map("rating_count")
 
+  /// Réseaux sociaux — simples liens optionnels affichés sur la fiche commerçant.
+  instagramUrl      String?     @map("instagram_url")
+  facebookUrl       String?     @map("facebook_url")
+  tiktokUrl         String?     @map("tiktok_url")
+  websiteUrl        String?     @map("website_url")
+
+  /// Avis Google — identifiant de fiche "Google Business Profile" renseigné
+  /// par le Pro (voir GoogleReviewsScreen côté Pro pour comment le trouver).
+  /// La note/nb d'avis sont récupérés périodiquement via l'API Google
+  /// Places (pas en direct à chaque affichage, pour éviter de payer un
+  /// appel API à chaque visite) et mis en cache ici.
+  googlePlaceId       String?   @map("google_place_id")
+  googleRating        Decimal?  @db.Decimal(2,1) @map("google_rating")
+  googleRatingCount   Int?      @map("google_rating_count")
+  googleRatingSyncedAt DateTime? @map("google_rating_synced_at")
+
   /// Adresse principale de retrait (pickup)
   /// Référence la première adresse de la boutique.
   /// Stockée ici pour éviter une requête supplémentaire au checkout côté Client.

@@ -58,6 +58,14 @@ export interface Pro {
   subscriptionExpiry?: string | null;
   rating?: number | null;
   ratingCount: number;
+  instagramUrl?: string | null;
+  facebookUrl?: string | null;
+  tiktokUrl?: string | null;
+  websiteUrl?: string | null;
+  googlePlaceId?: string | null;
+  googleRating?: number | null;
+  googleRatingCount?: number | null;
+  googleRatingSyncedAt?: string | null;
   pickupAddressId?: string | null;
   createdAt: string;
   addresses?: Address[];

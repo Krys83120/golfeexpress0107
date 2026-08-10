@@ -7,6 +7,11 @@ export const updateProProfileSchema = z.object({
   emailContact: z.string().email().optional(),
   logo: z.string().nullable().optional(),
   coverImage: z.string().nullable().optional(),
+  instagramUrl: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
+  facebookUrl: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
+  tiktokUrl: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
+  websiteUrl: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
+  googlePlaceId: z.string().nullable().optional().or(z.literal("").transform(() => null)),
 });
 
 export type UpdateProProfileInput = z.infer<typeof updateProProfileSchema>;

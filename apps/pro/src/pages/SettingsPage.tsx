@@ -5,6 +5,7 @@ import {
   updateMyShopProfile,
   fetchMyOpeningHours,
   updateMyOpeningHours,
+  syncGoogleRating,
 } from "@/services/shopProfileApi";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { uploadProAsset, withCacheBust } from "@/services/uploadsApi";
@@ -27,6 +28,16 @@ export function SettingsPage() {
   const [savingHours, setSavingHours] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  // Réseaux sociaux + Google Avis
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
+  const [tiktokUrl, setTiktokUrl] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [googlePlaceId, setGooglePlaceId] = useState("");
+  const [savingSocial, setSavingSocial] = useState(false);
+  const [syncingGoogle, setSyncingGoogle] = useState(false);
+  const [socialMessage, setSocialMessage] = useState<string | null>(null);
+
   async function load() {
     setStatus("loading");
     try {
@@ -36,6 +47,11 @@ export function SettingsPage() {
       setDescription(shopProfile.description ?? "");
       setPhone(shopProfile.phone);
       setEmailContact(shopProfile.emailContact);
+      setInstagramUrl(shopProfile.instagramUrl ?? "");
+      setFacebookUrl(shopProfile.facebookUrl ?? "");
+      setTiktokUrl(shopProfile.tiktokUrl ?? "");
+      setWebsiteUrl(shopProfile.websiteUrl ?? "");
+      setGooglePlaceId(shopProfile.googlePlaceId ?? "");
 
       // S'il manque des jours (premier paramétrage), on complète avec des
       // valeurs par défaut "fermé" pour toujours afficher les 7 lignes.
@@ -93,6 +109,54 @@ export function SettingsPage() {
     const url = await uploadProAsset(pro.id, "cover", file);
     const updated = await updateMyShopProfile({ coverImage: withCacheBust(url) });
     setPro(updated);
+  }
+
+  async function handleSaveSocial(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingSocial(true);
+    setSocialMessage(null);
+    try {
+      const updated = await updateMyShopProfile({
+        instagramUrl: instagramUrl.trim() || null,
+        facebookUrl: facebookUrl.trim() || null,
+        tiktokUrl: tiktokUrl.trim() || null,
+        websiteUrl: websiteUrl.trim() || null,
+        googlePlaceId: googlePlaceId.trim() || null,
+      });
+      setPro(updated);
+      setSocialMessage("✅ Enregistré.");
+    } catch (err) {
+      setSocialMessage(err instanceof Error ? `❌ ${err.message}` : "❌ Impossible d'enregistrer.");
+    } finally {
+      setSavingSocial(false);
+    }
+  }
+
+  async function handleSyncGoogleRating() {
+    setSyncingGoogle(true);
+    setSocialMessage(null);
+    try {
+      const result = await syncGoogleRating();
+      setPro((prev) =>
+        prev
+          ? {
+              ...prev,
+              googleRating: result.googleRating,
+              googleRatingCount: result.googleRatingCount,
+              googleRatingSyncedAt: result.googleRatingSyncedAt,
+            }
+          : prev
+      );
+      setSocialMessage(
+        result.googleRating !== null
+          ? `✅ Note Google récupérée : ${result.googleRating}⭐ (${result.googleRatingCount} avis)`
+          : "⚠️ Aucune note trouvée pour cette fiche Google."
+      );
+    } catch (err) {
+      setSocialMessage(err instanceof Error ? `❌ ${err.message}` : "❌ Échec de la synchronisation.");
+    } finally {
+      setSyncingGoogle(false);
+    }
   }
 
   async function handleSaveHours() {
@@ -188,6 +252,113 @@ export function SettingsPage() {
         >
           {savingProfile ? "Enregistrement..." : "Enregistrer les informations"}
         </button>
+      </form>
+
+      <form onSubmit={handleSaveSocial} className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+        <h3 className="mb-4 font-heading text-base font-bold text-nuit">🌐 Réseaux sociaux & Avis Google</h3>
+
+        <div className="mb-4 grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Instagram</label>
+            <input
+              value={instagramUrl}
+              onChange={(e) => setInstagramUrl(e.target.value)}
+              placeholder="https://instagram.com/votrecompte"
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Facebook</label>
+            <input
+              value={facebookUrl}
+              onChange={(e) => setFacebookUrl(e.target.value)}
+              placeholder="https://facebook.com/votrepage"
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">TikTok</label>
+            <input
+              value={tiktokUrl}
+              onChange={(e) => setTiktokUrl(e.target.value)}
+              placeholder="https://tiktok.com/@votrecompte"
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Site web</label>
+            <input
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              placeholder="https://votresite.fr"
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="mb-4 border-t border-gris-light pt-4">
+          <label className="mb-1 block text-xs font-semibold text-gris">Identifiant de fiche Google (Place ID)</label>
+          <input
+            value={googlePlaceId}
+            onChange={(e) => setGooglePlaceId(e.target.value)}
+            placeholder="Ex: ChIJN1t_tDeuEmsRUsoyG83frY4"
+            className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+          />
+          <details className="mt-2">
+            <summary className="cursor-pointer text-xs font-semibold text-golfe-green">
+              Comment trouver mon Place ID ?
+            </summary>
+            <ol className="mt-2 list-decimal pl-4 text-xs text-gris" style={{ lineHeight: 1.6 }}>
+              <li>
+                Allez sur{" "}
+                <a
+                  href="https://developers.google.com/maps/documentation/places/web-service/place-id"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  le localisateur officiel de Place ID Google
+                </a>
+              </li>
+              <li>Recherchez le nom exact de votre établissement dans la barre de recherche de la carte</li>
+              <li>Cliquez sur votre établissement une fois qu'il apparaît sur la carte</li>
+              <li>Copiez la valeur "Place ID" qui s'affiche dans l'encadré à droite</li>
+              <li>Collez-la ci-dessus et enregistrez</li>
+            </ol>
+          </details>
+
+          {pro?.googleRating !== null && pro?.googleRating !== undefined && (
+            <div className="mt-3 flex items-center gap-2 rounded-sm bg-gris-light px-3 py-2 text-sm">
+              <span className="font-bold text-nuit">⭐ {pro.googleRating}</span>
+              <span className="text-gris">({pro.googleRatingCount} avis Google)</span>
+              {pro.googleRatingSyncedAt && (
+                <span className="ml-auto text-[11px] text-gris">
+                  Actualisé le {new Date(pro.googleRatingSyncedAt).toLocaleDateString("fr-FR")}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {socialMessage && <p className="mb-4 text-sm">{socialMessage}</p>}
+
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={savingSocial}
+            className="rounded-sm bg-golfe-green px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {savingSocial ? "Enregistrement..." : "Enregistrer"}
+          </button>
+          <button
+            type="button"
+            onClick={handleSyncGoogleRating}
+            disabled={syncingGoogle || !googlePlaceId.trim()}
+            className="rounded-sm border border-gris-light px-5 py-2.5 text-sm font-semibold text-nuit disabled:opacity-50"
+          >
+            {syncingGoogle ? "Synchronisation..." : "🔄 Actualiser la note Google"}
+          </button>
+        </div>
       </form>
 
       <div className="rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>

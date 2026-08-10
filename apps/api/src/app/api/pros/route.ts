@@ -55,6 +55,7 @@ async function getHandler(req: NextRequest) {
   const serialized = pros.map((p) => ({
     ...p,
     rating: p.rating !== null ? Number(p.rating) : null,
+    googleRating: p.googleRating !== null ? Number(p.googleRating) : null,
     commissionRate: Number(p.commissionRate),
     addresses: p.addresses.map((a) => ({ ...a, lat: Number(a.lat), lng: Number(a.lng) })),
   }));

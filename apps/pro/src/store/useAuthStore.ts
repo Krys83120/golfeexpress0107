@@ -78,7 +78,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   login: async (email, password) => {
-    set({ status: "loading", error: null });
+    // Ne PAS passer status à "loading" ici : App.tsx affiche un écran
+    // "Chargement..." séparé pour cet état, ce qui démonte LoginPage
+    // pendant la requête puis le remonte neuf juste après — n'importe quel
+    // message d'erreur/confirmation programmé pour s'afficher sur CETTE
+    // instance de LoginPage se perd silencieusement, puisque la fonction
+    // continue de s'exécuter sur un composant déjà démonté. LoginPage gère
+    // déjà son propre indicateur de chargement local (`submitting`), donc
+    // le statut global n'a besoin de refléter que le résultat final.
+    set({ error: null });
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
@@ -109,7 +117,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signup: async (input) => {
-    set({ status: "loading", error: null });
+    // Voir le commentaire dans login() ci-dessus — même raison de ne pas
+    // passer par status "loading" ici.
+    set({ error: null });
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
         method: "POST",

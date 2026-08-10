@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Image } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { ProWithUi } from "@/services/prosApi";
@@ -108,15 +108,47 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
 
         <View className="mx-5 mt-4">
           <Text className="font-heading text-xl font-bold text-nuit">{pro.businessName}</Text>
-          <View className="mt-1 flex-row items-center gap-3">
+          <View className="mt-1 flex-row flex-wrap items-center gap-3">
             <View className="flex-row items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5">
               <Ionicons name="star" size={11} color="#FF6B35" />
               <Text className="text-xs font-bold text-corail">{Number(pro.rating)?.toFixed(1) ?? "—"}</Text>
             </View>
+            {pro.googleRating !== null && pro.googleRating !== undefined && (
+              <View className="flex-row items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5">
+                <Text style={{ fontSize: 11 }}>🇬</Text>
+                <Text className="text-xs font-bold text-blue-600">{Number(pro.googleRating).toFixed(1)}</Text>
+                <Text className="text-[11px] text-gris">({pro.googleRatingCount})</Text>
+              </View>
+            )}
             <Text className="text-[13px] text-gris">
               <Ionicons name="time-outline" size={12} /> {pro.estimatedMinMinutes}-{pro.estimatedMaxMinutes} min
             </Text>
           </View>
+
+          {(pro.instagramUrl || pro.facebookUrl || pro.tiktokUrl || pro.websiteUrl) && (
+            <View className="mt-2 flex-row gap-3">
+              {pro.instagramUrl && (
+                <Pressable onPress={() => Linking.openURL(pro.instagramUrl!)}>
+                  <Ionicons name="logo-instagram" size={20} color="#6B7280" />
+                </Pressable>
+              )}
+              {pro.facebookUrl && (
+                <Pressable onPress={() => Linking.openURL(pro.facebookUrl!)}>
+                  <Ionicons name="logo-facebook" size={20} color="#6B7280" />
+                </Pressable>
+              )}
+              {pro.tiktokUrl && (
+                <Pressable onPress={() => Linking.openURL(pro.tiktokUrl!)}>
+                  <Ionicons name="logo-tiktok" size={20} color="#6B7280" />
+                </Pressable>
+              )}
+              {pro.websiteUrl && (
+                <Pressable onPress={() => Linking.openURL(pro.websiteUrl!)}>
+                  <Ionicons name="globe-outline" size={20} color="#6B7280" />
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
 
         {productsStatus === "loading" && (
