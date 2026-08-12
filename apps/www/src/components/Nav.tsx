@@ -30,7 +30,7 @@ export function Nav() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
         <a href="#top" className="flex items-center gap-2" onClick={closeAll}>
           <span className="text-6xl">🦎</span>
-          <span className="font-heading text-base font-extrabold text-white sm:text-lg">Do You Geckoo</span>
+          <span className="notranslate font-heading text-base font-extrabold text-white sm:text-lg" translate="no">Do You Geckoo</span>
         </a>
 
         <nav className="hidden items-center gap-8 lg:flex">

@@ -43,7 +43,7 @@ export function Sidebar({ activeItem, onSelect, pendingCount }: SidebarProps) {
       <div className="flex items-center gap-2 px-6 py-6">
         <span className="text-5xl">🦎</span>
         <div>
-          <p className="font-heading text-base font-extrabold text-white">Do You Geckoo</p>
+          <p className="notranslate font-heading text-base font-extrabold text-white" translate="no">Do You Geckoo</p>
           <p className="text-xs text-white/50">
             {user ? `${user.firstName} ${user.lastName}` : "Super Admin"}
           </p>

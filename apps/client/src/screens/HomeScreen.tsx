@@ -48,7 +48,7 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center gap-2">
                 <Text style={{ fontSize: 50 }}>🦎</Text>
-                <Text className="font-heading text-[20px] font-extrabold text-white">Do You Geckoo</Text>
+                <Text className="notranslate font-heading text-[20px] font-extrabold text-white">Do You Geckoo</Text>
               </View>
               <View className="flex-row gap-4">
                 <Ionicons name="notifications-outline" size={20} color="white" />

@@ -32,7 +32,7 @@ export function EconomicsComparison() {
           {/* Colonne Do You Geckoo */}
           <div className="rounded-3xl border-2 border-golfe-green bg-golfe-green/[0.08] p-6 sm:p-8">
             <p className="mb-1 text-xs font-bold uppercase tracking-wide text-golfe-green">Notre modèle</p>
-            <p className="mb-6 font-heading text-xl font-bold text-white">Do You Geckoo</p>
+            <p className="notranslate mb-6 font-heading text-xl font-bold text-white" translate="no">Do You Geckoo</p>
 
             <EarningsBar label="Commission plateforme" amountLabel="10 à 15%" widthPct={15} color="#2ECC71" />
             <EarningsBar label="Le livreur touche" amountLabel="≈ 7-8 €" widthPct={38} color="#2ECC71" />

@@ -14,7 +14,7 @@ export function OnlineToggleHeader() {
         <View style={styles.brand}>
           <Text style={{ fontSize: 50 }}>🦎</Text>
           <View>
-            <Text style={styles.brandName}>Do You Geckoo</Text>
+            <Text style={styles.brandName} className="notranslate">Do You Geckoo</Text>
             <Text style={styles.brandSub}>Espace Livreur</Text>
           </View>
         </View>

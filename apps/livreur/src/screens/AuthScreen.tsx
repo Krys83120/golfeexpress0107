@@ -62,11 +62,11 @@ export function AuthScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 48, padding: 24 }} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Text style={{ fontSize: 130 }}>🦎</Text>
-            <Text style={styles.title}>Do You Geckoo</Text>
+            <Text style={styles.title} className="notranslate">Do You Geckoo</Text>
             <Text style={styles.subtitle}>Espace Livreur</Text>
             <Text style={styles.subtitle}>{mode === "login" ? "Connectez-vous pour livrer" : "Devenez livreur Do You Geckoo"}</Text>
           </View>

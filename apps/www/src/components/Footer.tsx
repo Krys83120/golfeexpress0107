@@ -6,7 +6,7 @@ export function Footer() {
           <div className="sm:col-span-2">
             <div className="flex items-center gap-2">
               <span className="text-6xl">🦎</span>
-              <span className="font-heading text-lg font-extrabold text-white">Do You Geckoo</span>
+              <span className="notranslate font-heading text-lg font-extrabold text-white" translate="no">Do You Geckoo</span>
             </div>
             <p className="mt-4 max-w-sm text-sm">
               La livraison locale du Golfe de Saint-Tropez. Créée pour que les commerçants gardent plus de marge et
@@ -25,7 +25,7 @@ export function Footer() {
           </div>
 
           <div>
-            <p className="mb-4 text-xs font-bold uppercase tracking-wide text-white/40">Do You Geckoo</p>
+            <p className="notranslate mb-4 text-xs font-bold uppercase tracking-wide text-white/40" translate="no">Do You Geckoo</p>
             <ul className="space-y-2.5 text-sm">
               <li><a href="/#comment-ca-marche" className="hover:text-white">Comment ça marche</a></li>
               <li><a href="/#devenir-partenaire" className="hover:text-white">Devenir partenaire</a></li>

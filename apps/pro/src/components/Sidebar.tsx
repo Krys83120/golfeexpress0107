@@ -45,7 +45,7 @@ export function Sidebar({ activeItem, onSelect }: SidebarProps) {
       <div className="flex items-center gap-2 px-6 py-6">
         <span className="text-5xl">🦎</span>
         <div>
-          <p className="font-heading text-base font-extrabold text-nuit">Do You Geckoo</p>
+          <p className="notranslate font-heading text-base font-extrabold text-nuit" translate="no">Do You Geckoo</p>
           <p className="text-xs text-gris">Espace Pro</p>
         </div>
       </div>
