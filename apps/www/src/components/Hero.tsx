@@ -34,7 +34,7 @@ export function Hero() {
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <a
-            href="https://deploy-client-gamma.vercel.app"
+            href="https://commander.doyougeckoo.fr"
             className="w-full rounded-full bg-golfe-green px-8 py-4 text-sm font-bold text-nuit transition hover:bg-white sm:w-auto"
           >
             Commander sur Do You Geckoo

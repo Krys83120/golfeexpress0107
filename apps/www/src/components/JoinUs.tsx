@@ -14,7 +14,7 @@ export function JoinUs() {
             <li>✓ Impression d'étiquette et notifications sonores</li>
           </ul>
           <a
-            href="https://golfeexpress0107-pro.vercel.app"
+            href="https://pro.doyougeckoo.fr"
             className="mt-8 inline-block rounded-full bg-white px-7 py-3 text-sm font-bold text-corail transition hover:bg-nuit hover:text-white"
           >
             Devenir partenaire
@@ -33,7 +33,7 @@ export function JoinUs() {
             <li>✓ Retraits de gains flexibles</li>
           </ul>
           <a
-            href="https://deploy-livreur.vercel.app"
+            href="https://livreur.doyougeckoo.fr"
             className="mt-8 inline-block rounded-full bg-golfe-green px-7 py-3 text-sm font-bold text-nuit transition hover:bg-white"
           >
             Devenir livreur

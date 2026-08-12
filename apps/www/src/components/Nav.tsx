@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 
 const PORTAL_LINKS = [
-  { label: "Espace Client", href: "https://deploy-client-gamma.vercel.app", hint: "Commander" },
-  { label: "Espace Commerçant", href: "https://golfeexpress0107-pro.vercel.app", hint: "Gérer ma boutique" },
-  { label: "Espace Livreur", href: "https://deploy-livreur.vercel.app", hint: "Livrer" },
-  { label: "Espace Admin", href: "https://golfeexpress0107-admin.vercel.app", hint: "Équipe Do You Geckoo" },
+  { label: "Espace Client", href: "https://commander.doyougeckoo.fr", hint: "Commander" },
+  { label: "Espace Commerçant", href: "https://pro.doyougeckoo.fr", hint: "Gérer ma boutique" },
+  { label: "Espace Livreur", href: "https://livreur.doyougeckoo.fr", hint: "Livrer" },
+  { label: "Espace Admin", href: "https://admin.doyougeckoo.fr", hint: "Équipe Do You Geckoo" },
 ];
 
 const NAV_LINKS = [

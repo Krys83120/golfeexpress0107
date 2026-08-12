@@ -17,10 +17,10 @@ export function Footer() {
           <div>
             <p className="mb-4 text-xs font-bold uppercase tracking-wide text-white/40">Accès direct</p>
             <ul className="space-y-2.5 text-sm">
-              <li><a href="https://deploy-client-gamma.vercel.app" className="hover:text-white">Espace Client</a></li>
-              <li><a href="https://golfeexpress0107-pro.vercel.app" className="hover:text-white">Espace Commerçant</a></li>
-              <li><a href="https://deploy-livreur.vercel.app" className="hover:text-white">Espace Livreur</a></li>
-              <li><a href="https://golfeexpress0107-admin.vercel.app" className="hover:text-white">Espace Admin</a></li>
+              <li><a href="https://commander.doyougeckoo.fr" className="hover:text-white">Espace Client</a></li>
+              <li><a href="https://pro.doyougeckoo.fr" className="hover:text-white">Espace Commerçant</a></li>
+              <li><a href="https://livreur.doyougeckoo.fr" className="hover:text-white">Espace Livreur</a></li>
+              <li><a href="https://admin.doyougeckoo.fr" className="hover:text-white">Espace Admin</a></li>
             </ul>
           </div>
 

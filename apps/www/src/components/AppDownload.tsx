@@ -22,7 +22,7 @@ export function AppDownload() {
               Commandez chez vos commerçants préférés et suivez votre livraison en direct sur la carte.
             </p>
             <a
-              href="https://deploy-client-gamma.vercel.app"
+              href="https://commander.doyougeckoo.fr"
               className="mt-6 inline-flex items-center gap-2 rounded-full bg-golfe-green px-6 py-3 text-sm font-bold text-nuit transition hover:bg-golfe-green-dark hover:text-white"
             >
               Ouvrir l'app Client →
@@ -39,7 +39,7 @@ export function AppDownload() {
               Passez en ligne quand vous voulez, acceptez des courses proches de vous, suivez vos gains en direct.
             </p>
             <a
-              href="https://deploy-livreur.vercel.app"
+              href="https://livreur.doyougeckoo.fr"
               className="mt-6 inline-flex items-center gap-2 rounded-full bg-golfe-green px-6 py-3 text-sm font-bold text-nuit transition hover:bg-white"
             >
               Ouvrir l'app Livreur →
