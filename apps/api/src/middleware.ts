@@ -10,6 +10,12 @@ const defaultOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "https://golfeexpress0107-admin.vercel.app",
+  "https://doyougeckoo.fr",
+  "https://www.doyougeckoo.fr",
+  "https://commander.doyougeckoo.fr",
+  "https://livreur.doyougeckoo.fr",
+  "https://pro.doyougeckoo.fr",
+  "https://admin.doyougeckoo.fr",
 ];
 const envOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .split(",")
@@ -33,6 +39,7 @@ function isAllowedOrigin(origin: string): boolean {
   if (!origin) return false;
   if (allowedOrigins.includes(origin)) return true;
   if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return true;
+  if (/^https:\/\/([a-z0-9-]+\.)?doyougeckoo\.fr$/.test(origin)) return true;
   if (/^http:\/\/localhost:\d+$/.test(origin)) return true;
   return false;
 }
