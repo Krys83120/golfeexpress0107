@@ -1,3 +1,5 @@
+import { TypewriterSlogan } from "@/components/TypewriterSlogan";
+
 export function Hero() {
   return (
     <section id="top" className="relative overflow-hidden bg-nuit pb-24 pt-20 text-white sm:pb-32 sm:pt-28">
@@ -20,14 +22,13 @@ export function Hero() {
           100% local — Sainte-Maxime & Golfe de Saint-Tropez
         </div>
 
-        <h1 className="font-heading text-3xl font-extrabold leading-[1.15] sm:text-5xl sm:leading-[1.1] md:text-6xl">
-          La livraison locale,
-          <br />
-          <span className="text-golfe-green">enfin juste</span> pour tout le monde.
-        </h1>
+        {/* Slogan signature — animation type machine à écrire, en boucle */}
+        <div className="flex min-h-[3.5rem] items-center justify-center sm:min-h-[4.5rem] md:min-h-[5.5rem]">
+          <TypewriterSlogan />
+        </div>
 
-        <p className="mx-auto mt-6 max-w-xl text-base text-white/70 sm:text-lg">
-          GolfeExpress connecte les commerces, les clients et les livreurs du Golfe de Saint-Tropez — avec des
+        <p className="mx-auto mt-8 max-w-xl text-base text-white/70 sm:text-lg">
+          Do You Geckoo connecte les commerces, les clients et les livreurs du Golfe de Saint-Tropez — avec des
           commissions parmi les plus basses du secteur et des livreurs mieux payés.
         </p>
 
@@ -36,7 +37,7 @@ export function Hero() {
             href="https://deploy-client-gamma.vercel.app"
             className="w-full rounded-full bg-golfe-green px-8 py-4 text-sm font-bold text-nuit transition hover:bg-white sm:w-auto"
           >
-            Commander sur GolfeExpress
+            Commander sur Do You Geckoo
           </a>
           <a
             href="#devenir-livreur"

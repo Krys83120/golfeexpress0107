@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       { userAgent: "*", allow: "/" },
       // Autorisation explicite des robots IA — sans ça, ces plateformes ne
-      // peuvent pas citer GolfeExpress dans leurs réponses (voir GEO).
+      // peuvent pas citer Do You Geckoo dans leurs réponses (voir GEO).
       { userAgent: "GPTBot", allow: "/" },
       { userAgent: "ChatGPT-User", allow: "/" },
       { userAgent: "PerplexityBot", allow: "/" },
@@ -14,6 +14,6 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: "Google-Extended", allow: "/" },
       { userAgent: "Bingbot", allow: "/" },
     ],
-    sitemap: "https://www.golfeexpress.fr/sitemap.xml",
+    sitemap: "https://www.doyougeckoo.fr/sitemap.xml",
   };
 }

@@ -618,7 +618,7 @@ export function SettingsPage() {
               className="mt-0.5 h-4 w-4 accent-golfe-green"
             />
             <span className="text-sm text-nuit">
-              J'accepte les Conditions Générales d'Utilisation et de Vente de GolfeExpress.
+              J'accepte les Conditions Générales d'Utilisation et de Vente de Do You Geckoo.
               {termsAcceptedAt && (
                 <span className="block text-xs text-gris">
                   Acceptées le {new Date(termsAcceptedAt).toLocaleDateString("fr-FR")}.

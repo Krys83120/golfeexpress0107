@@ -6,14 +6,14 @@ const PORTAL_LINKS = [
   { label: "Espace Client", href: "https://deploy-client-gamma.vercel.app", hint: "Commander" },
   { label: "Espace Commerçant", href: "https://golfeexpress0107-pro.vercel.app", hint: "Gérer ma boutique" },
   { label: "Espace Livreur", href: "https://deploy-livreur.vercel.app", hint: "Livrer" },
-  { label: "Espace Admin", href: "https://golfeexpress0107-admin.vercel.app", hint: "Équipe GolfeExpress" },
+  { label: "Espace Admin", href: "https://golfeexpress0107-admin.vercel.app", hint: "Équipe Do You Geckoo" },
 ];
 
 const NAV_LINKS = [
-  { label: "Comment ça marche", href: "#comment-ca-marche" },
+  { label: "Comment ça marche", href: "/#comment-ca-marche" },
   { label: "Nos commerçants", href: "/commercants" },
-  { label: "Devenir livreur", href: "#devenir-livreur" },
-  { label: "Devenir partenaire", href: "#devenir-partenaire" },
+  { label: "Devenir livreur", href: "/#devenir-livreur" },
+  { label: "Devenir partenaire", href: "/#devenir-partenaire" },
 ];
 
 export function Nav() {
@@ -29,8 +29,8 @@ export function Nav() {
     <header className="sticky top-0 z-50 border-b border-white/10 bg-nuit/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
         <a href="#top" className="flex items-center gap-2" onClick={closeAll}>
-          <span className="text-2xl">🦎</span>
-          <span className="font-heading text-base font-extrabold text-white sm:text-lg">GolfeExpress</span>
+          <span className="text-6xl">🦎</span>
+          <span className="font-heading text-base font-extrabold text-white sm:text-lg">Do You Geckoo</span>
         </a>
 
         <nav className="hidden items-center gap-8 lg:flex">

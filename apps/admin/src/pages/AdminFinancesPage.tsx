@@ -42,7 +42,7 @@ export function AdminFinancesPage() {
     <div className="flex-1 p-8">
       <div className="mb-6">
         <h1 className="font-heading text-2xl font-extrabold text-nuit">Finances plateforme</h1>
-        <p className="text-sm text-gris">Vue consolidée des revenus GolfeExpress (7 derniers jours)</p>
+        <p className="text-sm text-gris">Vue consolidée des revenus Do You Geckoo (7 derniers jours)</p>
       </div>
 
       {error && <div className="mb-6 rounded-sm bg-red-50 p-4 text-sm text-red-500">{error}</div>}

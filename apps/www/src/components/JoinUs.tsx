@@ -5,7 +5,7 @@ export function JoinUs() {
         <div id="devenir-partenaire" className="scroll-mt-24 rounded-3xl bg-gradient-to-br from-corail to-corail-light p-8 text-white sm:p-10">
           <h3 className="font-heading text-xl font-extrabold sm:text-2xl">Vous êtes commerçant ?</h3>
           <p className="mt-3 text-white/90">
-            Rejoignez le réseau GolfeExpress : commissions parmi les plus basses du secteur, mise en ligne rapide,
+            Rejoignez le réseau Do You Geckoo : commissions parmi les plus basses du secteur, mise en ligne rapide,
             visibilité auprès des habitants et vacanciers du Golfe.
           </p>
           <ul className="mt-6 space-y-2 text-sm text-white/90">

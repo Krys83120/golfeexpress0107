@@ -16,16 +16,16 @@ const inter = Inter({
   display: "swap",
 });
 
-const SITE_URL = "https://www.golfeexpress.fr";
+const SITE_URL = "https://www.doyougeckoo.fr";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "GolfeExpress — La livraison locale du Golfe de Saint-Tropez, en juste",
-    template: "%s | GolfeExpress",
+    default: "Do You Geckoo — La livraison locale du Golfe de Saint-Tropez, en juste",
+    template: "%s | Do You Geckoo",
   },
   description:
-    "GolfeExpress livre les commerces de Sainte-Maxime et du Golfe de Saint-Tropez en 20-30 minutes. Nos livreurs gagnent jusqu'à 40% de plus que sur les plateformes classiques, pour le même prix client.",
+    "Do You Geckoo livre les commerces de Sainte-Maxime et du Golfe de Saint-Tropez en 20-30 minutes. Nos livreurs gagnent jusqu'à 40% de plus que sur les plateformes classiques, pour le même prix client.",
   keywords: [
     "livraison Sainte-Maxime",
     "livraison Golfe de Saint-Tropez",
@@ -34,20 +34,20 @@ export const metadata: Metadata = {
     "devenir livreur Sainte-Maxime",
     "commerçants livraison Var",
   ],
-  authors: [{ name: "GolfeExpress" }],
+  authors: [{ name: "Do You Geckoo" }],
   openGraph: {
     type: "website",
     locale: "fr_FR",
     url: SITE_URL,
-    siteName: "GolfeExpress",
-    title: "GolfeExpress — La livraison locale du Golfe de Saint-Tropez, en juste",
+    siteName: "Do You Geckoo",
+    title: "Do You Geckoo — La livraison locale du Golfe de Saint-Tropez, en juste",
     description:
       "Livraison de vos commerces préférés en 20-30 minutes. Des livreurs mieux payés, des commerçants moins taxés, un service 100% local.",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "GolfeExpress" }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Do You Geckoo" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "GolfeExpress — La livraison locale du Golfe de Saint-Tropez",
+    title: "Do You Geckoo — La livraison locale du Golfe de Saint-Tropez",
     description: "Des livreurs mieux payés, des commerçants moins taxés. Livraison en 20-30 min à Sainte-Maxime et sur tout le Golfe.",
     images: ["/og-image.png"],
   },
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
-  name: "GolfeExpress",
+  name: "Do You Geckoo",
   description:
     "Plateforme de livraison locale connectant commerçants, clients et livreurs indépendants sur le Golfe de Saint-Tropez.",
   url: SITE_URL,

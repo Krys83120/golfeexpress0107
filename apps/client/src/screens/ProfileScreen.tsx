@@ -47,10 +47,10 @@ const HELP_CONTENT =
   "Comment passer une commande ?\nChoisissez un commerçant, ajoutez des articles à votre panier, puis validez votre adresse de livraison et votre paiement.\n\nComment suivre ma commande ?\nUn écran de suivi s'affiche automatiquement après validation, avec la position de votre livreur en temps réel une fois la commande prise en charge.\n\nComment annuler une commande ?\nContactez le support le plus rapidement possible — une commande déjà en préparation ne peut généralement plus être annulée.\n\nProblème avec ma commande ?\nUtilisez \"Contacter le support\" ci-contre, nous répondons sous 24h.";
 
 const TERMS_CONTENT =
-  "En utilisant GolfeExpress, vous acceptez que la plateforme mette en relation des commerçants locaux, des livreurs indépendants et des clients sur le Golfe de Saint-Tropez.\n\nLes commandes sont soumises à la disponibilité des commerçants et des livreurs. Les délais affichés sont estimatifs.\n\nLe paiement est dû au moment de la commande. Les remboursements en cas d'annulation ou de litige sont traités au cas par cas par notre support.\n\nCe document sera complété avec des conditions générales complètes avant le lancement public de la plateforme.";
+  "En utilisant Do You Geckoo, vous acceptez que la plateforme mette en relation des commerçants locaux, des livreurs indépendants et des clients sur le Golfe de Saint-Tropez.\n\nLes commandes sont soumises à la disponibilité des commerçants et des livreurs. Les délais affichés sont estimatifs.\n\nLe paiement est dû au moment de la commande. Les remboursements en cas d'annulation ou de litige sont traités au cas par cas par notre support.\n\nCe document sera complété avec des conditions générales complètes avant le lancement public de la plateforme.";
 
 const PRIVACY_CONTENT =
-  "GolfeExpress collecte les données nécessaires au bon fonctionnement du service : identité, adresses de livraison, historique de commandes, et position GPS pendant une livraison en cours (pour les livreurs).\n\nCes données sont partagées uniquement avec les commerçants et livreurs concernés par vos commandes, jamais revendues à des tiers.\n\nVous pouvez demander la suppression de votre compte et de vos données à tout moment via le support.\n\nCe document sera complété avec une politique de confidentialité complète avant le lancement public de la plateforme.";
+  "Do You Geckoo collecte les données nécessaires au bon fonctionnement du service : identité, adresses de livraison, historique de commandes, et position GPS pendant une livraison en cours (pour les livreurs).\n\nCes données sont partagées uniquement avec les commerçants et livreurs concernés par vos commandes, jamais revendues à des tiers.\n\nVous pouvez demander la suppression de votre compte et de vos données à tout moment via le support.\n\nCe document sera complété avec une politique de confidentialité complète avant le lancement public de la plateforme.";
 
 interface ProfileScreenProps {
   onLogout: () => void | Promise<void>;
@@ -126,7 +126,7 @@ export function ProfileScreen({ onLogout }: ProfileScreenProps) {
             <Text className="text-sm font-bold text-red-500">Se déconnecter</Text>
           </Pressable>
 
-          <Text className="mt-4 text-center text-xs text-gris">GolfeExpress v0.1.0 🦎</Text>
+          <Text className="mt-4 text-center text-xs text-gris">Do You Geckoo v0.1.0 🦎</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

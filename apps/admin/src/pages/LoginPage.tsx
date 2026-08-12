@@ -32,8 +32,8 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-nuit p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <span className="text-4xl">🦎</span>
-          <h1 className="mt-2 font-heading text-xl font-extrabold text-nuit">GolfeExpress Admin</h1>
+          <span className="text-7xl">🦎</span>
+          <h1 className="mt-2 font-heading text-xl font-extrabold text-nuit">Do You Geckoo Admin</h1>
           <p className="mt-1 text-sm text-gris">Accès réservé aux administrateurs</p>
         </div>
 

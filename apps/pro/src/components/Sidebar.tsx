@@ -43,9 +43,9 @@ export function Sidebar({ activeItem, onSelect }: SidebarProps) {
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-gris-light bg-white">
       <div className="flex items-center gap-2 px-6 py-6">
-        <span className="text-2xl">🦎</span>
+        <span className="text-5xl">🦎</span>
         <div>
-          <p className="font-heading text-base font-extrabold text-nuit">GolfeExpress</p>
+          <p className="font-heading text-base font-extrabold text-nuit">Do You Geckoo</p>
           <p className="text-xs text-gris">Espace Pro</p>
         </div>
       </div>

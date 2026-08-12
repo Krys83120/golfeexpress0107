@@ -1,23 +1,23 @@
 const FAQS = [
   {
-    q: "Dans quelles villes GolfeExpress livre-t-il ?",
-    a: "GolfeExpress livre actuellement à Sainte-Maxime et s'étend progressivement à l'ensemble du Golfe de Saint-Tropez (Saint-Tropez, Grimaud, Cogolin, Port-Grimaud). La zone de livraison exacte s'affiche automatiquement selon votre adresse dans l'application.",
+    q: "Dans quelles villes Do You Geckoo livre-t-il ?",
+    a: "Do You Geckoo livre actuellement à Sainte-Maxime et s'étend progressivement à l'ensemble du Golfe de Saint-Tropez (Saint-Tropez, Grimaud, Cogolin, Port-Grimaud). La zone de livraison exacte s'affiche automatiquement selon votre adresse dans l'application.",
   },
   {
     q: "Quel est le délai moyen de livraison ?",
     a: "La majorité des commandes sont livrées entre 20 et 30 minutes après validation, selon la distance entre le commerçant et l'adresse de livraison et la disponibilité des livreurs sur la zone.",
   },
   {
-    q: "En quoi GolfeExpress est-il différent d'Uber Eats ?",
-    a: "GolfeExpress applique une commission commerçant nettement plus basse (à partir de 10%, contre des taux qui peuvent atteindre 30% sur les grandes plateformes) et reverse une part plus importante de chaque course au livreur. C'est une plateforme locale, pensée pour le Golfe de Saint-Tropez, pas un acteur mondial.",
+    q: "En quoi Do You Geckoo est-il différent d'Uber Eats ?",
+    a: "Do You Geckoo applique une commission commerçant nettement plus basse (à partir de 10%, contre des taux qui peuvent atteindre 30% sur les grandes plateformes) et reverse une part plus importante de chaque course au livreur. C'est une plateforme locale, pensée pour le Golfe de Saint-Tropez, pas un acteur mondial.",
   },
   {
-    q: "Comment devenir livreur chez GolfeExpress ?",
-    a: "Inscrivez-vous en ligne avec votre pièce d'identité, les informations de votre véhicule et votre IBAN. Votre dossier est validé sous 24 à 48h par l'équipe GolfeExpress, après quoi vous pouvez vous connecter et passer en ligne quand vous le souhaitez, sans horaires imposés.",
+    q: "Comment devenir livreur chez Do You Geckoo ?",
+    a: "Inscrivez-vous en ligne avec votre pièce d'identité, les informations de votre véhicule et votre IBAN. Votre dossier est validé sous 24 à 48h par l'équipe Do You Geckoo, après quoi vous pouvez vous connecter et passer en ligne quand vous le souhaitez, sans horaires imposés.",
   },
   {
     q: "Combien coûte l'inscription pour un commerçant ?",
-    a: "L'inscription est gratuite. GolfeExpress se rémunère uniquement via une commission sur les commandes effectivement livrées, à partir de 10% selon la formule choisie — sans abonnement fixe obligatoire.",
+    a: "L'inscription est gratuite. Do You Geckoo se rémunère uniquement via une commission sur les commandes effectivement livrées, à partir de 10% selon la formule choisie — sans abonnement fixe obligatoire.",
   },
   {
     q: "Les applications mobiles sont-elles disponibles ?",

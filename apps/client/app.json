@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "GolfeExpress",
+    "name": "Do You Geckoo",
     "slug": "golfeexpress-client",
     "scheme": "golfeexpress-client",
     "version": "0.1.0",
@@ -23,8 +23,8 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "name": "GolfeExpress",
-      "shortName": "GolfeExpress",
+      "name": "Do You Geckoo",
+      "shortName": "Do You Geckoo",
       "themeColor": "#2ECC71",
       "backgroundColor": "#2ECC71",
       "display": "standalone",

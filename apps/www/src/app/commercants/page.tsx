@@ -7,7 +7,7 @@ import { fetchPublicPros } from "@/lib/publicApi";
 export const metadata: Metadata = {
   title: "Nos commerçants",
   description:
-    "Découvrez tous les commerçants partenaires de GolfeExpress sur Sainte-Maxime et le Golfe de Saint-Tropez : restaurants, boulangeries, fleuristes et plus, triés selon votre position.",
+    "Découvrez tous les commerçants partenaires de Do You Geckoo sur Sainte-Maxime et le Golfe de Saint-Tropez : restaurants, boulangeries, fleuristes et plus, triés selon votre position.",
 };
 
 export const revalidate = 60;

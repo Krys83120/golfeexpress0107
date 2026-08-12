@@ -41,9 +41,9 @@ export function Sidebar({ activeItem, onSelect, pendingCount }: SidebarProps) {
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-gris-light bg-nuit">
       <div className="flex items-center gap-2 px-6 py-6">
-        <span className="text-2xl">🦎</span>
+        <span className="text-5xl">🦎</span>
         <div>
-          <p className="font-heading text-base font-extrabold text-white">GolfeExpress</p>
+          <p className="font-heading text-base font-extrabold text-white">Do You Geckoo</p>
           <p className="text-xs text-white/50">
             {user ? `${user.firstName} ${user.lastName}` : "Super Admin"}
           </p>

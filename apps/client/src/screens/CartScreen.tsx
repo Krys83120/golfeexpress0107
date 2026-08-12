@@ -132,7 +132,7 @@ export function CartScreen({ onClose, onOrderCreated }: CartScreenProps) {
 
             <SummaryRow label="Sous-total" value={subtotal} />
             <SummaryRow label="Livraison" value={DELIVERY_FEE} valueColor="#2ECC71" />
-            <SummaryRow label="Service GolfeExpress" value={SERVICE_FEE} />
+            <SummaryRow label="Service Do You Geckoo" value={SERVICE_FEE} />
             <View className="mt-2 flex-row justify-between border-t border-gris-light pt-3">
               <Text className="font-heading text-lg font-bold text-nuit">Total</Text>
               <Text className="font-heading text-lg font-bold text-nuit">

@@ -250,7 +250,7 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
               {acceptTerms && <Ionicons name="checkmark" size={13} color="white" />}
             </View>
             <Text style={styles.termsText}>
-              J'accepte les Conditions Générales d'Utilisation et de Vente de GolfeExpress.
+              J'accepte les Conditions Générales d'Utilisation et de Vente de Do You Geckoo.
               {rider?.termsAcceptedAt && (
                 <Text style={{ color: "#6B7280" }}>{"\n"}Acceptées le {new Date(rider.termsAcceptedAt).toLocaleDateString("fr-FR")}.</Text>
               )}

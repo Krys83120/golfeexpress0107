@@ -104,7 +104,7 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
             <Text style={styles.logoutText}>Se déconnecter</Text>
           </Pressable>
 
-          <Text style={styles.version}>GolfeExpress Livreur v0.1.0 🦎</Text>
+          <Text style={styles.version}>Do You Geckoo Livreur v0.1.0 🦎</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

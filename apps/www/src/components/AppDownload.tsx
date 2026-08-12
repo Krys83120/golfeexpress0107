@@ -4,7 +4,7 @@ export function AppDownload() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <p className="mb-3 text-center text-sm font-bold uppercase tracking-widest text-corail">Sur votre téléphone</p>
         <h2 className="mx-auto max-w-2xl text-center font-heading text-2xl font-extrabold leading-tight text-nuit sm:text-4xl">
-          Utilisez GolfeExpress dès maintenant
+          Utilisez Do You Geckoo dès maintenant
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-center text-gris">
           En attendant leur arrivée sur l'App Store et Google Play, les applications Client et Livreur sont déjà

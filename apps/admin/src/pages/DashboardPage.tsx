@@ -54,7 +54,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="font-heading text-2xl font-extrabold text-nuit">Dashboard global</h1>
-          <p className="text-sm text-gris">Vue d'ensemble de la plateforme GolfeExpress 🦎</p>
+          <p className="text-sm text-gris">Vue d'ensemble de la plateforme Do You Geckoo 🦎</p>
         </div>
         <div className="rounded-sm bg-gris-light px-4 py-2 text-sm font-semibold text-nuit">
           Golfe de Saint-Tropez

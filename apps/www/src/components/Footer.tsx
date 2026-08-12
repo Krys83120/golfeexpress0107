@@ -5,8 +5,8 @@ export function Footer() {
         <div className="grid gap-10 sm:grid-cols-4">
           <div className="sm:col-span-2">
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🦎</span>
-              <span className="font-heading text-lg font-extrabold text-white">GolfeExpress</span>
+              <span className="text-6xl">🦎</span>
+              <span className="font-heading text-lg font-extrabold text-white">Do You Geckoo</span>
             </div>
             <p className="mt-4 max-w-sm text-sm">
               La livraison locale du Golfe de Saint-Tropez. Créée pour que les commerçants gardent plus de marge et
@@ -25,10 +25,10 @@ export function Footer() {
           </div>
 
           <div>
-            <p className="mb-4 text-xs font-bold uppercase tracking-wide text-white/40">GolfeExpress</p>
+            <p className="mb-4 text-xs font-bold uppercase tracking-wide text-white/40">Do You Geckoo</p>
             <ul className="space-y-2.5 text-sm">
-              <li><a href="#comment-ca-marche" className="hover:text-white">Comment ça marche</a></li>
-              <li><a href="#devenir-partenaire" className="hover:text-white">Devenir partenaire</a></li>
+              <li><a href="/#comment-ca-marche" className="hover:text-white">Comment ça marche</a></li>
+              <li><a href="/#devenir-partenaire" className="hover:text-white">Devenir partenaire</a></li>
               <li><a href="#" className="hover:text-white">Conditions générales</a></li>
               <li><a href="#" className="hover:text-white">Confidentialité</a></li>
             </ul>
@@ -36,7 +36,7 @@ export function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-xs sm:flex-row">
-          <p>© {new Date().getFullYear()} GolfeExpress — Sainte-Maxime, Golfe de Saint-Tropez</p>
+          <p>© {new Date().getFullYear()} Do You Geckoo — Sainte-Maxime, Golfe de Saint-Tropez</p>
           <p>Fait avec 🦎 sur la Côte d'Azur</p>
         </div>
       </div>

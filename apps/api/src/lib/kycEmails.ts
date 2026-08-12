@@ -7,7 +7,7 @@
  */
 
 const RESEND_API_URL = "https://api.resend.com/emails";
-const FROM_ADDRESS = "GolfeExpress <notifications@golfeexpress.fr>";
+const FROM_ADDRESS = "Do You Geckoo <notifications@doyougeckoo.fr>";
 
 const PRO_PORTAL_URL = "https://golfeexpress0107-pro.vercel.app";
 
@@ -40,13 +40,13 @@ function emailShell(bodyHtml: string): string {
   <div style="max-width:520px;margin:0 auto;padding:32px 20px;">
     <div style="text-align:center;margin-bottom:24px;">
       <span style="font-size:32px;">🦎</span>
-      <div style="font-size:20px;font-weight:800;color:#1A1A2E;margin-top:4px;">GolfeExpress</div>
+      <div style="font-size:20px;font-weight:800;color:#1A1A2E;margin-top:4px;">Do You Geckoo</div>
     </div>
     <div style="background:white;border-radius:16px;padding:32px;">
       ${bodyHtml}
     </div>
     <p style="text-align:center;color:#9CA3AF;font-size:12px;margin-top:24px;">
-      GolfeExpress — Sainte-Maxime, Golfe de Saint-Tropez
+      Do You Geckoo — Sainte-Maxime, Golfe de Saint-Tropez
     </p>
   </div>
 </body>
@@ -62,13 +62,13 @@ export async function sendProValidatedEmail(email: string, businessName: string)
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🎉 Votre boutique est validée !</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour,<br><br>
-      Bonne nouvelle : le dossier de <strong>${businessName}</strong> vient d'être validé par l'équipe GolfeExpress.
+      Bonne nouvelle : le dossier de <strong>${businessName}</strong> vient d'être validé par l'équipe Do You Geckoo.
       Votre boutique est maintenant visible par les clients du Golfe de Saint-Tropez et vous pouvez recevoir vos
       premières commandes.
     </p>
     ${button("Accéder à mon espace commerçant", PRO_PORTAL_URL)}
   `);
-  await sendEmail(email, "Votre boutique GolfeExpress est validée 🎉", html);
+  await sendEmail(email, "Votre boutique Do You Geckoo est validée 🎉", html);
 }
 
 export async function sendProRejectedEmail(email: string, businessName: string, reason: string): Promise<void> {
@@ -87,7 +87,7 @@ export async function sendProRejectedEmail(email: string, businessName: string, 
     </p>
     ${button("Corriger mon dossier", `${PRO_PORTAL_URL}/parametres`)}
   `);
-  await sendEmail(email, "Votre dossier GolfeExpress nécessite une correction", html);
+  await sendEmail(email, "Votre dossier Do You Geckoo nécessite une correction", html);
 }
 
 export async function sendRiderValidatedEmail(email: string, firstName: string): Promise<void> {
@@ -95,12 +95,12 @@ export async function sendRiderValidatedEmail(email: string, firstName: string):
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🎉 Votre dossier livreur est validé !</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour ${firstName},<br><br>
-      Votre dossier vient d'être validé par l'équipe GolfeExpress. Vous pouvez dès maintenant ouvrir l'app
+      Votre dossier vient d'être validé par l'équipe Do You Geckoo. Vous pouvez dès maintenant ouvrir l'app
       Livreur, passer en ligne, et commencer à livrer sur le Golfe de Saint-Tropez.
     </p>
-    <p style="font-size:13px;color:#6B7280;">Ouvrez simplement l'application GolfeExpress Livreur sur votre téléphone.</p>
+    <p style="font-size:13px;color:#6B7280;">Ouvrez simplement l'application Do You Geckoo Livreur sur votre téléphone.</p>
   `);
-  await sendEmail(email, "Votre dossier livreur GolfeExpress est validé 🎉", html);
+  await sendEmail(email, "Votre dossier livreur Do You Geckoo est validé 🎉", html);
 }
 
 export async function sendRiderRejectedEmail(email: string, firstName: string, reason: string): Promise<void> {
@@ -114,9 +114,9 @@ export async function sendRiderRejectedEmail(email: string, firstName: string, r
       <p style="font-size:14px;color:#1A1A2E;margin:0;">${reason}</p>
     </div>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
-      Ouvrez l'application GolfeExpress Livreur, rendez-vous dans "Mon dossier" pour corriger les informations
+      Ouvrez l'application Do You Geckoo Livreur, rendez-vous dans "Mon dossier" pour corriger les informations
       concernées, puis contactez-nous si besoin — votre demande sera réexaminée rapidement.
     </p>
   `);
-  await sendEmail(email, "Votre dossier livreur GolfeExpress nécessite une correction", html);
+  await sendEmail(email, "Votre dossier livreur Do You Geckoo nécessite une correction", html);
 }

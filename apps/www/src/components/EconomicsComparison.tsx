@@ -3,14 +3,14 @@ export function EconomicsComparison() {
     <section className="bg-nuit py-16 text-white sm:py-24">
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <p className="mb-3 text-center text-sm font-bold uppercase tracking-widest text-corail">
-          Pourquoi GolfeExpress existe
+          Pourquoi Do You Geckoo existe
         </p>
         <h2 className="mx-auto max-w-3xl text-center font-heading text-2xl font-extrabold leading-tight sm:text-4xl">
           Sur une course à 20 €, où va vraiment l'argent ?
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-sm text-white/70 sm:text-base">
           Les grandes plateformes prélèvent des commissions qui peuvent atteindre 30% sur les commerçants, et ne
-          reversent souvent qu'une part réduite au livreur qui fait le trajet. On a construit GolfeExpress pour
+          reversent souvent qu'une part réduite au livreur qui fait le trajet. On a construit Do You Geckoo pour
           inverser ce rapport.
         </p>
 
@@ -29,10 +29,10 @@ export function EconomicsComparison() {
             </p>
           </div>
 
-          {/* Colonne GolfeExpress */}
+          {/* Colonne Do You Geckoo */}
           <div className="rounded-3xl border-2 border-golfe-green bg-golfe-green/[0.08] p-6 sm:p-8">
             <p className="mb-1 text-xs font-bold uppercase tracking-wide text-golfe-green">Notre modèle</p>
-            <p className="mb-6 font-heading text-xl font-bold text-white">GolfeExpress</p>
+            <p className="mb-6 font-heading text-xl font-bold text-white">Do You Geckoo</p>
 
             <EarningsBar label="Commission plateforme" amountLabel="10 à 15%" widthPct={15} color="#2ECC71" />
             <EarningsBar label="Le livreur touche" amountLabel="≈ 7-8 €" widthPct={38} color="#2ECC71" />

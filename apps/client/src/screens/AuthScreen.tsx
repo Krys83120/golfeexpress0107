@@ -55,8 +55,8 @@ export function AuthScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }} keyboardShouldPersistTaps="handled">
           <View className="mb-8 items-center">
-            <Text style={{ fontSize: 56 }}>🦎</Text>
-            <Text className="mt-3 font-heading text-2xl font-extrabold text-nuit">GolfeExpress</Text>
+            <Text style={{ fontSize: 130 }}>🦎</Text>
+            <Text className="mt-3 font-heading text-2xl font-extrabold text-nuit">Do You Geckoo</Text>
             <Text className="mt-1 text-sm text-gris">
               {mode === "login" ? "Connectez-vous pour commander" : "Créez votre compte"}
             </Text>

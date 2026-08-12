@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!pro) return {};
   return {
     title: pro.businessName,
-    description: pro.description ?? `Découvrez les produits de ${pro.businessName} sur GolfeExpress, livraison locale du Golfe de Saint-Tropez.`,
+    description: pro.description ?? `Découvrez les produits de ${pro.businessName} sur Do You Geckoo, livraison locale du Golfe de Saint-Tropez.`,
   };
 }
 

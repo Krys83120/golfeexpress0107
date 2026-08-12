@@ -59,7 +59,7 @@ export function printOrderLabel(order: Order) {
 </head>
 <body>
   <div class="header">
-    <div class="logo">🦎 GolfeExpress</div>
+    <div class="logo">🦎 Do You Geckoo</div>
     <div class="order-number">${escapeHtml(order.orderNumber)}</div>
   </div>
   <div class="meta">

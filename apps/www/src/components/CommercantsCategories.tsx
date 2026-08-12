@@ -16,7 +16,7 @@ export function CommercantsCategories() {
           Le réseau s'agrandit chaque semaine sur le Golfe
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-gris">
-          De la boulangerie de quartier au restaurant réputé, GolfeExpress accueille les commerces locaux qui font
+          De la boulangerie de quartier au restaurant réputé, Do You Geckoo accueille les commerces locaux qui font
           vivre Sainte-Maxime et ses environs.
         </p>
 

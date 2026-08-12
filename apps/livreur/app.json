@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "GolfeExpress Livreur",
+    "name": "Do You Geckoo Livreur",
     "slug": "golfeexpress-livreur",
     "scheme": "golfeexpress-livreur",
     "version": "0.1.0",
@@ -16,8 +16,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "fr.golfeexpress.livreur",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "GolfeExpress utilise votre position pour vous proposer des commandes à proximité et partager votre trajet avec le client.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "GolfeExpress a besoin de votre position en arrière-plan pendant une livraison en cours."
+        "NSLocationWhenInUseUsageDescription": "Do You Geckoo utilise votre position pour vous proposer des commandes à proximité et partager votre trajet avec le client.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Do You Geckoo a besoin de votre position en arrière-plan pendant une livraison en cours."
       }
     },
     "android": {
@@ -28,7 +28,7 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "name": "GolfeExpress Livreur",
+      "name": "Do You Geckoo Livreur",
       "shortName": "GE Livreur",
       "themeColor": "#1A1A2E",
       "backgroundColor": "#1A1A2E",
