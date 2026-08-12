@@ -15,19 +15,19 @@ export async function fetchPendingValidations(): Promise<{ pendingPros: PendingP
 }
 
 /** POST /api/admin/pros/[proId]/validate */
-export async function validatePro(proId: string, approve: boolean): Promise<Pro> {
+export async function validatePro(proId: string, approve: boolean, reason?: string): Promise<Pro> {
   const data = await apiFetch<{ pro: Pro }>(`/api/admin/pros/${proId}/validate`, {
     method: "POST",
-    body: { approve },
+    body: { approve, reason },
   });
   return data.pro;
 }
 
 /** POST /api/admin/riders/[riderId]/validate */
-export async function validateRider(riderId: string, approve: boolean): Promise<Rider> {
+export async function validateRider(riderId: string, approve: boolean, reason?: string): Promise<Rider> {
   const data = await apiFetch<{ rider: Rider }>(`/api/admin/riders/${riderId}/validate`, {
     method: "POST",
-    body: { approve },
+    body: { approve, reason },
   });
   return data.rider;
 }

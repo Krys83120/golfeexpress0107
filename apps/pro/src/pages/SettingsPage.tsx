@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from "react";
-import type { Pro, OpeningHours } from "@golfeexpress/types";
+import type { Pro, OpeningHours, ProCategory } from "@golfeexpress/types";
 import {
   fetchMyShopProfile,
   updateMyShopProfile,
   fetchMyOpeningHours,
   updateMyOpeningHours,
   syncGoogleRating,
+  verifySiret,
+  updateMyShopAddress,
 } from "@/services/shopProfileApi";
 import { ImageUploadField } from "@/components/ImageUploadField";
-import { uploadProAsset, withCacheBust } from "@/services/uploadsApi";
-import { getCategoryEmoji } from "@/services/categoryVisuals";
+import { uploadProAsset, uploadProKbis, withCacheBust } from "@/services/uploadsApi";
+import { getCategoryEmoji, CATEGORY_LABELS } from "@/services/categoryVisuals";
+import { MapView, type MapPin } from "@/components/MapView";
 
 const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
@@ -21,6 +24,7 @@ export function SettingsPage() {
 
   // Champs contrôlés du formulaire "Informations générales"
   const [businessName, setBusinessName] = useState("");
+  const [category, setCategory] = useState<ProCategory | "">("");
   const [description, setDescription] = useState("");
   const [phone, setPhone] = useState("");
   const [emailContact, setEmailContact] = useState("");
@@ -38,12 +42,37 @@ export function SettingsPage() {
   const [syncingGoogle, setSyncingGoogle] = useState(false);
   const [socialMessage, setSocialMessage] = useState<string | null>(null);
 
+  // Informations légales
+  const [siret, setSiret] = useState("");
+  const [siretVerified, setSiretVerified] = useState(false);
+  const [verifyingSiret, setVerifyingSiret] = useState(false);
+  const [siretMessage, setSiretMessage] = useState<string | null>(null);
+  const [legalName, setLegalName] = useState("");
+  const [legalForm, setLegalForm] = useState("");
+  const [vatNumber, setVatNumber] = useState("");
+  const [managerFirstName, setManagerFirstName] = useState("");
+  const [managerLastName, setManagerLastName] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [termsAcceptedAt, setTermsAcceptedAt] = useState<string | null>(null);
+  const [savingLegal, setSavingLegal] = useState(false);
+  const [legalMessage, setLegalMessage] = useState<string | null>(null);
+  const [uploadingKbis, setUploadingKbis] = useState(false);
+
+  // Adresse de l'établissement
+  const [street, setStreet] = useState("");
+  const [complement, setComplement] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [city, setCity] = useState("");
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [addressMessage, setAddressMessage] = useState<string | null>(null);
+
   async function load() {
     setStatus("loading");
     try {
       const [shopProfile, openingHours] = await Promise.all([fetchMyShopProfile(), fetchMyOpeningHours()]);
       setPro(shopProfile);
       setBusinessName(shopProfile.businessName);
+      setCategory(shopProfile.category);
       setDescription(shopProfile.description ?? "");
       setPhone(shopProfile.phone);
       setEmailContact(shopProfile.emailContact);
@@ -52,6 +81,22 @@ export function SettingsPage() {
       setTiktokUrl(shopProfile.tiktokUrl ?? "");
       setWebsiteUrl(shopProfile.websiteUrl ?? "");
       setGooglePlaceId(shopProfile.googlePlaceId ?? "");
+      setSiret(shopProfile.siret ?? "");
+      setSiretVerified(shopProfile.siretVerified ?? false);
+      setLegalName(shopProfile.legalName ?? "");
+      setLegalForm(shopProfile.legalForm ?? "");
+      setVatNumber(shopProfile.vatNumber ?? "");
+      setManagerFirstName(shopProfile.managerFirstName ?? "");
+      setManagerLastName(shopProfile.managerLastName ?? "");
+      setAcceptTerms(!!shopProfile.termsAcceptedAt);
+      setTermsAcceptedAt(shopProfile.termsAcceptedAt ?? null);
+      const existingAddress = shopProfile.addresses?.[0];
+      if (existingAddress) {
+        setStreet(existingAddress.street);
+        setComplement(existingAddress.complement ?? "");
+        setZipCode(existingAddress.zipCode);
+        setCity(existingAddress.city);
+      }
 
       // S'il manque des jours (premier paramétrage), on complète avec des
       // valeurs par défaut "fermé" pour toujours afficher les 7 lignes.
@@ -87,7 +132,7 @@ export function SettingsPage() {
     setSavingProfile(true);
     setSaveMessage(null);
     try {
-      const updated = await updateMyShopProfile({ businessName, description, phone, emailContact });
+      const updated = await updateMyShopProfile({ businessName, category: category || undefined, description, phone, emailContact });
       setPro(updated);
       setSaveMessage("Informations enregistrées.");
     } catch (err) {
@@ -156,6 +201,88 @@ export function SettingsPage() {
       setSocialMessage(err instanceof Error ? `❌ ${err.message}` : "❌ Échec de la synchronisation.");
     } finally {
       setSyncingGoogle(false);
+    }
+  }
+
+  async function handleVerifySiret() {
+    setVerifyingSiret(true);
+    setSiretMessage(null);
+    try {
+      const result = await verifySiret(siret.trim());
+      if (result.valid) {
+        setSiretVerified(true);
+        setSiretMessage(`✅ SIRET vérifié — ${result.businessName ?? "entreprise trouvée"}.`);
+      } else {
+        setSiretVerified(false);
+        setSiretMessage(`⚠️ ${result.message ?? "SIRET introuvable."}`);
+      }
+    } catch (err) {
+      setSiretMessage(err instanceof Error ? `❌ ${err.message}` : "❌ Échec de la vérification.");
+    } finally {
+      setVerifyingSiret(false);
+    }
+  }
+
+  async function handleSaveAddress(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingAddress(true);
+    setAddressMessage(null);
+    try {
+      const address = await updateMyShopAddress({
+        street: street.trim(),
+        complement: complement.trim() || null,
+        zipCode: zipCode.trim(),
+        city: city.trim(),
+      });
+      setPro((prev) => (prev ? { ...prev, addresses: [{ ...prev.addresses?.[0], ...address, id: prev.addresses?.[0]?.id ?? "", label: "Boutique", isDefault: true }] } : prev));
+      setAddressMessage("✅ Adresse enregistrée et localisée sur la carte.");
+    } catch (err) {
+      setAddressMessage(err instanceof Error ? `❌ ${err.message}` : "❌ Impossible d'enregistrer l'adresse.");
+    } finally {
+      setSavingAddress(false);
+    }
+  }
+
+  async function handleUploadKbis(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !pro) return;
+    setUploadingKbis(true);
+    setLegalMessage(null);
+    try {
+      const url = await uploadProKbis(pro.id, file);
+      const updated = await updateMyShopProfile({ kbisUrl: withCacheBust(url) });
+      setPro(updated);
+      setLegalMessage("✅ Kbis mis à jour.");
+    } catch (err) {
+      setLegalMessage(err instanceof Error ? `❌ ${err.message}` : "❌ Échec de l'upload du Kbis.");
+    } finally {
+      setUploadingKbis(false);
+    }
+  }
+
+  async function handleSaveLegal(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingLegal(true);
+    setLegalMessage(null);
+    try {
+      const updated = await updateMyShopProfile({
+        siret: siret.trim() || undefined,
+        legalName: legalName.trim() || null,
+        legalForm: legalForm.trim() || null,
+        vatNumber: vatNumber.trim() || null,
+        managerFirstName: managerFirstName.trim() || null,
+        managerLastName: managerLastName.trim() || null,
+        ...(acceptTerms && !termsAcceptedAt ? { acceptTerms: true, termsVersion: "1.0" } : {}),
+      });
+      setPro(updated);
+      setSiretVerified(updated.siretVerified);
+      setTermsAcceptedAt(updated.termsAcceptedAt ?? null);
+      setLegalMessage("✅ Informations légales enregistrées.");
+    } catch (err) {
+      setLegalMessage(err instanceof Error ? `❌ ${err.message}` : "❌ Impossible d'enregistrer.");
+    } finally {
+      setSavingLegal(false);
     }
   }
 
@@ -232,6 +359,20 @@ export function SettingsPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Nom commercial" value={businessName} onChange={setBusinessName} />
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Catégorie d'activité</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as ProCategory)}
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            >
+              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {getCategoryEmoji(key as ProCategory)} {label}
+                </option>
+              ))}
+            </select>
+          </div>
           <Field label="SIRET" value={pro?.siret ?? ""} disabled />
           <Field label="Téléphone" value={phone} onChange={setPhone} />
           <Field label="Email de contact" value={emailContact} onChange={setEmailContact} />
@@ -251,6 +392,250 @@ export function SettingsPage() {
           className="mt-5 rounded-sm bg-golfe-green px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
         >
           {savingProfile ? "Enregistrement..." : "Enregistrer les informations"}
+        </button>
+      </form>
+
+      <form onSubmit={handleSaveAddress} className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+        <h3 className="mb-4 font-heading text-base font-bold text-nuit">📍 Adresse de l'établissement</h3>
+        <p className="mb-4 text-xs text-gris">
+          Cette adresse sert de point de retrait pour les livreurs et détermine votre position sur les cartes
+          Client et Admin — elle est localisée automatiquement lors de l'enregistrement.
+        </p>
+
+        <div className="mb-4 grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-gris">Rue</label>
+            <input
+              value={street}
+              onChange={(e) => setStreet(e.target.value)}
+              placeholder="Ex: 12 Avenue Charles de Gaulle"
+              required
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-gris">Complément d'adresse (optionnel)</label>
+            <input
+              value={complement}
+              onChange={(e) => setComplement(e.target.value)}
+              placeholder="Bâtiment, étage..."
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Code postal</label>
+            <input
+              value={zipCode}
+              onChange={(e) => setZipCode(e.target.value)}
+              placeholder="83120"
+              required
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Ville</label>
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Sainte-Maxime"
+              required
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        {addressMessage && <p className="mb-4 text-sm">{addressMessage}</p>}
+
+        {pro?.addresses?.[0] && (
+          <div className="mb-4">
+            <p className="mb-1.5 text-xs font-semibold text-gris">Position actuelle sur la carte</p>
+            <MapView
+              pins={[
+                {
+                  id: pro.id,
+                  lat: pro.addresses[0].lat,
+                  lng: pro.addresses[0].lng,
+                  color: "#2ECC71",
+                  label: getCategoryEmoji(pro.category),
+                },
+              ]}
+              height={220}
+            />
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={savingAddress}
+          className="rounded-sm bg-golfe-green px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {savingAddress ? "Localisation en cours..." : "Enregistrer l'adresse"}
+        </button>
+      </form>
+
+      <form onSubmit={handleSaveLegal} className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+        <h3 className="mb-4 font-heading text-base font-bold text-nuit">⚖️ Informations légales</h3>
+
+        <div className="mb-4">
+          <label className="mb-1 block text-xs font-semibold text-gris">SIRET</label>
+          <div className="flex gap-2">
+            <input
+              value={siret}
+              onChange={(e) => {
+                setSiret(e.target.value);
+                setSiretVerified(false);
+              }}
+              placeholder="14 chiffres"
+              maxLength={14}
+              className="flex-1 rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleVerifySiret}
+              disabled={verifyingSiret || siret.trim().length !== 14}
+              className="whitespace-nowrap rounded-sm border border-gris-light px-4 py-2 text-sm font-semibold text-nuit disabled:opacity-50"
+            >
+              {verifyingSiret ? "Vérification..." : "Vérifier"}
+            </button>
+          </div>
+          {siretVerified && (
+            <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-golfe-green">✅ SIRET vérifié</p>
+          )}
+          {siretMessage && <p className="mt-1.5 text-xs">{siretMessage}</p>}
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Raison sociale</label>
+            <input
+              value={legalName}
+              onChange={(e) => setLegalName(e.target.value)}
+              placeholder="Peut différer du nom commercial"
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Forme juridique</label>
+            <select
+              value={legalForm}
+              onChange={(e) => setLegalForm(e.target.value)}
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            >
+              <option value="">Choisir...</option>
+              <option value="Auto-entrepreneur">Auto-entrepreneur</option>
+              <option value="EI">Entreprise Individuelle (EI)</option>
+              <option value="EURL">EURL</option>
+              <option value="SARL">SARL</option>
+              <option value="SAS">SAS</option>
+              <option value="SASU">SASU</option>
+              <option value="SA">SA</option>
+              <option value="Autre">Autre</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Prénom du gérant</label>
+            <input
+              value={managerFirstName}
+              onChange={(e) => setManagerFirstName(e.target.value)}
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Nom du gérant</label>
+            <input
+              value={managerLastName}
+              onChange={(e) => setManagerLastName(e.target.value)}
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-gris">N° TVA intracommunautaire (si applicable)</label>
+            <input
+              value={vatNumber}
+              onChange={(e) => setVatNumber(e.target.value)}
+              placeholder="FR12345678901"
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="mb-4 border-t border-gris-light pt-4">
+          <label className="mb-1 block text-xs font-semibold text-gris">
+            Extrait Kbis <span className="font-normal text-gris">(obligatoire, de moins de 3 mois)</span>
+          </label>
+
+          {pro?.kbisUrl ? (
+            (() => {
+              const uploadedAt = pro.kbisUploadedAt ? new Date(pro.kbisUploadedAt) : null;
+              const ageMs = uploadedAt ? Date.now() - uploadedAt.getTime() : Infinity;
+              const isFresh = ageMs < 90 * 24 * 60 * 60 * 1000; // 90 jours ≈ 3 mois
+              return (
+                <div className="flex items-center gap-3 rounded-sm bg-gris-light p-3">
+                  <a
+                    href={pro.kbisUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 truncate text-sm font-semibold text-golfe-green underline"
+                  >
+                    📄 Voir le document envoyé
+                  </a>
+                  <span
+                    className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                    style={{ backgroundColor: isFresh ? "#E8F5E9" : "#FFF3E0", color: isFresh ? "#2ECC71" : "#FF6B35" }}
+                  >
+                    {isFresh
+                      ? `À jour${uploadedAt ? " (" + uploadedAt.toLocaleDateString("fr-FR") + ")" : ""}`
+                      : "⚠️ Plus de 3 mois — à renouveler"}
+                  </span>
+                </div>
+              );
+            })()
+          ) : (
+            <p className="rounded-sm bg-orange-50 p-3 text-sm text-corail">
+              ⚠️ Aucun Kbis fourni — nécessaire pour valider votre compte.
+            </p>
+          )}
+
+          <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-sm border border-gris-light px-3.5 py-2 text-xs font-semibold text-nuit hover:bg-gris-light">
+            {uploadingKbis ? "Envoi en cours..." : "📤 " + (pro?.kbisUrl ? "Remplacer le Kbis" : "Envoyer mon Kbis")}
+            <input type="file" accept="application/pdf,image/*" onChange={handleUploadKbis} disabled={uploadingKbis} className="hidden" />
+          </label>
+          <p className="mt-1 text-[11px] text-gris">
+            Téléchargeable gratuitement sur{" "}
+            <a href="https://www.infogreffe.fr" target="_blank" rel="noreferrer" className="underline">
+              infogreffe.fr
+            </a>{" "}
+            avec votre SIRET.
+          </p>
+        </div>
+
+        <div className="mb-4 border-t border-gris-light pt-4">
+          <label className="flex cursor-pointer items-start gap-2.5">
+            <input
+              type="checkbox"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-golfe-green"
+            />
+            <span className="text-sm text-nuit">
+              J'accepte les Conditions Générales d'Utilisation et de Vente de GolfeExpress.
+              {termsAcceptedAt && (
+                <span className="block text-xs text-gris">
+                  Acceptées le {new Date(termsAcceptedAt).toLocaleDateString("fr-FR")}.
+                </span>
+              )}
+            </span>
+          </label>
+        </div>
+
+        {legalMessage && <p className="mb-4 text-sm">{legalMessage}</p>}
+
+        <button
+          type="submit"
+          disabled={savingLegal}
+          className="rounded-sm bg-golfe-green px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {savingLegal ? "Enregistrement..." : "Enregistrer les informations légales"}
         </button>
       </form>
 

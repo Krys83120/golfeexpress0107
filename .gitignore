@@ -60,3 +60,6 @@ coverage/
 # Misc
 *.local
 package-lock.json
+
+deploy-client/
+deploy-livreur/

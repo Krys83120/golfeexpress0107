@@ -55,3 +55,39 @@ export async function uploadAvatar(userId: string, localUri: string): Promise<st
 export function withCacheBust(url: string): string {
   return `${url}?t=${Date.now()}`;
 }
+
+/**
+ * Upload un document KYC (recto/verso pièce d'identité, selfie de
+ * vérification). Bucket dédié "kyc-documents" — SÉPARÉ du bucket
+ * "avatars" (public) car ces documents ne doivent jamais être exposés
+ * publiquement, contrairement à une photo de profil classique.
+ */
+export async function uploadKycDocument(
+  userId: string,
+  kind: "id-front" | "id-back" | "selfie",
+  localUri: string
+): Promise<string> {
+  const fileInfo = await FileSystem.getInfoAsync(localUri);
+  if (fileInfo.exists && fileInfo.size > MAX_FILE_SIZE_BYTES) {
+    throw new UploadError("Image trop lourde (2 Mo maximum).");
+  }
+
+  const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
+  const ext = extensionFromUri(localUri);
+  const contentType = mimeTypeForExtension(ext);
+
+  const supabase = getSupabaseClient();
+  const path = `${userId}/${kind}.${ext}`;
+
+  const { error } = await supabase.storage.from("kyc-documents").upload(path, decode(base64), {
+    upsert: true,
+    contentType,
+  });
+
+  if (error) {
+    throw new UploadError(`Échec de l'upload : ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("kyc-documents").getPublicUrl(path);
+  return data.publicUrl;
+}

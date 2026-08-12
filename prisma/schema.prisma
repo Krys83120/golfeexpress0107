@@ -166,6 +166,16 @@ model Pro {
   userId            String      @unique @map("user_id")
   businessName      String      @map("business_name")
   siret             String      @unique
+  /// Vérifié automatiquement à la saisie via l'API publique Recherche
+  /// d'Entreprises (recherche-entreprises.api.gouv.fr, gratuite, sans clé).
+  siretVerified     Boolean     @default(false) @map("siret_verified")
+  siretVerifiedAt   DateTime?   @map("siret_verified_at")
+  /// Raison sociale — peut différer du nom commercial affiché aux clients (businessName).
+  legalName         String?     @map("legal_name")
+  legalForm         String?     @map("legal_form") // SARL, SAS, EI, auto-entrepreneur...
+  vatNumber         String?     @map("vat_number") // TVA intracommunautaire, si applicable
+  managerFirstName  String?     @map("manager_first_name")
+  managerLastName   String?     @map("manager_last_name")
   description       String?
   category          ProCategory
   logo              String?
@@ -195,6 +205,24 @@ model Pro {
   googleRatingCount   Int?      @map("google_rating_count")
   googleRatingSyncedAt DateTime? @map("google_rating_synced_at")
 
+  /// Preuve de consentement CGU/CGV — date, version acceptée, et IP au
+  /// moment de l'acceptation (utile en cas de litige).
+  termsAcceptedAt   DateTime?   @map("terms_accepted_at")
+  termsVersion      String?     @map("terms_version")
+  termsAcceptedIp   String?     @map("terms_accepted_ip")
+
+  /// Motif du dernier refus de validation KYC, transmis par email au Pro
+  /// pour qu'il puisse corriger et soumettre à nouveau.
+  rejectionReason   String?     @map("rejection_reason")
+
+  /// Extrait Kbis — obligatoire pour la validation du compte, doit dater
+  /// de moins de 3 mois (vérifié côté applicatif à partir de kbisUploadedAt,
+  /// pas de champ "date d'émission" séparé pour rester simple : on se base
+  /// sur la date d'upload, en informant clairement le Pro qu'il doit
+  /// re-uploader un Kbis récent si le sien a plus de 3 mois).
+  kbisUrl           String?     @map("kbis_url")
+  kbisUploadedAt    DateTime?   @map("kbis_uploaded_at")
+
   /// Adresse principale de retrait (pickup)
   /// Référence la première adresse de la boutique.
   /// Stockée ici pour éviter une requête supplémentaire au checkout côté Client.
@@ -212,9 +240,35 @@ model Pro {
 
 // ==================== LIVREUR (RIDER) ====================
 
+enum RiderProfessionalStatus {
+  AUTO_ENTREPRENEUR
+  SALARIE
+  INDEPENDANT
+  AUTRE
+}
+
 model Rider {
   id              String       @id @default(uuid())
   userId          String       @unique @map("user_id")
+  birthDate       DateTime?    @map("birth_date")
+  street          String?
+  zipCode         String?      @map("zip_code")
+  city            String?
+  /// Photo de profil — affichée publiquement au client/commerçant pendant
+  /// une livraison. Bien distincte de verificationSelfieUrl ci-dessous.
+  profilePhotoUrl String?      @map("profile_photo_url")
+  /// Selfie de vérification d'identité — usage interne uniquement (contrôle
+  /// KYC), ne doit JAMAIS être affiché publiquement ni traité comme une
+  /// simple photo de profil (voir considérations RGPD : accès restreint,
+  /// durée de conservation limitée à la durée strictement nécessaire à la
+  /// vérification + obligations légales, jamais réutilisé à d'autres fins).
+  verificationSelfieUrl String? @map("verification_selfie_url")
+  professionalStatus RiderProfessionalStatus? @map("professional_status")
+  /// SIRET du livreur lui-même, uniquement s'il exerce en indépendant
+  /// (auto-entrepreneur...) — distinct du SIRET d'un Pro (commerçant).
+  siret           String?
+  insuranceProvider String?    @map("insurance_provider")
+  insurancePolicyNumber String? @map("insurance_policy_number")
   vehicleType     VehicleType  @map("vehicle_type")
   vehiclePlate    String?      @map("vehicle_plate")
   licenseNumber   String?      @map("license_number")
@@ -231,6 +285,15 @@ model Rider {
   totalDeliveries Int          @default(0) @map("total_deliveries")
   totalEarnings   Decimal      @default(0) @db.Decimal(10,2) @map("total_earnings")
   balance         Decimal      @default(0) @db.Decimal(10,2)
+
+  /// Preuve de consentement CGU/CGV — voir Pro.termsAcceptedAt.
+  termsAcceptedAt   DateTime?   @map("terms_accepted_at")
+  termsVersion      String?     @map("terms_version")
+  termsAcceptedIp   String?     @map("terms_accepted_ip")
+
+  /// Motif du dernier refus de validation KYC — voir Pro.rejectionReason.
+  rejectionReason   String?     @map("rejection_reason")
+
   createdAt       DateTime     @default(now()) @map("created_at")
   
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)

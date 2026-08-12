@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,17 +7,19 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { uploadAvatar, withCacheBust } from "@/services/uploadsApi";
 import { updateMyUserProfile } from "@/services/userApi";
+import { RiderKycScreen } from "@/screens/RiderKycScreen";
 
 interface MenuRow {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  opensKyc?: boolean;
 }
 
 const ACCOUNT_ROWS: MenuRow[] = [
-  { icon: "person-outline", label: "Informations personnelles" },
-  { icon: "bicycle-outline", label: "Mon véhicule" },
-  { icon: "card-outline", label: "Coordonnées bancaires" },
-  { icon: "document-outline", label: "Mes documents (KYC)" },
+  { icon: "person-outline", label: "Informations personnelles", opensKyc: true },
+  { icon: "bicycle-outline", label: "Mon véhicule", opensKyc: true },
+  { icon: "card-outline", label: "Coordonnées bancaires", opensKyc: true },
+  { icon: "document-outline", label: "Mes documents (KYC)", opensKyc: true },
 ];
 
 const SUPPORT_ROWS: MenuRow[] = [
@@ -39,6 +41,7 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
   const setUser = useAuthStore((s) => s.setUser);
+  const [showKyc, setShowKyc] = useState(false);
 
   const firstName = user?.firstName ?? "Livreur";
   const lastName = user?.lastName ?? "";
@@ -50,6 +53,10 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
     const url = await uploadAvatar(user.id, localUri);
     const updated = await updateMyUserProfile({ avatar: withCacheBust(url) });
     setUser(updated);
+  }
+
+  if (showKyc) {
+    return <RiderKycScreen onClose={() => setShowKyc(false)} />;
   }
 
   return (
@@ -70,24 +77,26 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
           </View>
         </View>
 
-        <View style={styles.infoCard}>
+        <Pressable onPress={() => setShowKyc(true)} style={styles.infoCard}>
           <Text style={{ fontSize: 28 }}>{vehicleMeta.emoji}</Text>
           <View style={{ flex: 1 }}>
             <Text style={styles.infoTitle}>{vehicleMeta.label}</Text>
             <Text style={styles.subtle}>Plaque {profile?.vehiclePlate ?? "non renseignée"}</Text>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={16} color="#6B7280" />
+        </Pressable>
 
-        <View style={[styles.infoCard, { marginTop: 12 }]}>
+        <Pressable onPress={() => setShowKyc(true)} style={[styles.infoCard, { marginTop: 12 }]}>
           <Ionicons name="card" size={22} color="#1A1A2E" />
           <View style={{ flex: 1 }}>
             <Text style={styles.infoTitle}>{profile?.iban ? maskIban(profile.iban) : "Non renseigné"}</Text>
             <Text style={styles.subtle}>Compte de versement des gains</Text>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={16} color="#6B7280" />
+        </Pressable>
 
-        <MenuSection title="Mon compte" rows={ACCOUNT_ROWS} />
-        <MenuSection title="Aide & support" rows={SUPPORT_ROWS} />
+        <MenuSection title="Mon compte" rows={ACCOUNT_ROWS} onOpenKyc={() => setShowKyc(true)} />
+        <MenuSection title="Aide & support" rows={SUPPORT_ROWS} onOpenKyc={() => setShowKyc(true)} />
 
         <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
           <Pressable onPress={onLogout} style={styles.logoutBtn}>
@@ -102,13 +111,17 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
   );
 }
 
-function MenuSection({ title, rows }: { title: string; rows: MenuRow[] }) {
+function MenuSection({ title, rows, onOpenKyc }: { title: string; rows: MenuRow[]; onOpenKyc: () => void }) {
   return (
     <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <View style={{ borderRadius: 8, backgroundColor: "#F3F4F6" }}>
         {rows.map((row, index) => (
-          <Pressable key={row.label} style={[styles.menuRow, { borderTopWidth: index === 0 ? 0 : 1, borderTopColor: "#E5E7EB" }]}>
+          <Pressable
+            key={row.label}
+            onPress={row.opensKyc ? onOpenKyc : undefined}
+            style={[styles.menuRow, { borderTopWidth: index === 0 ? 0 : 1, borderTopColor: "#E5E7EB" }]}
+          >
             <Ionicons name={row.icon} size={18} color="#1A1A2E" />
             <Text style={{ flex: 1, fontSize: 14, color: "#1A1A2E" }}>{row.label}</Text>
             <Ionicons name="chevron-forward" size={16} color="#6B7280" />

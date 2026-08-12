@@ -1,0 +1,31 @@
+# GolfeExpress
+
+> Plateforme de livraison locale connectant commerçants, clients et livreurs indépendants sur le Golfe de Saint-Tropez (Sainte-Maxime, France).
+
+GolfeExpress a été créée en réaction aux commissions élevées prélevées par les grandes plateformes de livraison (jusqu'à 30% chez certains acteurs), qui laissent aux livreurs une rémunération jugée insuffisante par rapport au service rendu. GolfeExpress applique des commissions commerçants à partir de 10%, et reverse une part plus importante de chaque course au livreur, sans augmenter le prix payé par le client.
+
+## Zone couverte
+
+Sainte-Maxime, en extension vers Saint-Tropez, Grimaud, Cogolin et Port-Grimaud (Golfe de Saint-Tropez, Var, France).
+
+## Pour qui
+
+- **Clients** : commande de repas et produits locaux (restaurants, boulangeries, fleuristes, boucheries, beauté, épiceries fines), livraison en 20-30 minutes, suivi en temps réel.
+- **Commerçants** : inscription gratuite, commission dès 10% sur les commandes livrées, tableau de bord de gestion des commandes.
+- **Livreurs** : inscription en ligne, activation libre (aucun horaire imposé), rémunération suivie en temps réel, retraits flexibles.
+
+## Différence avec Uber Eats et plateformes similaires
+
+| | Plateformes classiques | GolfeExpress |
+|---|---|---|
+| Commission commerçant | Jusqu'à 30% | À partir de 10% |
+| Rémunération livreur (course type) | ≈ 4-5€ | ≈ 7-8€ |
+| Zone | Mondiale/générique | 100% Golfe de Saint-Tropez |
+
+## Pages clés
+
+- Site : https://www.golfeexpress.fr
+- Comment ça marche : https://www.golfeexpress.fr/#comment-ca-marche
+- Devenir livreur : https://www.golfeexpress.fr/#devenir-livreur
+- Devenir partenaire commerçant : https://www.golfeexpress.fr/#devenir-partenaire
+- FAQ : https://www.golfeexpress.fr/#faq

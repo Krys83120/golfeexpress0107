@@ -1,5 +1,29 @@
 import { apiFetch } from "@/services/apiClient";
-import type { User, Pro, Rider } from "@golfeexpress/types";
+import type { User, Pro, Rider, Address, Product } from "@golfeexpress/types";
+
+/** GET /api/admin/pros/:proId/products */
+export async function fetchAdminProProducts(proId: string): Promise<Product[]> {
+  const data = await apiFetch<{ products: Product[] }>(`/api/admin/pros/${proId}/products`);
+  return data.products;
+}
+
+/** PATCH /api/admin/pros/:proId/products/:productId */
+export async function toggleAdminProduct(proId: string, productId: string, isAvailable: boolean): Promise<Product> {
+  const data = await apiFetch<{ product: Product }>(`/api/admin/pros/${proId}/products/${productId}`, {
+    method: "PATCH",
+    body: { isAvailable },
+  });
+  return data.product;
+}
+
+/** PATCH /api/admin/pros/:proId/products/rename-category — modération : renomme/fusionne une catégorie. */
+export async function renameAdminProductCategory(proId: string, oldName: string, newName: string): Promise<number> {
+  const data = await apiFetch<{ updatedCount: number }>(`/api/admin/pros/${proId}/products/rename-category`, {
+    method: "PATCH",
+    body: { oldName, newName },
+  });
+  return data.updatedCount;
+}
 
 interface FetchUsersParams {
   role?: string;
@@ -33,8 +57,8 @@ export async function updateAdminUser(userId: string, payload: UpdateAdminUserPa
 }
 
 export interface AdminProRow extends Omit<Pro, "addresses" | "user"> {
-  user: Pick<User, "firstName" | "lastName" | "email">;
-  addresses: { city: string; lat: number; lng: number }[];
+  user: Pick<User, "firstName" | "lastName" | "email" | "phone">;
+  addresses: Address[];
   _count: { orders: number };
 }
 
@@ -67,4 +91,26 @@ export async function updateAdminRider(riderId: string, payload: UpdateAdminRide
     body: payload,
   });
   return data.rider;
+}
+
+export interface UpdateAdminProPayload {
+  businessName?: string;
+  legalName?: string | null;
+  legalForm?: string | null;
+  vatNumber?: string | null;
+  managerFirstName?: string | null;
+  managerLastName?: string | null;
+  phone?: string;
+  emailContact?: string;
+  category?: Pro["category"];
+  status?: Pro["status"];
+}
+
+/** PATCH /api/admin/pros/:proId */
+export async function updateAdminPro(proId: string, payload: UpdateAdminProPayload): Promise<AdminProRow> {
+  const data = await apiFetch<{ pro: AdminProRow }>(`/api/admin/pros/${proId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+  return data.pro;
 }

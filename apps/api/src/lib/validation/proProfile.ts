@@ -1,7 +1,15 @@
 import { z } from "zod";
+import { ProCategory } from "@golfeexpress/types";
 
 export const updateProProfileSchema = z.object({
   businessName: z.string().min(1).optional(),
+  category: z.nativeEnum(ProCategory).optional(),
+  /// SIRET modifiable ici (contrairement à `category`) — nécessaire pour
+  /// remplacer le placeholder "PENDING-xxxx" posé à l'inscription par le
+  /// vrai numéro. Le format (14 chiffres) est vérifié via un appel séparé
+  /// à POST /api/pros/me/verify-siret avant enregistrement côté UI, mais
+  /// on garde une validation de format minimale ici aussi côté serveur.
+  siret: z.string().regex(/^\d{14}$/, "Le SIRET doit contenir exactement 14 chiffres.").optional(),
   description: z.string().nullable().optional(),
   phone: z.string().min(8).optional(),
   emailContact: z.string().email().optional(),
@@ -12,6 +20,15 @@ export const updateProProfileSchema = z.object({
   tiktokUrl: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
   websiteUrl: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
   googlePlaceId: z.string().nullable().optional().or(z.literal("").transform(() => null)),
+  legalName: z.string().nullable().optional(),
+  legalForm: z.string().nullable().optional(),
+  vatNumber: z.string().nullable().optional(),
+  managerFirstName: z.string().nullable().optional(),
+  managerLastName: z.string().nullable().optional(),
+  kbisUrl: z.string().nullable().optional(),
+  /** true = le Pro vient d'accepter les CGU/CGV dans ce même appel. */
+  acceptTerms: z.boolean().optional(),
+  termsVersion: z.string().optional(),
 });
 
 export type UpdateProProfileInput = z.infer<typeof updateProProfileSchema>;

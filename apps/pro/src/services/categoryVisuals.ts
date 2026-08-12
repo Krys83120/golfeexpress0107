@@ -15,3 +15,15 @@ const CATEGORY_EMOJIS: Record<ProCategory, string> = {
 export function getCategoryEmoji(category: ProCategory): string {
   return CATEGORY_EMOJIS[category] ?? CATEGORY_EMOJIS[ProCategory.AUTRE];
 }
+
+export const CATEGORY_LABELS: Record<ProCategory, string> = {
+  [ProCategory.RESTAURANT]: "Restaurant",
+  [ProCategory.BOULANGERIE]: "Boulangerie",
+  [ProCategory.BOUCHERIE]: "Boucherie",
+  [ProCategory.EPICERIE]: "Épicerie",
+  [ProCategory.PHARMACIE]: "Pharmacie",
+  [ProCategory.FLEURISTE]: "Fleuriste",
+  [ProCategory.LIBRAIRIE]: "Librairie",
+  [ProCategory.PARFUMERIE]: "Parfumerie",
+  [ProCategory.AUTRE]: "Autre",
+};

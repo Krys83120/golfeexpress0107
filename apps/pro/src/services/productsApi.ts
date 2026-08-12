@@ -41,3 +41,12 @@ export async function updateProductOptions(productId: string, options: OptionGro
   });
   return data.product;
 }
+
+/** PATCH /api/pros/me/products/rename-category — renomme (ou fusionne) une catégorie sur tous les produits concernés. */
+export async function renameProductCategory(oldName: string, newName: string): Promise<number> {
+  const data = await apiFetch<{ updatedCount: number }>("/api/pros/me/products/rename-category", {
+    method: "PATCH",
+    body: { oldName, newName },
+  });
+  return data.updatedCount;
+}

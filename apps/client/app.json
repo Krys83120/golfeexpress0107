@@ -6,7 +6,9 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash.png",
       "backgroundColor": "#2ECC71"
     },
     "assetBundlePatterns": ["**/*"],
@@ -16,6 +18,17 @@
     },
     "android": {
       "package": "fr.golfeexpress.client"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "GolfeExpress",
+      "shortName": "GolfeExpress",
+      "themeColor": "#2ECC71",
+      "backgroundColor": "#2ECC71",
+      "display": "standalone",
+      "description": "Livraison locale du Golfe de Saint-Tropez"
     },
     "plugins": []
   }

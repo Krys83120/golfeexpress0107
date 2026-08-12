@@ -2,7 +2,7 @@ import React from "react";
 import {
   LayoutDashboard,
   ClipboardList,
-  UtensilsCrossed,
+  Package,
   Wallet,
   Star,
   Bell,
@@ -21,7 +21,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
   { key: "orders", label: "Commandes", icon: <ClipboardList size={18} /> },
-  { key: "menu", label: "Mon menu", icon: <UtensilsCrossed size={18} /> },
+  { key: "menu", label: "Produits", icon: <Package size={18} /> },
   { key: "finances", label: "Finances", icon: <Wallet size={18} /> },
   { key: "reviews", label: "Avis clients", icon: <Star size={18} /> },
   { key: "notifications", label: "Notifications", icon: <Bell size={18} /> },

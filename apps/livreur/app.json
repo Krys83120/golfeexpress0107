@@ -6,7 +6,9 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash.png",
       "backgroundColor": "#1A1A2E"
     },
     "assetBundlePatterns": ["**/*"],
@@ -21,6 +23,17 @@
     "android": {
       "package": "fr.golfeexpress.livreur",
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "GolfeExpress Livreur",
+      "shortName": "GE Livreur",
+      "themeColor": "#1A1A2E",
+      "backgroundColor": "#1A1A2E",
+      "display": "standalone",
+      "description": "Livrez sur le Golfe de Saint-Tropez, quand vous voulez"
     },
     "plugins": []
   }

@@ -106,3 +106,36 @@ export async function uploadProductGalleryImage(proId: string, productId: string
 export function withCacheBust(url: string): string {
   return `${url}?t=${Date.now()}`;
 }
+
+/**
+ * Upload le Kbis d'un Pro (bucket "pro-assets", déjà existant) — accepte
+ * PDF en plus des images (contrairement à assertValidImage utilisé pour
+ * logo/couverture), un Kbis étant le plus souvent un PDF officiel plutôt
+ * qu'une photo. L'horodatage de validité (moins de 3 mois) est calculé
+ * côté UI à partir de Pro.kbisUploadedAt, mis à jour côté serveur.
+ */
+export async function uploadProKbis(proId: string, file: File): Promise<string> {
+  const allowedKbisTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+  if (!allowedKbisTypes.includes(file.type)) {
+    throw new UploadError("Format non supporté. Utilisez un PDF, JPEG, PNG ou WebP.");
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    throw new UploadError("Fichier trop lourd (5 Mo maximum).");
+  }
+
+  const supabase = getSupabaseClient();
+  const ext = file.name.split(".").pop() || (file.type === "application/pdf" ? "pdf" : "jpg");
+  const path = `${proId}/kbis.${ext}`;
+
+  const { error } = await supabase.storage.from("pro-assets").upload(path, file, {
+    upsert: true,
+    contentType: file.type,
+  });
+
+  if (error) {
+    throw new UploadError(`Échec de l'upload : ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("pro-assets").getPublicUrl(path);
+  return data.publicUrl;
+}

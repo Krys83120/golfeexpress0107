@@ -46,6 +46,18 @@ export interface Pro {
   userId: string;
   businessName: string;
   siret: string;
+  siretVerified: boolean;
+  siretVerifiedAt?: string | null;
+  legalName?: string | null;
+  legalForm?: string | null;
+  vatNumber?: string | null;
+  managerFirstName?: string | null;
+  managerLastName?: string | null;
+  termsAcceptedAt?: string | null;
+  termsVersion?: string | null;
+  rejectionReason?: string | null;
+  kbisUrl?: string | null;
+  kbisUploadedAt?: string | null;
   description?: string | null;
   category: ProCategory;
   logo?: string | null;
@@ -74,9 +86,24 @@ export interface Pro {
   deliveryZones?: DeliveryZone[];
 }
 
+export type RiderProfessionalStatus = "AUTO_ENTREPRENEUR" | "SALARIE" | "INDEPENDANT" | "AUTRE";
+
 export interface Rider {
   id: string;
   userId: string;
+  birthDate?: string | null;
+  street?: string | null;
+  zipCode?: string | null;
+  city?: string | null;
+  profilePhotoUrl?: string | null;
+  verificationSelfieUrl?: string | null;
+  professionalStatus?: RiderProfessionalStatus | null;
+  siret?: string | null;
+  insuranceProvider?: string | null;
+  insurancePolicyNumber?: string | null;
+  termsAcceptedAt?: string | null;
+  termsVersion?: string | null;
+  rejectionReason?: string | null;
   vehicleType: VehicleType;
   vehiclePlate?: string | null;
   licenseNumber?: string | null;

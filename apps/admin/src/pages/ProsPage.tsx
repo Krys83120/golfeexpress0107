@@ -3,12 +3,15 @@ import { Search, MoreVertical, Star } from "lucide-react";
 import { PRO_STATUS_LABELS, SUBSCRIPTION_LABELS, PRO_CATEGORY_EMOJIS } from "@/services/proLabels";
 import { fetchAdminPros, type AdminProRow } from "@/services/adminEntitiesApi";
 import { MapView, type MapPin } from "@/components/MapView";
+import { ProDetailModal } from "@/components/ProDetailModal";
 
 export function ProsPage() {
   const [search, setSearch] = useState("");
   const [pros, setPros] = useState<AdminProRow[]>([]);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [selectedPro, setSelectedPro] = useState<AdminProRow | null>(null);
 
   useEffect(() => {
     fetchAdminPros()
@@ -93,7 +96,7 @@ export function ProsPage() {
                 const subMeta = SUBSCRIPTION_LABELS[pro.subscriptionType];
                 const rating = pro.rating ? Number(pro.rating) : null;
                 return (
-                  <tr key={pro.id} className="border-b border-gris-light last:border-0">
+                  <tr key={pro.id} className="relative border-b border-gris-light last:border-0">
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gris-light text-lg">
@@ -128,10 +131,29 @@ export function ProsPage() {
                         {statusMeta.label}
                       </span>
                     </td>
-                    <td className="py-3 pr-4 text-right">
-                      <button className="rounded-sm p-1.5 text-gris hover:bg-gris-light">
+                    <td className="relative py-3 pr-4 text-right">
+                      <button
+                        onClick={() => setOpenMenuId(openMenuId === pro.id ? null : pro.id)}
+                        className="rounded-sm p-1.5 text-gris hover:bg-gris-light"
+                      >
                         <MoreVertical size={16} />
                       </button>
+                      {openMenuId === pro.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                          <div className="absolute right-4 top-10 z-20 w-48 rounded-sm border border-gris-light bg-white py-1 shadow-lg">
+                            <button
+                              onClick={() => {
+                                setSelectedPro(pro);
+                                setOpenMenuId(null);
+                              }}
+                              className="block w-full px-4 py-2 text-left text-sm text-nuit hover:bg-gris-light"
+                            >
+                              Voir / modifier / valider
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </td>
                   </tr>
                 );
@@ -140,6 +162,14 @@ export function ProsPage() {
           </table>
         )}
       </div>
+
+      {selectedPro && (
+        <ProDetailModal
+          pro={selectedPro}
+          onClose={() => setSelectedPro(null)}
+          onUpdated={(updated) => setPros((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))}
+        />
+      )}
     </div>
   );
 }

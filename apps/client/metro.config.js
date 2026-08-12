@@ -14,8 +14,11 @@ config = withNativeWind(config, { input: "./global.css" });
 // la racine (celui du Pro/Admin) au lieu de celui de cette app,
 // provoquant des erreurs "Invalid hook call". On intercepte la résolution
 // via `resolveRequest` pour forcer react/react-native vers la copie
-// locale de cette app.
-const FORCE_LOCAL = ["react", "react-native"];
+// locale de cette app — et react-dom/react-native-web de la même façon
+// (uniquement hoisté à la racine avec React 18) pour que l'export web ne
+// charge pas deux copies de React en même temps ("ReactCurrentDispatcher"
+// indéfini).
+const FORCE_LOCAL = ["react", "react-native", "react-dom", "react-native-web"];
 const localOrigin = path.join(__dirname, "package.json");
 const defaultResolveRequest = config.resolver.resolveRequest;
 

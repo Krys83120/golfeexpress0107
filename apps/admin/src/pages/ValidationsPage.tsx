@@ -1,18 +1,27 @@
 import React, { useEffect, useState } from "react";
 import { ValidationCard } from "@/components/ValidationCard";
+import { ProDetailModal } from "@/components/ProDetailModal";
+import { RiderDetailModal } from "@/components/RiderDetailModal";
 import { useAdminDashboardStore } from "@/store/useAdminDashboardStore";
+import type { AdminProRow, AdminRiderRow } from "@/services/adminEntitiesApi";
 
 type ValidationKind = "PRO" | "RIDER";
 type FilterKind = "ALL" | ValidationKind;
 
 export function ValidationsPage() {
   const pendingValidations = useAdminDashboardStore((s) => s.pendingValidations);
+  const pendingProsRaw = useAdminDashboardStore((s) => s.pendingProsRaw);
+  const pendingRidersRaw = useAdminDashboardStore((s) => s.pendingRidersRaw);
   const status = useAdminDashboardStore((s) => s.status);
   const error = useAdminDashboardStore((s) => s.error);
   const loadPendingValidations = useAdminDashboardStore((s) => s.loadPendingValidations);
   const approve = useAdminDashboardStore((s) => s.approve);
   const reject = useAdminDashboardStore((s) => s.reject);
   const [filter, setFilter] = useState<FilterKind>("ALL");
+  const [selectedProId, setSelectedProId] = useState<string | null>(null);
+  const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     loadPendingValidations();
@@ -21,6 +30,9 @@ export function ValidationsPage() {
   const filtered = pendingValidations.filter((v) => filter === "ALL" || v.kind === filter);
   const proCount = pendingValidations.filter((v) => v.kind === "PRO").length;
   const riderCount = pendingValidations.filter((v) => v.kind === "RIDER").length;
+
+  const selectedPro = pendingProsRaw.find((p) => p.id === selectedProId);
+  const selectedRider = pendingRidersRaw.find((r) => r.id === selectedRiderId);
 
   return (
     <div className="flex-1 p-8">
@@ -53,23 +65,77 @@ export function ValidationsPage() {
                 <ValidationCard
                   validation={validation}
                   onApprove={() => approve(validation.id, validation.kind)}
-                  onReject={() => reject(validation.id, validation.kind)}
+                  onReject={() => setRejectingId(validation.id)}
                 />
-                <div className="flex gap-2 px-4 pb-3">
-                  {(validation.kind === "PRO"
-                    ? ["SIRET", "Photos boutique", "RIB"]
-                    : ["Pièce d'identité", "Permis de conduire", "RIB"]
-                  ).map((doc) => (
-                    <span key={doc} className="rounded-sm bg-gris-light px-2.5 py-1 text-xs text-gris">
-                      📎 {doc}
-                    </span>
-                  ))}
+                {rejectingId === validation.id && (
+                  <div className="mx-4 mb-3 rounded-sm bg-red-50 p-3">
+                    <label className="mb-1 block text-xs font-semibold text-nuit">
+                      Motif du refus (envoyé par email)
+                    </label>
+                    <textarea
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      rows={2}
+                      className="w-full rounded-sm border border-gris-light px-2.5 py-1.5 text-sm"
+                      placeholder="Ex: Document illisible, merci de renvoyer une photo plus nette."
+                    />
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setRejectingId(null);
+                          setRejectReason("");
+                        }}
+                        className="rounded-sm px-3 py-1.5 text-xs font-semibold text-gris"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        onClick={async () => {
+                          await reject(validation.id, validation.kind, rejectReason.trim());
+                          setRejectingId(null);
+                          setRejectReason("");
+                        }}
+                        disabled={!rejectReason.trim()}
+                        className="rounded-sm bg-red-500 px-3.5 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        Envoyer le refus
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center justify-between px-4 pb-3">
+                  <span className="text-xs text-gris">
+                    {validation.kind === "PRO" ? "SIRET, raison sociale, CGU" : "Pièce d'identité, selfie, assurance, CGU"}
+                  </span>
+                  <button
+                    onClick={() =>
+                      validation.kind === "PRO" ? setSelectedProId(validation.id) : setSelectedRiderId(validation.id)
+                    }
+                    className="rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-nuit hover:bg-gris-light"
+                  >
+                    📂 Voir le dossier complet
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {selectedPro && (
+        <ProDetailModal
+          pro={selectedPro as unknown as AdminProRow}
+          onClose={() => setSelectedProId(null)}
+          onUpdated={() => loadPendingValidations()}
+        />
+      )}
+      {selectedRider && (
+        <RiderDetailModal
+          rider={selectedRider as unknown as AdminRiderRow}
+          onClose={() => setSelectedRiderId(null)}
+          onUpdated={() => loadPendingValidations()}
+        />
+      )}
     </div>
   );
 }

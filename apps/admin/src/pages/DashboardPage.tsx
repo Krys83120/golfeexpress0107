@@ -115,7 +115,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 key={validation.id}
                 validation={validation}
                 onApprove={() => approve(validation.id, validation.kind)}
-                onReject={() => reject(validation.id, validation.kind)}
+                onReject={() => onNavigate?.("validations")}
               />
             ))}
           </div>

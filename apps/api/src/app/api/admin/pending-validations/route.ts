@@ -16,7 +16,11 @@ async function getHandler(req: NextRequest) {
   const [pendingPros, pendingRiders] = await Promise.all([
     prisma.pro.findMany({
       where: { status: "PENDING" },
-      include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } },
+      include: {
+        user: { select: { firstName: true, lastName: true, email: true, phone: true } },
+        addresses: true,
+        openingHours: true,
+      },
       orderBy: { createdAt: "asc" },
     }),
     prisma.rider.findMany({
@@ -26,7 +30,25 @@ async function getHandler(req: NextRequest) {
     }),
   ]);
 
-  return NextResponse.json({ pendingPros, pendingRiders });
+  // Decimal Prisma -> nombres JS, même raison que sur toutes les autres
+  // routes admin ce soir (sinon .toFixed()/calculs cassés côté front).
+  const serializedPros = pendingPros.map((pro) => ({
+    ...pro,
+    commissionRate: Number(pro.commissionRate),
+    rating: pro.rating !== null ? Number(pro.rating) : null,
+    googleRating: pro.googleRating !== null ? Number(pro.googleRating) : null,
+    addresses: pro.addresses.map((a) => ({ ...a, lat: Number(a.lat), lng: Number(a.lng) })),
+  }));
+  const serializedRiders = pendingRiders.map((r) => ({
+    ...r,
+    currentLat: r.currentLat !== null ? Number(r.currentLat) : null,
+    currentLng: r.currentLng !== null ? Number(r.currentLng) : null,
+    rating: r.rating !== null ? Number(r.rating) : null,
+    totalEarnings: Number(r.totalEarnings),
+    balance: Number(r.balance),
+  }));
+
+  return NextResponse.json({ pendingPros: serializedPros, pendingRiders: serializedRiders });
 }
 
 export const GET = withErrorHandling(getHandler);

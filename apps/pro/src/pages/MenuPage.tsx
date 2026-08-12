@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy, FolderCog } from "lucide-react";
 import { useProMenuStore } from "@/store/useProMenuStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ProductFormModal } from "@/components/ProductFormModal";
+import { CategoryManagerModal } from "@/components/CategoryManagerModal";
 import type { Product } from "@golfeexpress/types";
 
 function ProductThumbnail({ image }: { image: string | null | undefined }) {
@@ -28,6 +29,7 @@ export function MenuPage() {
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState<string | null>(null);
 
@@ -72,21 +74,34 @@ export function MenuPage() {
   // fermée — un Pro peut créer n'importe quelle catégorie (champ texte libre
   // côté schéma Product.category).
   const categories = Array.from(new Set(products.map((p) => p.category))).sort();
+  const categoriesWithCounts = categories.map((name) => ({
+    name,
+    count: products.filter((p) => p.category === name).length,
+  }));
 
   return (
     <div className="flex-1 p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-extrabold text-nuit">Mon menu</h1>
-          <p className="text-sm text-gris">{products.length} produits</p>
+          <h1 className="font-heading text-2xl font-extrabold text-nuit">Produits</h1>
+          <p className="text-sm text-gris">{products.length} produits · {categories.length} catégories</p>
         </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-2 rounded-sm bg-golfe-green px-4 py-2.5 text-sm font-semibold text-white"
-        >
-          <Plus size={16} />
-          Nouveau produit
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCategoryManager(true)}
+            className="flex items-center gap-2 rounded-sm border border-gris-light px-4 py-2.5 text-sm font-semibold text-nuit hover:bg-gris-light"
+          >
+            <FolderCog size={16} />
+            Gérer les catégories
+          </button>
+          <button
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-2 rounded-sm bg-golfe-green px-4 py-2.5 text-sm font-semibold text-white"
+          >
+            <Plus size={16} />
+            Nouveau produit
+          </button>
+        </div>
       </div>
 
       {status === "error" && (
@@ -194,6 +209,14 @@ export function MenuPage() {
             setEditingProduct(null);
           }}
           onSave={handleSave}
+        />
+      )}
+
+      {showCategoryManager && (
+        <CategoryManagerModal
+          categories={categoriesWithCounts}
+          onClose={() => setShowCategoryManager(false)}
+          onRenamed={loadProducts}
         />
       )}
     </div>

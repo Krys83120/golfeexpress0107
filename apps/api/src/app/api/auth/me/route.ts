@@ -29,9 +29,33 @@ async function getHandler(req: NextRequest) {
   }
 
   const { clientProfile, proProfile, riderProfile, adminProfile, ...userBase } = user;
-  const profile = clientProfile ?? proProfile ?? riderProfile ?? adminProfile ?? null;
+  const rawProfile = clientProfile ?? proProfile ?? riderProfile ?? adminProfile ?? null;
+
+  // Decimal Prisma (rating, commissionRate, totalEarnings, balance,
+  // currentLat/Lng, googleRating...) -> nombres JS, sinon sérialisés en
+  // texte côté JSON et cassent silencieusement les calculs/affichages dans
+  // les 4 apps qui consomment cette route à la connexion.
+  const profile = rawProfile ? serializeDecimalFields(rawProfile) : null;
 
   return NextResponse.json({ user: userBase, profile });
+}
+
+/**
+ * Convertit récursivement (1 niveau) tout champ Decimal Prisma en nombre
+ * JS. Générique plutôt que spécifique à un modèle car cette route renvoie
+ * indifféremment un Client, Pro, Rider ou Admin.
+ */
+function serializeDecimalFields<T extends Record<string, unknown>>(obj: T): T {
+  const result: Record<string, unknown> = { ...obj };
+  for (const key of Object.keys(result)) {
+    const value = result[key];
+    // Les valeurs Decimal de Prisma exposent toujours .toNumber() — on
+    // s'en sert comme détection plutôt que de lister les champs un par un.
+    if (value !== null && typeof value === "object" && typeof (value as { toNumber?: unknown }).toNumber === "function") {
+      result[key] = (value as { toNumber: () => number }).toNumber();
+    }
+  }
+  return result as T;
 }
 
 const updateMeSchema = z.object({
