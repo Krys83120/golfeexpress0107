@@ -79,6 +79,10 @@ export interface Pro {
   googleRatingCount?: number | null;
   googleRatingSyncedAt?: string | null;
   pickupAddressId?: string | null;
+  stripeAccountId?: string | null;
+  stripeChargesEnabled: boolean;
+  stripePayoutsEnabled: boolean;
+  stripeOnboardingComplete: boolean;
   createdAt: string;
   addresses?: Address[];
   products?: Product[];
@@ -120,6 +124,10 @@ export interface Rider {
   totalDeliveries: number;
   totalEarnings: number;
   balance: number;
+  stripeAccountId?: string | null;
+  stripeChargesEnabled: boolean;
+  stripePayoutsEnabled: boolean;
+  stripeOnboardingComplete: boolean;
   createdAt: string;
   user?: User;
 }

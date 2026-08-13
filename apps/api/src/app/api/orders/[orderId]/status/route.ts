@@ -4,6 +4,7 @@ import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { updateOrderStatusSchema } from "@/lib/validation/orders";
 import { canTransition, isTransitionAllowedForRole } from "@/lib/orderStateMachine";
+import { stripe } from "@/lib/stripe";
 
 /**
  * PATCH /api/orders/[orderId]/status
@@ -86,11 +87,37 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
     throw new ApiError(400, "Merci d'indiquer un temps de préparation estimé.");
   }
 
+  // Si la commande passe DELIVERED, on regarde AVANT la transaction si le
+  // Pro/Rider ont un compte Stripe Connect prêt à recevoir un virement — ça
+  // conditionne comment on comptabilise leur gain (voir plus bas).
+  let proReadyForPayout = false;
+  let riderReadyForPayout = false;
+  if (nextStatus === OrderStatus.DELIVERED) {
+    const pro = await prisma.pro.findUnique({
+      where: { id: order.proId },
+      select: { stripeAccountId: true, stripePayoutsEnabled: true },
+    });
+    proReadyForPayout = Boolean(pro?.stripeAccountId && pro.stripePayoutsEnabled);
+
+    if (order.riderId) {
+      const riderAccount = await prisma.rider.findUnique({
+        where: { id: order.riderId },
+        select: { stripeAccountId: true, stripePayoutsEnabled: true },
+      });
+      riderReadyForPayout = Boolean(riderAccount?.stripeAccountId && riderAccount.stripePayoutsEnabled);
+    }
+  }
+
   // À la livraison : on matérialise le gain du livreur (table Earning) et on
   // crédite son solde + compteurs, et on crédite les points de fidélité du
   // client. Tout se fait dans la même transaction que la mise à jour du
   // statut pour ne jamais avoir un Order DELIVERED sans Earning associé (ou
   // inversement).
+  //
+  // Le VRAI virement Stripe (argent qui bouge réellement) se fait juste
+  // après, hors transaction : un appel réseau à Stripe ne doit jamais
+  // rester ouvert dans une transaction DB, et un souci Stripe ponctuel ne
+  // doit jamais empêcher de valider la livraison elle-même.
   const updated = await prisma.$transaction(async (tx) => {
     const result = await tx.order.update({
       where: { id: order.id },
@@ -115,13 +142,21 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
             orderId: result.id,
             amount: result.riderEarnings,
             type: "DELIVERY_FEE",
-            status: "AVAILABLE",
+            // Si le virement Stripe automatique va se déclencher juste après
+            // (riderReadyForPayout), l'argent part réellement tout de suite
+            // : pas la peine de le compter aussi dans le solde "à retirer"
+            // manuellement, ça créerait un double comptage. status/paidAt
+            // définitifs sont mis à jour juste après le virement Stripe.
+            status: riderReadyForPayout ? "PAID" : "AVAILABLE",
           },
         });
         await tx.rider.update({
           where: { id: result.riderId },
           data: {
-            balance: { increment: result.riderEarnings },
+            // balance : uniquement incrémenté si PAS de virement auto (sinon
+            // l'argent a déjà quitté la plateforme, il n'y a rien "à
+            // retirer" en plus).
+            ...(riderReadyForPayout ? {} : { balance: { increment: result.riderEarnings } }),
             totalEarnings: { increment: result.riderEarnings },
             totalDeliveries: { increment: 1 },
           },
@@ -142,6 +177,54 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
 
     return result;
   });
+
+  // Virements Stripe Connect réels — best-effort, jamais bloquant. Si l'un
+  // des deux échoue (compte Stripe suspendu entre-temps, souci réseau...),
+  // la commande reste DELIVERED normalement ; l'argent correspondant reste
+  // simplement sur le solde plateforme et pourra être régularisé
+  // manuellement (proTransferId/riderTransferId resteront null, visibles
+  // depuis l'admin pour repérer les virements en attente).
+  if (nextStatus === OrderStatus.DELIVERED) {
+    if (proReadyForPayout) {
+      try {
+        const pro = await prisma.pro.findUnique({ where: { id: updated.proId }, select: { stripeAccountId: true } });
+        if (pro?.stripeAccountId) {
+          const transfer = await stripe.transfers.create({
+            amount: Math.round(Number(updated.proEarnings) * 100),
+            currency: "eur",
+            destination: pro.stripeAccountId,
+            transfer_group: updated.id,
+            metadata: { orderId: updated.id, orderNumber: updated.orderNumber, recipient: "pro" },
+          });
+          await prisma.order.update({ where: { id: updated.id }, data: { proTransferId: transfer.id } });
+        }
+      } catch (err) {
+        console.error(`[stripe connect] Échec virement Pro pour commande ${updated.id}:`, err);
+      }
+    }
+
+    if (riderReadyForPayout && updated.riderId) {
+      try {
+        const rider = await prisma.rider.findUnique({ where: { id: updated.riderId }, select: { stripeAccountId: true } });
+        if (rider?.stripeAccountId) {
+          const transfer = await stripe.transfers.create({
+            amount: Math.round(Number(updated.riderEarnings) * 100),
+            currency: "eur",
+            destination: rider.stripeAccountId,
+            transfer_group: updated.id,
+            metadata: { orderId: updated.id, orderNumber: updated.orderNumber, recipient: "rider" },
+          });
+          await prisma.order.update({ where: { id: updated.id }, data: { riderTransferId: transfer.id } });
+          await prisma.earning.updateMany({
+            where: { orderId: updated.id, riderId: updated.riderId },
+            data: { stripeTransferId: transfer.id, paidAt: new Date() },
+          });
+        }
+      } catch (err) {
+        console.error(`[stripe connect] Échec virement Rider pour commande ${updated.id}:`, err);
+      }
+    }
+  }
 
   return NextResponse.json({ order: updated });
 }

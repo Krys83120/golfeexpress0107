@@ -227,6 +227,21 @@ model Pro {
   /// Référence la première adresse de la boutique.
   /// Stockée ici pour éviter une requête supplémentaire au checkout côté Client.
   pickupAddressId String?  @map("pickup_address_id")
+
+  /// Stripe Connect (compte "Express") — permet au Pro de recevoir
+  /// automatiquement sa part de chaque commande directement sur son propre
+  /// compte bancaire, sans jamais transiter par notre base de données (ni
+  /// IBAN stocké, ni virement manuel). Voir apps/api/src/lib/stripeConnect.ts.
+  stripeAccountId          String?  @unique @map("stripe_account_id")
+  /// true dès que Stripe a fini de vérifier l'identité + les coordonnées
+  /// bancaires (mis à jour via le webhook account.updated).
+  stripeChargesEnabled     Boolean  @default(false) @map("stripe_charges_enabled")
+  /// true dès que Stripe peut réellement virer de l'argent sur le compte
+  /// bancaire du Pro — c'est CE flag qui conditionne le déclenchement des
+  /// virements automatiques (voir status/route.ts DELIVERED).
+  stripePayoutsEnabled     Boolean  @default(false) @map("stripe_payouts_enabled")
+  stripeOnboardingComplete Boolean  @default(false) @map("stripe_onboarding_complete")
+
   createdAt         DateTime    @default(now()) @map("created_at")
   
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -274,8 +289,19 @@ model Rider {
   licenseNumber   String?      @map("license_number")
   idCardFront     String       @map("id_card_front")
   idCardBack      String       @map("id_card_back")
+  /// @deprecated Conservé pour compatibilité avec l'ancien système de
+  /// retrait manuel (voir Withdrawal), mais plus utilisé pour les nouveaux
+  /// virements dès que stripePayoutsEnabled est true — voir stripeAccountId
+  /// ci-dessous, qui est désormais la vraie source de vérité bancaire.
   iban            String
   status          RiderStatus  @default(PENDING)
+
+  /// Stripe Connect (compte "Express") — voir Pro.stripeAccountId pour le
+  /// détail du fonctionnement, identique ici pour les livreurs.
+  stripeAccountId          String?  @unique @map("stripe_account_id")
+  stripeChargesEnabled     Boolean  @default(false) @map("stripe_charges_enabled")
+  stripePayoutsEnabled     Boolean  @default(false) @map("stripe_payouts_enabled")
+  stripeOnboardingComplete Boolean  @default(false) @map("stripe_onboarding_complete")
   isOnline        Boolean      @default(false) @map("is_online")
   currentLat      Decimal?     @db.Decimal(10,8) @map("current_lat")
   currentLng      Decimal?     @db.Decimal(11,8) @map("current_lng")
@@ -401,6 +427,14 @@ model Order {
   proEarnings     Decimal     @db.Decimal(10,2) @map("pro_earnings")
   riderEarnings   Decimal     @db.Decimal(6,2) @map("rider_earnings")
   platformEarnings Decimal    @db.Decimal(10,2) @map("platform_earnings")
+
+  /// Id du virement Stripe Connect (transfer) envoyé au Pro/Rider pour
+  /// cette commande, rempli uniquement si leur compte Stripe était prêt à
+  /// recevoir des paiements au moment de la livraison (voir status/route.ts).
+  /// null = pas encore transféré (soit compte pas encore configuré, soit
+  /// le transfert a échoué — jamais bloquant pour la livraison elle-même).
+  proTransferId   String?     @map("pro_transfer_id")
+  riderTransferId String?     @map("rider_transfer_id")
   
   placedAt        DateTime    @default(now()) @map("placed_at")
   acceptedAt      DateTime?   @map("accepted_at")
@@ -474,6 +508,10 @@ model Earning {
   amount      Decimal     @db.Decimal(8,2)
   type        EarningType
   status      EarningStatus @default(PENDING)
+  /// Id du virement Stripe Connect si ce gain a été payé automatiquement
+  /// (status passe directement à PAID dans ce cas, sans jamais transiter
+  /// par Rider.balance/Withdrawal — voir orders/[orderId]/status/route.ts).
+  stripeTransferId String?  @map("stripe_transfer_id")
   createdAt   DateTime    @default(now()) @map("created_at")
   paidAt      DateTime?   @map("paid_at")
   

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, Modal, ActivityIndicator, TextInput, Alert, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, Modal, ActivityIndicator, TextInput, Alert, StyleSheet, Linking, AppState } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useEarningsStore } from "@/store/useEarningsStore";
 import { EARNING_TYPE_LABELS, WITHDRAWAL_STATUS_LABELS } from "@/services/earningsLabels";
+import { fetchStripeConnectStatus, createStripeOnboardingLink, type StripeConnectStatus } from "@/services/stripeConnectApi";
 
 type Tab = "history" | "withdrawals";
 
@@ -24,12 +25,45 @@ function formatDateLabel(iso: string): string {
 export function EarningsScreen() {
   const [tab, setTab] = useState<Tab>("history");
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
 
   const { earnings, withdrawals, summary, status, load } = useEarningsStore();
 
+  function loadStripeStatus() {
+    fetchStripeConnectStatus()
+      .then(setStripeStatus)
+      .catch(() => {
+        /* affichage silencieux : la carte reste sur son état par défaut */
+      });
+  }
+
   useEffect(() => {
     load();
+    loadStripeStatus();
+
+    // Le formulaire Stripe s'ouvre dans le navigateur système (pas dans
+    // l'app) : on rafraîchit le statut dès que l'utilisateur revient sur
+    // l'app plutôt que d'attendre qu'il quitte puis rouvre l'écran.
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        loadStripeStatus();
+      }
+    });
+    return () => subscription.remove();
   }, []);
+
+  async function handleConfigureBankAccount() {
+    setOnboardingLoading(true);
+    try {
+      const url = await createStripeOnboardingLink();
+      await Linking.openURL(url);
+    } catch (err) {
+      Alert.alert("Erreur", "Impossible d'ouvrir le formulaire bancaire Stripe. Réessayez dans un instant.");
+    } finally {
+      setOnboardingLoading(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
@@ -44,6 +78,28 @@ export function EarningsScreen() {
           </View>
         ) : (
           <>
+            {!stripeStatus?.payoutsEnabled && (
+              <View style={styles.bankCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bankCardTitle}>
+                    {stripeStatus?.connected ? "🏦 Inscription bancaire incomplète" : "🏦 Coordonnées bancaires"}
+                  </Text>
+                  <Text style={styles.bankCardSubtitle}>
+                    {stripeStatus?.onboardingComplete
+                      ? "Vérification Stripe en cours..."
+                      : "Configurez-les pour être payé automatiquement après chaque livraison."}
+                  </Text>
+                </View>
+                <Pressable onPress={handleConfigureBankAccount} disabled={onboardingLoading} style={styles.bankCardBtn}>
+                  {onboardingLoading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text style={styles.bankCardBtnText}>{stripeStatus?.connected ? "Continuer" : "Configurer"}</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
+
             <View style={[styles.balanceCard, { backgroundColor: "#1A1A2E" }]}>
               <Text style={styles.balanceLabel}>Solde disponible</Text>
               <Text style={styles.balanceAmount}>{(summary?.availableBalance ?? 0).toFixed(2).replace(".", ",")} €</Text>
@@ -183,7 +239,8 @@ function WithdrawModal({ onClose, availableBalance }: { onClose: () => void; ava
         <TextInput value={amountText} onChangeText={setAmountText} keyboardType="decimal-pad" style={styles.modalInput} />
 
         <Text style={{ marginBottom: 8, fontSize: 12, color: "#6B7280" }}>
-          Le virement sera effectué sur votre IBAN enregistré, sous 1 à 3 jours ouvrés.
+          Le virement sera effectué sur votre IBAN enregistré, sous 1 à 3 jours ouvrés. Configurez vos coordonnées
+          bancaires Stripe ci-dessus pour être payé automatiquement à l'avenir, sans passer par un retrait manuel.
         </Text>
 
         <Pressable
@@ -206,6 +263,20 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "white" },
   headerWrap: { paddingHorizontal: 20, paddingBottom: 8, paddingTop: 16 },
   headerTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A2E" },
+  bankCard: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 12,
+    backgroundColor: "#FFF4EE",
+    padding: 16,
+  },
+  bankCardTitle: { fontSize: 13, fontWeight: "700", color: "#1A1A2E" },
+  bankCardSubtitle: { marginTop: 2, fontSize: 12, color: "#6B7280" },
+  bankCardBtn: { borderRadius: 8, backgroundColor: "#FF6B35", paddingHorizontal: 14, paddingVertical: 10 },
+  bankCardBtnText: { fontSize: 12, fontWeight: "700", color: "white" },
   balanceCard: { marginHorizontal: 20, marginTop: 12, borderRadius: 16, padding: 20 },
   balanceLabel: { fontSize: 13, color: "rgba(255,255,255,0.7)" },
   balanceAmount: { marginTop: 4, fontSize: 32, fontWeight: "800", color: "white" },

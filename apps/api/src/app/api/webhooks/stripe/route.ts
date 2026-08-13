@@ -22,6 +22,14 @@ import { prisma } from "@/lib/prisma";
  * Configuration requise côté Stripe Dashboard > Webhooks :
  *   URL: https://<votre-domaine>/api/webhooks/stripe
  *   Events à écouter: payment_intent.succeeded, payment_intent.payment_failed
+ *   Périmètre de destination : "Votre compte" (pas "Comptes connectés")
+ *
+ * NOTE: l'event account.updated (statut onboarding Stripe Connect des
+ * Pro/Rider) est géré par une route SÉPARÉE : webhooks/stripe-connect. Ce
+ * n'est pas un choix arbitraire — Stripe achemine les events "Comptes
+ * connectés" et "Votre compte" vers des destinations distinctes, chacune
+ * avec sa propre clé de signature ; les mélanger dans un seul endpoint
+ * casserait la vérification de signature pour l'un des deux types d'event.
  */
 export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
@@ -79,6 +87,14 @@ export async function POST(req: NextRequest) {
             data: { paymentStatus: PaymentStatus.FAILED },
           });
         }
+        break;
+      }
+
+      case "account.updated": {
+        // Ne devrait jamais arriver ici avec la config recommandée (voir
+        // webhooks/stripe-connect) mais on l'ignore proprement si jamais
+        // ce endpoint reçoit quand même cet event un jour (config Stripe
+        // différente) plutôt que de planter.
         break;
       }
 
