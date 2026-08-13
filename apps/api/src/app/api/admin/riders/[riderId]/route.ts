@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { UserRole, RiderStatus, VehicleType } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
+import { sendAccountSuspendedEmail, sendAccountReactivatedEmail } from "@/lib/emails/accountEmails";
 
 /**
  * PATCH /api/admin/riders/[riderId]
@@ -50,6 +51,21 @@ async function patchHandler(req: NextRequest, ctx: { params: { riderId: string }
     data,
     include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } },
   });
+
+  if (data.status && data.status !== existing.status) {
+    if (data.status === RiderStatus.SUSPENDED || data.status === RiderStatus.BANNED) {
+      sendAccountSuspendedEmail(rider.user.email, rider.user.firstName, "rider").catch((err) =>
+        console.error("[admin riders] Échec email suspension:", err)
+      );
+    } else if (
+      (existing.status === RiderStatus.SUSPENDED || existing.status === RiderStatus.BANNED) &&
+      data.status === RiderStatus.ACTIVE
+    ) {
+      sendAccountReactivatedEmail(rider.user.email, rider.user.firstName, "rider").catch((err) =>
+        console.error("[admin riders] Échec email réactivation:", err)
+      );
+    }
+  }
 
   return NextResponse.json({
     rider: {

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, Image, ActivityIndicator, Alert, StyleSheet } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { Ionicons } from "@expo/vector-icons";
 
 interface DocumentPhotoFieldProps {
   label: string;
@@ -81,11 +80,11 @@ export function DocumentPhotoField({ label, hint, currentImageUrl, isSelfie, onU
 
       <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
         <Pressable onPress={handleTakePhoto} disabled={uploading} style={styles.btn}>
-          <Ionicons name="camera" size={15} color="#1A1A2E" />
+          <Text style={{ fontSize: 14 }}>📷</Text>
           <Text style={styles.btnText}>Prendre une photo</Text>
         </Pressable>
         <Pressable onPress={handlePickFromGallery} disabled={uploading} style={styles.btn}>
-          <Ionicons name="image" size={15} color="#1A1A2E" />
+          <Text style={{ fontSize: 14 }}>🖼️</Text>
           <Text style={styles.btnText}>Galerie</Text>
         </Pressable>
       </View>

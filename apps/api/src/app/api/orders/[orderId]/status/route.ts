@@ -5,6 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { updateOrderStatusSchema } from "@/lib/validation/orders";
 import { canTransition, isTransitionAllowedForRole } from "@/lib/orderStateMachine";
 import { stripe } from "@/lib/stripe";
+import {
+  sendOrderPreparingEmail,
+  sendOrderOnTheWayEmail,
+  sendOrderDeliveredEmail,
+  sendOrderCancelledEmail,
+  sendOrderCancelledByClientToProEmail,
+} from "@/lib/emails/orderEmails";
+import { sendTransferFailedAlert } from "@/lib/emails/adminEmails";
 
 /**
  * PATCH /api/orders/[orderId]/status
@@ -200,6 +208,12 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
         }
       } catch (err) {
         console.error(`[stripe connect] Échec virement Pro pour commande ${updated.id}:`, err);
+        sendTransferFailedAlert(
+          "pro",
+          updated.orderNumber,
+          Number(updated.proEarnings),
+          err instanceof Error ? err.message : "Erreur inconnue"
+        ).catch(() => {});
       }
     }
 
@@ -222,6 +236,63 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
         }
       } catch (err) {
         console.error(`[stripe connect] Échec virement Rider pour commande ${updated.id}:`, err);
+        sendTransferFailedAlert(
+          "rider",
+          updated.orderNumber,
+          Number(updated.riderEarnings),
+          err instanceof Error ? err.message : "Erreur inconnue"
+        ).catch(() => {});
+      }
+    }
+  }
+
+  // Emails "suivi de commande" (client) — best-effort, jamais bloquant.
+  // On ne notifie que sur les transitions qui apportent une vraie info
+  // utile au client (pas READY/RIDER_ASSIGNED/IN_DELIVERY, redondants avec
+  // le suivi en direct dans l'app) pour éviter de le noyer d'emails.
+  const EMAIL_NOTIFIED_STATUSES: OrderStatus[] = [
+    OrderStatus.PREPARING,
+    OrderStatus.PICKED_UP,
+    OrderStatus.DELIVERED,
+    OrderStatus.CANCELLED,
+  ];
+  if (EMAIL_NOTIFIED_STATUSES.includes(nextStatus)) {
+    const [client, pro] = await Promise.all([
+      prisma.client.findUnique({ where: { id: updated.clientId }, include: { user: true } }),
+      prisma.pro.findUnique({ where: { id: updated.proId } }),
+    ]);
+    const emailData = {
+      orderNumber: updated.orderNumber,
+      total: Number(updated.total),
+      proBusinessName: pro?.businessName ?? "",
+      items: updated.items.map((i) => ({ productName: i.productName, quantity: i.quantity, totalPrice: Number(i.totalPrice) })),
+    };
+
+    if (client) {
+      if (nextStatus === OrderStatus.PREPARING) {
+        sendOrderPreparingEmail(client.user.email, emailData, estimatedPrepMinutes ?? 0).catch((err) =>
+          console.error("[order status] Échec email préparation:", err)
+        );
+      } else if (nextStatus === OrderStatus.PICKED_UP) {
+        sendOrderOnTheWayEmail(client.user.email, emailData).catch((err) =>
+          console.error("[order status] Échec email en route:", err)
+        );
+      } else if (nextStatus === OrderStatus.DELIVERED) {
+        sendOrderDeliveredEmail(client.user.email, emailData).catch((err) =>
+          console.error("[order status] Échec email livrée:", err)
+        );
+      } else if (nextStatus === OrderStatus.CANCELLED) {
+        const cancelledBy = auth.role === UserRole.CLIENT ? "client" : auth.role === UserRole.PRO ? "pro" : "system";
+        sendOrderCancelledEmail(client.user.email, emailData, cancelledBy).catch((err) =>
+          console.error("[order status] Échec email annulation:", err)
+        );
+        // Le Pro est notifié uniquement si c'est le CLIENT qui a annulé —
+        // s'il a annulé lui-même, il le sait déjà.
+        if (auth.role === UserRole.CLIENT && pro) {
+          sendOrderCancelledByClientToProEmail(pro.emailContact, emailData).catch((err) =>
+            console.error("[order status] Échec email annulation (pro):", err)
+          );
+        }
       }
     }
   }

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import type { Rider, RiderProfessionalStatus } from "@golfeexpress/types";
 import { VehicleType } from "@golfeexpress/types";
 import { fetchMyRiderProfile, updateMyRiderProfile } from "@/services/riderProfileApi";
@@ -129,7 +128,7 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
     <SafeAreaView style={styles.root} edges={["top"]}>
       <View style={styles.header}>
         <Pressable onPress={onClose} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={18} color="#1A1A2E" />
+          <Text style={{ fontSize: 18, color: "#1A1A2E" }}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>📋 Mon dossier</Text>
       </View>
@@ -241,7 +240,7 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
 
         <Section title="Coordonnées bancaires">
           <View style={styles.bankRedirectBox}>
-            <Ionicons name="card-outline" size={20} color="#1A1A2E" />
+            <Text style={{ fontSize: 18 }}>💳</Text>
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={styles.bankRedirectTitle}>Gérées depuis l'écran "Mes gains"</Text>
               <Text style={styles.bankRedirectText}>
@@ -255,7 +254,7 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
         <Section title="Conditions générales">
           <Pressable onPress={() => setAcceptTerms((v) => !v)} style={styles.termsRow}>
             <View style={[styles.checkbox, acceptTerms && styles.checkboxActive]}>
-              {acceptTerms && <Ionicons name="checkmark" size={13} color="white" />}
+              {acceptTerms && <Text style={{ fontSize: 11, color: "white", fontWeight: "700" }}>✓</Text>}
             </View>
             <Text style={styles.termsText}>
               J'accepte les Conditions Générales d'Utilisation et de Vente de Do You Geckoo.

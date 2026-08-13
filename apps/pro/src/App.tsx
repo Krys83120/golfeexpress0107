@@ -8,6 +8,7 @@ import { ReviewsPage } from "@/pages/ReviewsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { NotificationsPage } from "@/pages/NotificationsPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProOrdersStore } from "@/store/useProOrdersStore";
 import { useNewOrderNotifications } from "@/hooks/useNewOrderNotifications";
@@ -61,9 +62,30 @@ export default function App() {
   const status = useAuthStore((s) => s.status);
   const restoreSession = useAuthStore((s) => s.restoreSession);
 
+  // Arrivée depuis le lien "mot de passe oublié" reçu par email
+  // (?reset_token=...) — prioritaire sur tout le reste, quel que soit le
+  // statut de connexion courant. Pas de vrai router dans cette app (state
+  // switch simple), donc on lit directement l'URL au montage.
+  const [resetToken] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("reset_token");
+  });
+
   useEffect(() => {
     restoreSession();
   }, []);
+
+  if (resetToken) {
+    return (
+      <ResetPasswordPage
+        token={resetToken}
+        onDone={() => {
+          window.history.replaceState({}, "", window.location.pathname);
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
   if (status === "idle" || status === "loading") {
     return (

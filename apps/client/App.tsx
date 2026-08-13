@@ -8,6 +8,7 @@ import type { Order } from "@golfeexpress/types";
 
 import { useAuthStore } from "@/store/useAuthStore";
 import { AuthScreen } from "@/screens/AuthScreen";
+import { ResetPasswordScreen } from "@/screens/ResetPasswordScreen";
 import { HomeScreen } from "@/screens/HomeScreen";
 import { ProDetailScreen } from "@/screens/ProDetailScreen";
 import { CartScreen } from "@/screens/CartScreen";
@@ -160,9 +161,32 @@ export default function App() {
   const status = useAuthStore((s) => s.status);
   const restoreSession = useAuthStore((s) => s.restoreSession);
 
+  // Arrivée depuis le lien "mot de passe oublié" reçu par email
+  // (?reset_token=...) — voir apps/pro/src/App.tsx pour le détail du
+  // raisonnement (identique ici).
+  const [resetToken] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("reset_token");
+  });
+
   useEffect(() => {
     restoreSession();
   }, []);
+
+  if (resetToken) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <ResetPasswordScreen
+          token={resetToken}
+          onDone={() => {
+            window.history.replaceState({}, "", window.location.pathname);
+            window.location.reload();
+          }}
+        />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>

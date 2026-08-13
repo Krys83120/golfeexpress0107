@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { requestPasswordReset } from "@/services/passwordResetApi";
 
-type Mode = "login" | "signup";
+type Mode = "login" | "signup" | "forgot";
 
 export function LoginPage() {
   const [mode, setMode] = useState<Mode>("login");
@@ -21,6 +22,23 @@ export function LoginPage() {
     e.preventDefault();
     setError(null);
     setConfirmationMessage(null);
+
+    if (mode === "forgot") {
+      if (!email.trim()) {
+        setError("Merci de renseigner votre email.");
+        return;
+      }
+      setSubmitting(true);
+      try {
+        await requestPasswordReset(email.trim());
+        setConfirmationMessage("Si un compte existe avec cet email, un lien de réinitialisation vient de lui être envoyé.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Une erreur est survenue.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     if (!email.trim() || !password.trim()) {
       setError("Email et mot de passe requis.");
@@ -56,7 +74,11 @@ export function LoginPage() {
           <span className="text-7xl">🦎</span>
           <h1 className="mt-2 font-heading text-xl font-extrabold text-nuit">Do You Geckoo Pro</h1>
           <p className="mt-1 text-sm text-gris">
-            {mode === "login" ? "Connectez-vous à votre espace commerçant" : "Créez votre compte commerçant"}
+            {mode === "login"
+              ? "Connectez-vous à votre espace commerçant"
+              : mode === "signup"
+                ? "Créez votre compte commerçant"
+                : "Réinitialisez votre mot de passe"}
           </p>
         </div>
 
@@ -98,33 +120,63 @@ export function LoginPage() {
           type="email"
           className="mb-3 w-full rounded-sm border border-gris-light px-3 py-2.5 text-sm"
         />
-        <input
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Mot de passe"
-          type="password"
-          className="mb-5 w-full rounded-sm border border-gris-light px-3 py-2.5 text-sm"
-        />
+
+        {mode !== "forgot" && (
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mot de passe"
+            type="password"
+            className="mb-2 w-full rounded-sm border border-gris-light px-3 py-2.5 text-sm"
+          />
+        )}
+
+        {mode === "login" && (
+          <button
+            type="button"
+            onClick={() => {
+              setMode("forgot");
+              setError(null);
+              setConfirmationMessage(null);
+            }}
+            className="mb-5 block text-xs text-gris underline"
+          >
+            Mot de passe oublié ?
+          </button>
+        )}
+        {mode !== "login" && <div className="mb-5" />}
 
         <button
           type="submit"
           disabled={submitting}
           className="w-full rounded-sm bg-golfe-green py-3 text-sm font-semibold text-white disabled:opacity-60"
         >
-          {submitting ? "Chargement..." : mode === "login" ? "Se connecter" : "Créer mon compte"}
+          {submitting
+            ? "Chargement..."
+            : mode === "login"
+              ? "Se connecter"
+              : mode === "signup"
+                ? "Créer mon compte"
+                : "Envoyer le lien de réinitialisation"}
         </button>
 
         <button
           type="button"
           onClick={() => {
-            setMode(mode === "login" ? "signup" : "login");
+            setMode(mode === "signup" ? "login" : mode === "forgot" ? "login" : "signup");
             setError(null);
             setConfirmationMessage(null);
           }}
           className="mt-4 w-full text-center text-sm text-gris"
         >
-          {mode === "login" ? "Pas encore de compte ? " : "Déjà un compte ? "}
-          <span className="font-semibold text-golfe-green">{mode === "login" ? "S'inscrire" : "Se connecter"}</span>
+          {mode === "forgot" ? (
+            <span className="font-semibold text-golfe-green">Retour à la connexion</span>
+          ) : (
+            <>
+              {mode === "login" ? "Pas encore de compte ? " : "Déjà un compte ? "}
+              <span className="font-semibold text-golfe-green">{mode === "login" ? "S'inscrire" : "Se connecter"}</span>
+            </>
+          )}
         </button>
       </form>
     </div>

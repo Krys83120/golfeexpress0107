@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { OrderStatus, PaymentStatus } from "@golfeexpress/types";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { sendOrderConfirmedEmail, sendNewOrderToProEmail, sendOrderRefundedEmail } from "@/lib/emails/orderEmails";
 
 /**
  * POST /api/webhooks/stripe
@@ -21,7 +22,8 @@ import { prisma } from "@/lib/prisma";
  *
  * Configuration requise côté Stripe Dashboard > Webhooks :
  *   URL: https://<votre-domaine>/api/webhooks/stripe
- *   Events à écouter: payment_intent.succeeded, payment_intent.payment_failed
+ *   Events à écouter: payment_intent.succeeded, payment_intent.payment_failed,
+ *     charge.refunded
  *   Périmètre de destination : "Votre compte" (pas "Comptes connectés")
  *
  * NOTE: l'event account.updated (statut onboarding Stripe Connect des
@@ -57,6 +59,7 @@ export async function POST(req: NextRequest) {
         if (orderId) {
           const order = await prisma.order.findUnique({ where: { id: orderId } });
           if (order) {
+            const wasPending = order.status === OrderStatus.PENDING;
             await prisma.order.update({
               where: { id: orderId },
               data: {
@@ -66,13 +69,36 @@ export async function POST(req: NextRequest) {
                 // déjà fait progresser (webhook reçu en retard, replay
                 // Stripe...), on ne touche qu'au paymentStatus pour ne pas
                 // régresser un statut plus avancé.
-                ...(order.status === OrderStatus.PENDING ? { status: OrderStatus.CONFIRMED } : {}),
+                ...(wasPending ? { status: OrderStatus.CONFIRMED } : {}),
                 statusHistory:
-                  order.status === OrderStatus.PENDING
+                  wasPending
                     ? { create: { status: OrderStatus.CONFIRMED, note: "Paiement confirmé (Stripe)" } }
                     : undefined,
               },
             });
+
+            // Emails "commande confirmée" (client) + "nouvelle commande"
+            // (pro) — uniquement au premier passage en CONFIRMED, jamais
+            // en cas de replay/retry Stripe sur un webhook déjà traité.
+            if (wasPending) {
+              const [client, pro] = await Promise.all([
+                prisma.client.findUnique({ where: { id: order.clientId }, include: { user: true } }),
+                prisma.pro.findUnique({ where: { id: order.proId } }),
+              ]);
+              const emailData = { orderNumber: order.orderNumber, total: Number(order.total), proBusinessName: pro?.businessName ?? "" };
+              if (client) {
+                sendOrderConfirmedEmail(client.user.email, emailData).catch((err) =>
+                  console.error("[stripe webhook] Échec email confirmation client:", err)
+                );
+              }
+              if (pro) {
+                sendNewOrderToProEmail(
+                  pro.emailContact,
+                  emailData,
+                  client ? `${client.user.firstName} ${client.user.lastName}` : "Client"
+                ).catch((err) => console.error("[stripe webhook] Échec email nouvelle commande pro:", err));
+              }
+            }
           }
         }
         break;
@@ -86,6 +112,33 @@ export async function POST(req: NextRequest) {
             where: { id: orderId },
             data: { paymentStatus: PaymentStatus.FAILED },
           });
+        }
+        break;
+      }
+
+      case "charge.refunded": {
+        // metadata.orderId vit sur le PaymentIntent, pas directement sur le
+        // Charge (Stripe ne les copie pas automatiquement) — on doit donc
+        // relire le PaymentIntent associé pour retrouver la commande.
+        const charge = event.data.object as { payment_intent: string | null; amount_refunded: number };
+        if (charge.payment_intent) {
+          const paymentIntent = await stripe.paymentIntents.retrieve(charge.payment_intent);
+          const orderId = paymentIntent.metadata.orderId;
+          if (orderId) {
+            const order = await prisma.order.findUnique({ where: { id: orderId } });
+            if (order) {
+              await prisma.order.update({ where: { id: orderId }, data: { paymentStatus: PaymentStatus.REFUNDED } });
+              const client = await prisma.client.findUnique({ where: { id: order.clientId }, include: { user: true } });
+              const pro = await prisma.pro.findUnique({ where: { id: order.proId } });
+              if (client) {
+                sendOrderRefundedEmail(
+                  client.user.email,
+                  { orderNumber: order.orderNumber, total: Number(order.total), proBusinessName: pro?.businessName ?? "" },
+                  charge.amount_refunded / 100
+                ).catch((err) => console.error("[stripe webhook] Échec email remboursement:", err));
+              }
+            }
+          }
         }
         break;
       }

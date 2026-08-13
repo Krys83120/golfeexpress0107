@@ -3,7 +3,7 @@ import { z } from "zod";
 import { UserRole, RiderStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
-import { sendRiderValidatedEmail, sendRiderRejectedEmail } from "@/lib/kycEmails";
+import { sendRiderValidatedEmail, sendRiderRejectedEmail } from "@/lib/emails/accountEmails";
 
 const validateSchema = z.object({
   approve: z.boolean(),

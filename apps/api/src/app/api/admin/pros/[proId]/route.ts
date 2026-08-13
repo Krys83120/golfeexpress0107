@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { UserRole, ProStatus, ProCategory } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
+import { sendAccountSuspendedEmail, sendAccountReactivatedEmail } from "@/lib/emails/accountEmails";
 
 /**
  * PATCH /api/admin/pros/[proId]
@@ -56,6 +57,20 @@ async function patchHandler(req: NextRequest, ctx: { params: { proId: string } }
     data,
     include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } }, addresses: true },
   });
+
+  // Email de suspension/réactivation — uniquement si le statut a réellement
+  // changé vers/depuis SUSPENDED (pas à chaque édition anodine du dossier).
+  if (data.status && data.status !== existing.status) {
+    if (data.status === ProStatus.SUSPENDED) {
+      sendAccountSuspendedEmail(pro.user.email, pro.user.firstName, "pro").catch((err) =>
+        console.error("[admin pros] Échec email suspension:", err)
+      );
+    } else if (existing.status === ProStatus.SUSPENDED && data.status === ProStatus.ACTIVE) {
+      sendAccountReactivatedEmail(pro.user.email, pro.user.firstName, "pro").catch((err) =>
+        console.error("[admin pros] Échec email réactivation:", err)
+      );
+    }
+  }
 
   return NextResponse.json({
     pro: {

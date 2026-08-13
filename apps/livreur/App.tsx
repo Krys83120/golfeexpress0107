@@ -2,12 +2,11 @@ import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { Ionicons } from "@expo/vector-icons";
-import { useFonts } from "expo-font";
 
 import { useAuthStore } from "@/store/useAuthStore";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
 import { AuthScreen } from "@/screens/AuthScreen";
+import { ResetPasswordScreen } from "@/screens/ResetPasswordScreen";
 import { HomeScreen } from "@/screens/HomeScreen";
 import { EarningsScreen } from "@/screens/EarningsScreen";
 import { StatsScreen } from "@/screens/StatsScreen";
@@ -15,11 +14,16 @@ import { RiderProfileScreen } from "@/screens/RiderProfileScreen";
 
 type Tab = "home" | "earnings" | "stats" | "profile";
 
-const TABS: { key: Tab; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-  { key: "home", icon: "bicycle", label: "Accueil" },
-  { key: "earnings", icon: "wallet", label: "Gains" },
-  { key: "stats", icon: "stats-chart", label: "Stats" },
-  { key: "profile", icon: "person", label: "Profil" },
+// Emojis plutôt qu'Ionicons : sur l'export web, la police d'icônes Ionicons
+// (fichier .ttf) n'est pas toujours servie correctement une fois déployée
+// (404 constaté), ce qui affichait des carrés vides à la place des icônes.
+// Les emojis s'appuient sur la police système du téléphone/navigateur, donc
+// aucun fichier externe à charger — zéro risque de ce type.
+const TABS: { key: Tab; emoji: string; label: string }[] = [
+  { key: "home", emoji: "🛵", label: "Accueil" },
+  { key: "earnings", emoji: "💰", label: "Gains" },
+  { key: "stats", emoji: "📊", label: "Stats" },
+  { key: "profile", emoji: "👤", label: "Profil" },
 ];
 
 function MainApp() {
@@ -55,7 +59,7 @@ function MainApp() {
                 onPress={() => setActiveTab(tab.key)}
                 style={[styles.navItem, { backgroundColor: isActive ? "rgba(46,204,113,0.08)" : "transparent" }]}
               >
-                <Ionicons name={tab.icon as any} size={22} color={isActive ? "#2ECC71" : "#6B7280"} />
+                <Text style={{ fontSize: 20 }}>{tab.emoji}</Text>
                 <Text style={[styles.navLabel, { color: isActive ? "#2ECC71" : "#6B7280" }]}>{tab.label}</Text>
               </Pressable>
             );
@@ -70,22 +74,30 @@ export default function App() {
   const status = useAuthStore((s) => s.status);
   const restoreSession = useAuthStore((s) => s.restoreSession);
 
-  // Sur l'export web, la police d'icônes Ionicons (fichier .ttf) doit être
-  // explicitement chargée avant le premier rendu — sinon les glyphes
-  // s'affichent en petits carrés vides ("tofu") le temps que la police
-  // charge en arrière-plan, ce qui donnait l'impression d'icônes cassées
-  // dans le footer et sur l'écran KYC.
-  const [fontsLoaded] = useFonts({ ...Ionicons.font });
+  // Arrivée depuis le lien "mot de passe oublié" reçu par email
+  // (?reset_token=...) — voir apps/pro/src/App.tsx pour le détail du
+  // raisonnement (identique ici).
+  const [resetToken] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("reset_token");
+  });
 
   useEffect(() => {
     restoreSession();
   }, []);
 
-  if (!fontsLoaded) {
+  if (resetToken) {
     return (
-      <View style={styles.loadingRoot}>
-        <ActivityIndicator color="#2ECC71" size="large" />
-      </View>
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <ResetPasswordScreen
+          token={resetToken}
+          onDone={() => {
+            window.history.replaceState({}, "", window.location.pathname);
+            window.location.reload();
+          }}
+        />
+      </SafeAreaProvider>
     );
   }
 

@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { signupSchema } from "@/lib/validation/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiError, withErrorHandling } from "@/middleware/auth";
+import { sendWelcomeEmail } from "@/lib/emails/authEmails";
+import { sendNewProPendingAlert, sendNewRiderPendingAlert } from "@/lib/emails/adminEmails";
 
 /**
  * POST /api/auth/signup
@@ -91,6 +93,23 @@ async function handler(req: NextRequest) {
     const { supabaseAdmin } = await import("@/lib/supabaseAdmin");
     await supabaseAdmin.auth.admin.deleteUser(data.user.id).catch(() => {});
     throw new ApiError(500, "La création du compte a échoué. Merci de réessayer.");
+  }
+
+  // Email de bienvenue + alerte admin pour les nouveaux Pro/Rider — en
+  // fire-and-forget (jamais attendu, jamais bloquant) pour ne pas retarder
+  // la réponse de signup ni la faire échouer si Resend a un souci.
+  const welcomeRole = role === "PRO" ? "pro" : role === "RIDER" ? "rider" : "client";
+  sendWelcomeEmail(email, firstName, welcomeRole).catch((err) =>
+    console.error("[signup] Échec envoi email de bienvenue:", err)
+  );
+  if (role === "PRO") {
+    sendNewProPendingAlert(`${firstName} ${lastName}`, email).catch((err) =>
+      console.error("[signup] Échec envoi alerte admin (nouveau Pro):", err)
+    );
+  } else if (role === "RIDER") {
+    sendNewRiderPendingAlert(firstName, lastName, email).catch((err) =>
+      console.error("[signup] Échec envoi alerte admin (nouveau Rider):", err)
+    );
   }
 
   return NextResponse.json(

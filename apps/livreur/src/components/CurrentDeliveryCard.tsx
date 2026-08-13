@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet, Linking, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { OrderStatus } from "@golfeexpress/types";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
 import { getCategoryEmoji } from "@/services/categoryVisuals";
@@ -104,7 +103,7 @@ export function CurrentDeliveryCard() {
 
       {destinationAddress && (
         <Pressable onPress={handleDirections} style={styles.directionsBtn}>
-          <Ionicons name="navigate" size={16} color="#1A1A2E" />
+          <Text style={{ fontSize: 16 }}>🧭</Text>
           <Text style={styles.directionsText}>
             {isHeadingToPickup ? "Itinéraire vers le commerçant" : "Itinéraire vers le client"}
           </Text>
@@ -135,7 +134,7 @@ export function CurrentDeliveryCard() {
                   { backgroundColor: isCompleted ? "#2ECC71" : isActive ? "#FF6B35" : "rgba(255,255,255,0.1)" },
                 ]}
               >
-                {isCompleted && <Ionicons name="checkmark" size={16} color="white" />}
+                {isCompleted && <Text style={{ fontSize: 14, color: "white", fontWeight: "700" }}>✓</Text>}
               </View>
               <Text style={[styles.stepLabel, { color: isCompleted || isActive ? "white" : "rgba(255,255,255,0.5)" }]}>
                 {label}

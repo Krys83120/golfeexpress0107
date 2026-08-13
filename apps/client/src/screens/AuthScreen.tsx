@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/useAuthStore";
+import { requestPasswordReset } from "@/services/passwordResetApi";
 
-type Mode = "login" | "signup";
+type Mode = "login" | "signup" | "forgot";
 
 export function AuthScreen() {
   const [mode, setMode] = useState<Mode>("login");
@@ -22,6 +23,23 @@ export function AuthScreen() {
   async function handleSubmit() {
     setLocalError(null);
     setConfirmationMessage(null);
+
+    if (mode === "forgot") {
+      if (!email.trim()) {
+        setLocalError("Merci de renseigner votre email.");
+        return;
+      }
+      setSubmitting(true);
+      try {
+        await requestPasswordReset(email.trim());
+        setConfirmationMessage("Si un compte existe avec cet email, un lien de réinitialisation vient de lui être envoyé.");
+      } catch (err) {
+        setLocalError(err instanceof Error ? err.message : "Une erreur est survenue.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     if (!email.trim() || !password.trim()) {
       setLocalError("Email et mot de passe requis.");
@@ -58,7 +76,7 @@ export function AuthScreen() {
             <Text style={{ fontSize: 130 }}>🦎</Text>
             <Text className="notranslate mt-3 font-heading text-2xl font-extrabold text-nuit">Do You Geckoo</Text>
             <Text className="mt-1 text-sm text-gris">
-              {mode === "login" ? "Connectez-vous pour commander" : "Créez votre compte"}
+              {mode === "login" ? "Connectez-vous pour commander" : mode === "signup" ? "Créez votre compte" : "Réinitialisez votre mot de passe"}
             </Text>
           </View>
 
@@ -114,14 +132,30 @@ export function AuthScreen() {
             className="mb-3 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
           />
 
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Mot de passe"
-            placeholderTextColor="#6B7280"
-            secureTextEntry
-            className="mb-5 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
-          />
+          {mode !== "forgot" && (
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Mot de passe"
+              placeholderTextColor="#6B7280"
+              secureTextEntry
+              className="mb-1 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+            />
+          )}
+
+          {mode === "login" && (
+            <Pressable
+              onPress={() => {
+                setMode("forgot");
+                setLocalError(null);
+                setConfirmationMessage(null);
+              }}
+              className="mb-5"
+            >
+              <Text className="text-xs text-gris underline">Mot de passe oublié ?</Text>
+            </Pressable>
+          )}
+          {mode !== "login" && <View className="mb-5" />}
 
           <Pressable
             onPress={handleSubmit}
@@ -133,25 +167,29 @@ export function AuthScreen() {
               <ActivityIndicator color="white" />
             ) : (
               <Text className="text-base font-bold text-white">
-                {mode === "login" ? "Se connecter" : "Créer mon compte"}
+                {mode === "login" ? "Se connecter" : mode === "signup" ? "Créer mon compte" : "Envoyer le lien de réinitialisation"}
               </Text>
             )}
           </Pressable>
 
           <Pressable
             onPress={() => {
-              setMode(mode === "login" ? "signup" : "login");
+              setMode(mode === "signup" ? "login" : mode === "forgot" ? "login" : "signup");
               setLocalError(null);
               setConfirmationMessage(null);
             }}
             className="mt-5 items-center"
           >
-            <Text className="text-sm text-gris">
-              {mode === "login" ? "Pas encore de compte ? " : "Déjà un compte ? "}
-              <Text className="font-semibold text-golfe-green">
-                {mode === "login" ? "S'inscrire" : "Se connecter"}
+            {mode === "forgot" ? (
+              <Text className="text-sm font-semibold text-golfe-green">Retour à la connexion</Text>
+            ) : (
+              <Text className="text-sm text-gris">
+                {mode === "login" ? "Pas encore de compte ? " : "Déjà un compte ? "}
+                <Text className="font-semibold text-golfe-green">
+                  {mode === "login" ? "S'inscrire" : "Se connecter"}
+                </Text>
               </Text>
-            </Text>
+            )}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

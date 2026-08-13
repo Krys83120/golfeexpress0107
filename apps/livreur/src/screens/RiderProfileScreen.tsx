@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { VEHICLE_LABELS } from "@/services/vehicleLabels";
 import { useAuthStore } from "@/store/useAuthStore";
 import { AvatarUpload } from "@/components/AvatarUpload";
@@ -10,31 +9,26 @@ import { updateMyUserProfile } from "@/services/userApi";
 import { RiderKycScreen } from "@/screens/RiderKycScreen";
 
 interface MenuRow {
-  icon: keyof typeof Ionicons.glyphMap;
+  emoji: string;
   label: string;
   opensKyc?: boolean;
 }
 
 const ACCOUNT_ROWS: MenuRow[] = [
-  { icon: "person-outline", label: "Informations personnelles", opensKyc: true },
-  { icon: "bicycle-outline", label: "Mon véhicule", opensKyc: true },
-  { icon: "card-outline", label: "Coordonnées bancaires", opensKyc: true },
-  { icon: "document-outline", label: "Mes documents (KYC)", opensKyc: true },
+  { emoji: "👤", label: "Informations personnelles", opensKyc: true },
+  { emoji: "🛵", label: "Mon véhicule", opensKyc: true },
+  { emoji: "💳", label: "Coordonnées bancaires", opensKyc: true },
+  { emoji: "📄", label: "Mes documents (KYC)", opensKyc: true },
 ];
 
 const SUPPORT_ROWS: MenuRow[] = [
-  { icon: "help-circle-outline", label: "Centre d'aide" },
-  { icon: "chatbubble-ellipses-outline", label: "Contacter le support" },
-  { icon: "document-text-outline", label: "Conditions générales" },
+  { emoji: "❓", label: "Centre d'aide" },
+  { emoji: "💬", label: "Contacter le support" },
+  { emoji: "📜", label: "Conditions générales" },
 ];
 
 interface RiderProfileScreenProps {
   onLogout: () => void | Promise<void>;
-}
-
-function maskIban(iban: string): string {
-  if (!iban || iban.length < 8) return "Non renseigné";
-  return `${iban.slice(0, 4)} •••• •••• ${iban.slice(-4)}`;
 }
 
 export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
@@ -70,7 +64,7 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
           <Text style={styles.subtle}>{user?.email}</Text>
 
           <View style={[styles.badge, { backgroundColor: isVerified ? "#E8F5E9" : "#FFF3E0" }]}>
-            <Ionicons name={isVerified ? "checkmark-circle" : "time"} size={13} color={isVerified ? "#2ECC71" : "#FF6B35"} />
+            <Text style={{ fontSize: 12 }}>{isVerified ? "✅" : "🕒"}</Text>
             <Text style={[styles.badgeText, { color: isVerified ? "#2ECC71" : "#FF6B35" }]}>
               {isVerified ? "Compte vérifié" : "Validation en attente"}
             </Text>
@@ -83,16 +77,16 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
             <Text style={styles.infoTitle}>{vehicleMeta.label}</Text>
             <Text style={styles.subtle}>Plaque {profile?.vehiclePlate ?? "non renseignée"}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color="#6B7280" />
+          <Text style={{ fontSize: 16, color: "#6B7280" }}>›</Text>
         </Pressable>
 
         <Pressable onPress={() => setShowKyc(true)} style={[styles.infoCard, { marginTop: 12 }]}>
-          <Ionicons name="card" size={22} color="#1A1A2E" />
+          <Text style={{ fontSize: 20 }}>💳</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.infoTitle}>{profile?.iban ? maskIban(profile.iban) : "Non renseigné"}</Text>
-            <Text style={styles.subtle}>Compte de versement des gains</Text>
+            <Text style={styles.infoTitle}>Coordonnées bancaires</Text>
+            <Text style={styles.subtle}>Gérées via Stripe — voir l'onglet Gains</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color="#6B7280" />
+          <Text style={{ fontSize: 16, color: "#6B7280" }}>›</Text>
         </Pressable>
 
         <MenuSection title="Mon compte" rows={ACCOUNT_ROWS} onOpenKyc={() => setShowKyc(true)} />
@@ -100,7 +94,7 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
 
         <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
           <Pressable onPress={onLogout} style={styles.logoutBtn}>
-            <Ionicons name="log-out-outline" size={18} color="#F44336" />
+            <Text style={{ fontSize: 16 }}>🚪</Text>
             <Text style={styles.logoutText}>Se déconnecter</Text>
           </Pressable>
 
@@ -122,9 +116,9 @@ function MenuSection({ title, rows, onOpenKyc }: { title: string; rows: MenuRow[
             onPress={row.opensKyc ? onOpenKyc : undefined}
             style={[styles.menuRow, { borderTopWidth: index === 0 ? 0 : 1, borderTopColor: "#E5E7EB" }]}
           >
-            <Ionicons name={row.icon} size={18} color="#1A1A2E" />
+            <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
             <Text style={{ flex: 1, fontSize: 14, color: "#1A1A2E" }}>{row.label}</Text>
-            <Ionicons name="chevron-forward" size={16} color="#6B7280" />
+            <Text style={{ fontSize: 16, color: "#6B7280" }}>›</Text>
           </Pressable>
         ))}
       </View>

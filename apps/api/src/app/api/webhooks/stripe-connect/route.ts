@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { sendStripeConnectActivatedEmail } from "@/lib/emails/accountEmails";
 
 /**
  * POST /api/webhooks/stripe-connect
@@ -61,8 +62,29 @@ export async function POST(req: NextRequest) {
         stripeOnboardingComplete: account.details_submitted,
       };
 
+      // On relit l'état AVANT modification pour ne détecter que la
+      // transition false -> true (payoutsEnabled) et n'envoyer l'email
+      // "paiements activés" qu'une seule fois, jamais à chaque webhook
+      // account.updated ultérieur (Stripe en envoie beaucoup, pour des
+      // changements mineurs).
+      const [existingPro, existingRider] = await Promise.all([
+        prisma.pro.findUnique({ where: { stripeAccountId: account.id }, include: { user: true } }),
+        prisma.rider.findUnique({ where: { stripeAccountId: account.id }, include: { user: true } }),
+      ]);
+
       await prisma.pro.updateMany({ where: { stripeAccountId: account.id }, data });
       await prisma.rider.updateMany({ where: { stripeAccountId: account.id }, data });
+
+      if (existingPro && !existingPro.stripePayoutsEnabled && account.payouts_enabled) {
+        sendStripeConnectActivatedEmail(existingPro.user.email, existingPro.user.firstName, "pro").catch((err) =>
+          console.error("[stripe connect webhook] Échec email activation Pro:", err)
+        );
+      }
+      if (existingRider && !existingRider.stripePayoutsEnabled && account.payouts_enabled) {
+        sendStripeConnectActivatedEmail(existingRider.user.email, existingRider.user.firstName, "rider").catch((err) =>
+          console.error("[stripe connect webhook] Échec email activation Rider:", err)
+        );
+      }
     }
     // Les autres events éventuels sur ce périmètre sont ignorés sans erreur.
   } catch (err) {

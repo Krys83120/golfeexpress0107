@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, Modal, ActivityIndicator, TextInput, Alert, StyleSheet, Linking, AppState } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useEarningsStore } from "@/store/useEarningsStore";
 import { EARNING_TYPE_LABELS, WITHDRAWAL_STATUS_LABELS } from "@/services/earningsLabels";
 import { fetchStripeConnectStatus, createStripeOnboardingLink, type StripeConnectStatus } from "@/services/stripeConnectApi";
@@ -102,7 +101,7 @@ export function EarningsScreen() {
 
             {stripeStatus?.payoutsEnabled && (
               <Pressable onPress={handleConfigureBankAccount} disabled={onboardingLoading} style={styles.bankUpdateRow}>
-                <Ionicons name="card-outline" size={16} color="#6B7280" />
+                <Text style={{ fontSize: 14 }}>💳</Text>
                 <Text style={styles.bankUpdateText}>
                   {onboardingLoading ? "Ouverture..." : "Modifier mes coordonnées bancaires"}
                 </Text>
@@ -235,7 +234,7 @@ function WithdrawModal({ onClose, availableBalance }: { onClose: () => void; ava
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>💸 Retirer mes gains</Text>
           <Pressable onPress={onClose} style={styles.modalClose}>
-            <Ionicons name="close" size={16} color="#1A1A2E" />
+            <Text style={{ fontSize: 14, color: "#1A1A2E" }}>✕</Text>
           </Pressable>
         </View>
 

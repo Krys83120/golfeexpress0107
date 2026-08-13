@@ -12,8 +12,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/useAuthStore";
+import { requestPasswordReset } from "@/services/passwordResetApi";
 
-type Mode = "login" | "signup";
+type Mode = "login" | "signup" | "forgot";
 
 export function AuthScreen() {
   const [mode, setMode] = useState<Mode>("login");
@@ -32,6 +33,23 @@ export function AuthScreen() {
   async function handleSubmit() {
     setLocalError(null);
     setConfirmationMessage(null);
+
+    if (mode === "forgot") {
+      if (!email.trim()) {
+        setLocalError("Merci de renseigner votre email.");
+        return;
+      }
+      setSubmitting(true);
+      try {
+        await requestPasswordReset(email.trim());
+        setConfirmationMessage("Si un compte existe avec cet email, un lien de réinitialisation vient de lui être envoyé.");
+      } catch (err) {
+        setLocalError(err instanceof Error ? err.message : "Une erreur est survenue.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     if (!email.trim() || !password.trim()) {
       setLocalError("Email et mot de passe requis.");
@@ -68,7 +86,9 @@ export function AuthScreen() {
             <Text style={{ fontSize: 130 }}>🦎</Text>
             <Text style={styles.title} className="notranslate">Do You Geckoo</Text>
             <Text style={styles.subtitle}>Espace Livreur</Text>
-            <Text style={styles.subtitle}>{mode === "login" ? "Connectez-vous pour livrer" : "Devenez livreur Do You Geckoo"}</Text>
+            <Text style={styles.subtitle}>
+              {mode === "login" ? "Connectez-vous pour livrer" : mode === "signup" ? "Devenez livreur Do You Geckoo" : "Réinitialisez votre mot de passe"}
+            </Text>
           </View>
 
           {confirmationMessage && (
@@ -123,35 +143,57 @@ export function AuthScreen() {
             style={styles.input}
           />
 
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Mot de passe"
-            placeholderTextColor="#6B7280"
-            secureTextEntry
-            style={[styles.input, { marginBottom: 20 }]}
-          />
+          {mode !== "forgot" && (
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Mot de passe"
+              placeholderTextColor="#6B7280"
+              secureTextEntry
+              style={[styles.input, { marginBottom: 4 }]}
+            />
+          )}
+
+          {mode === "login" && (
+            <Pressable
+              onPress={() => {
+                setMode("forgot");
+                setLocalError(null);
+                setConfirmationMessage(null);
+              }}
+              style={{ marginBottom: 16 }}
+            >
+              <Text style={{ fontSize: 12, color: "#6B7280", textDecorationLine: "underline" }}>Mot de passe oublié ?</Text>
+            </Pressable>
+          )}
+          {mode !== "login" && <View style={{ marginBottom: 16 }} />}
 
           <Pressable onPress={handleSubmit} disabled={submitting} style={[styles.submitBtn, { opacity: submitting ? 0.7 : 1 }]}>
             {submitting ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.submitText}>{mode === "login" ? "Se connecter" : "Créer mon compte livreur"}</Text>
+              <Text style={styles.submitText}>
+                {mode === "login" ? "Se connecter" : mode === "signup" ? "Créer mon compte livreur" : "Envoyer le lien de réinitialisation"}
+              </Text>
             )}
           </Pressable>
 
           <Pressable
             onPress={() => {
-              setMode(mode === "login" ? "signup" : "login");
+              setMode(mode === "signup" ? "login" : mode === "forgot" ? "login" : "signup");
               setLocalError(null);
               setConfirmationMessage(null);
             }}
             style={{ marginTop: 20, alignItems: "center" }}
           >
-            <Text style={styles.switchText}>
-              {mode === "login" ? "Pas encore livreur ? " : "Déjà un compte ? "}
-              <Text style={styles.switchLink}>{mode === "login" ? "S'inscrire" : "Se connecter"}</Text>
-            </Text>
+            {mode === "forgot" ? (
+              <Text style={styles.switchLink}>Retour à la connexion</Text>
+            ) : (
+              <Text style={styles.switchText}>
+                {mode === "login" ? "Pas encore livreur ? " : "Déjà un compte ? "}
+                <Text style={styles.switchLink}>{mode === "login" ? "S'inscrire" : "Se connecter"}</Text>
+              </Text>
+            )}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

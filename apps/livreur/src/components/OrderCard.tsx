@@ -1,6 +1,5 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { OrderStatus, type Order } from "@golfeexpress/types";
 import { getCategoryEmoji, haversineDistanceKm } from "@/services/categoryVisuals";
 
@@ -94,8 +93,8 @@ export function OrderCard({ order, riderLat, riderLng, onAccept, onDecline }: Or
         </View>
 
         <View style={styles.metaRow}>
-          {totalDistanceKm !== null && <MetaItem icon="navigate-outline" label={`${totalDistanceKm} km`} />}
-          <MetaItem icon="cube-outline" label={`${itemCount} articles`} />
+          {totalDistanceKm !== null && <MetaItem icon="distance" label={`${totalDistanceKm} km`} />}
+          <MetaItem icon="items" label={`${itemCount} articles`} />
         </View>
       </View>
 
@@ -104,17 +103,17 @@ export function OrderCard({ order, riderLat, riderLng, onAccept, onDecline }: Or
           <Text style={styles.acceptText}>✅ Accepter</Text>
         </Pressable>
         <Pressable onPress={onDecline} style={styles.declineBtn}>
-          <Ionicons name="close" size={18} color="#1A1A2E" />
+          <Text style={{ fontSize: 16, color: "#1A1A2E" }}>✕</Text>
         </Pressable>
       </View>
     </View>
   );
 }
 
-function MetaItem({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
+function MetaItem({ icon, label }: { icon: "distance" | "items"; label: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-      <Ionicons name={icon} size={13} color="#6B7280" />
+      <Text style={{ fontSize: 13 }}>{icon === "distance" ? "🧭" : "📦"}</Text>
       <Text style={styles.subtle}>{label}</Text>
     </View>
   );
