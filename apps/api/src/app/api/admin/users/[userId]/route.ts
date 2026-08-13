@@ -53,19 +53,34 @@ export const PATCH = withErrorHandling(handler);
  * Suppression réelle et définitive d'un compte — impossible à faire
  * proprement depuis le Dashboard Supabase seul, car il ne connaît que la
  * table auth.users, pas nos tables métier (Client/Pro/Rider/Order...).
- * Cette route supprime les deux à la fois, dans le bon ordre.
  *
- * Sécurité : les tables Client/Pro/Rider/Address/Notification sont en
- * cascade sur User (voir schema.prisma), donc supprimées automatiquement.
- * En revanche Order n'est PAS en cascade — volontairement, pour ne jamais
- * effacer silencieusement un historique de commandes/facturation. Si le
- * compte a des commandes, la suppression est refusée avec un message
- * clair plutôt que de planter avec une erreur SQL brute.
+ * IMPORTANT : un trigger Postgres existant (handle_deleted_auth_user, sur
+ * auth.users) supprime déjà automatiquement la ligne public."User"
+ * correspondante dès qu'un compte Supabase Auth est supprimé — qui cascade
+ * ensuite vers Client/Pro/Rider/Address/Notification (onDelete: Cascade,
+ * voir schema.prisma). Il ne faut donc PAS supprimer nous-mêmes côté
+ * Prisma AVANT Supabase Auth : le trigger se retrouverait sans rien à
+ * supprimer et ça fait échouer toute l'opération côté Supabase
+ * ("Database error deleting user"). La suppression Supabase Auth seule
+ * suffit et déclenche tout le reste.
+ *
+ * Sécurité : Order n'est PAS en cascade — volontairement, pour ne jamais
+ * effacer silencieusement un historique de commandes/facturation. On
+ * vérifie donc l'absence de commandes AVANT de toucher à quoi que ce soit,
+ * pour donner un message clair plutôt que de laisser échouer la
+ * suppression en cours de route.
  */
 async function deleteHandler(req: NextRequest, { params }: { params: { userId: string } }) {
   const auth = await requireAuth(req, ["ADMIN" as any, "SUPER_ADMIN" as any]);
 
-  const target = await prisma.user.findUnique({ where: { id: params.userId } });
+  const target = await prisma.user.findUnique({
+    where: { id: params.userId },
+    include: {
+      clientProfile: { include: { _count: { select: { orders: true } } } },
+      proProfile: { include: { _count: { select: { orders: true } } } },
+      riderProfile: { include: { _count: { select: { orders: true } } } },
+    },
+  });
   if (!target) {
     throw new ApiError(404, "Utilisateur introuvable.");
   }
@@ -78,30 +93,24 @@ async function deleteHandler(req: NextRequest, { params }: { params: { userId: s
   if (target.id === auth.userId) {
     throw new ApiError(400, "Impossible de supprimer son propre compte depuis cet écran.");
   }
-
-  try {
-    // Prisma d'abord : si une contrainte (ex: commandes existantes)
-    // bloque la suppression, on le sait ici, avant d'avoir touché à
-    // Supabase Auth — le compte reste alors intact des deux côtés.
-    await prisma.user.delete({ where: { id: target.id } });
-  } catch (err: any) {
-    if (err?.code === "P2003") {
-      throw new ApiError(
-        409,
-        "Impossible de supprimer ce compte : il a un historique de commandes lié (facturation/comptabilité). " +
-          "Suspendez-le plutôt (statut) si vous voulez en bloquer l'accès."
-      );
-    }
-    throw err;
+  const linkedOrders =
+    (target.clientProfile?._count.orders ?? 0) +
+    (target.proProfile?._count.orders ?? 0) +
+    (target.riderProfile?._count.orders ?? 0);
+  if (linkedOrders > 0) {
+    throw new ApiError(
+      409,
+      "Impossible de supprimer ce compte : il a un historique de commandes lié (facturation/comptabilité). " +
+        "Suspendez-le plutôt (statut) si vous voulez en bloquer l'accès."
+    );
   }
 
-  // Puis Supabase Auth, pour que la personne ne puisse plus se connecter
-  // du tout. Si cette étape échoue (rare), la ligne Prisma est déjà
-  // supprimée — on journalise plutôt que de faire échouer toute la
-  // requête sur un compte déjà effectivement supprimé côté métier.
+  // Une seule suppression, côté Supabase Auth — le trigger existant se
+  // charge de cascader vers nos tables métier automatiquement.
   const { error } = await supabaseAdmin.auth.admin.deleteUser(target.id);
   if (error) {
-    console.error(`[admin users] Compte ${target.id} supprimé côté Prisma mais échec Supabase Auth:`, error);
+    console.error(`[admin users] Échec suppression Supabase Auth pour ${target.id}:`, error);
+    throw new ApiError(500, "La suppression a échoué. Réessayez, ou contactez le support si le problème persiste.");
   }
 
   return NextResponse.json({ deleted: true });
