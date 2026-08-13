@@ -61,7 +61,6 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
   const [insuranceProvider, setInsuranceProvider] = useState("");
   const [insurancePolicyNumber, setInsurancePolicyNumber] = useState("");
 
-  const [iban, setIban] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   useEffect(() => {
@@ -79,7 +78,6 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
         setSiret(data.siret ?? "");
         setInsuranceProvider(data.insuranceProvider ?? "");
         setInsurancePolicyNumber(data.insurancePolicyNumber ?? "");
-        setIban(data.iban ?? "");
         setAcceptTerms(!!data.termsAcceptedAt);
         setStatus("loaded");
       })
@@ -102,7 +100,10 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
         siret: siret || null,
         insuranceProvider: insuranceProvider || null,
         insurancePolicyNumber: insurancePolicyNumber || null,
-        iban: iban || undefined,
+        // iban n'est plus éditable ici — les coordonnées bancaires passent
+        // désormais par Stripe Connect (voir écran Gains). Le champ existe
+        // encore en base pour compatibilité mais n'est plus renseigné
+        // depuis cet écran.
         ...(acceptTerms && !rider?.termsAcceptedAt ? { acceptTerms: true, termsVersion: TERMS_VERSION } : {}),
       });
       setRider(updated);
@@ -239,9 +240,16 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
         </Section>
 
         <Section title="Coordonnées bancaires">
-          <Field label="IBAN">
-            <TextInput value={iban} onChangeText={setIban} autoCapitalize="characters" style={styles.input} />
-          </Field>
+          <View style={styles.bankRedirectBox}>
+            <Ionicons name="card-outline" size={20} color="#1A1A2E" />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.bankRedirectTitle}>Gérées depuis l'écran "Mes gains"</Text>
+              <Text style={styles.bankRedirectText}>
+                Vos coordonnées bancaires sont désormais configurées (et modifiables à tout moment, par exemple en
+                cas de changement de banque) via le formulaire sécurisé Stripe, accessible depuis l'onglet Gains.
+              </Text>
+            </View>
+          </View>
         </Section>
 
         <Section title="Conditions générales">
@@ -274,6 +282,15 @@ const styles = StyleSheet.create({
   backBtn: { height: 36, width: 36, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: "#F3F4F6" },
   headerTitle: { fontSize: 18, fontWeight: "800", color: "#1A1A2E" },
   section: { marginBottom: 20 },
+  bankRedirectBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    borderRadius: 10,
+    backgroundColor: "#F3F4F6",
+    padding: 14,
+  },
+  bankRedirectTitle: { fontSize: 13, fontWeight: "700", color: "#1A1A2E" },
+  bankRedirectText: { marginTop: 3, fontSize: 12, lineHeight: 17, color: "#6B7280" },
   sectionTitle: { marginBottom: 10, fontSize: 13, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, color: "#6B7280" },
   fieldLabel: { marginBottom: 4, fontSize: 12, fontWeight: "600", color: "#1A1A2E" },
   input: { borderRadius: 8, backgroundColor: "#F3F4F6", paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: "#1A1A2E" },

@@ -94,7 +94,16 @@ export function FinancesPage() {
           </div>
 
           {stripeStatus?.payoutsEnabled ? (
-            <div className="rounded-full bg-green-50 px-4 py-2 text-sm font-semibold text-golfe-green">Actif</div>
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-green-50 px-4 py-2 text-sm font-semibold text-golfe-green">Actif</div>
+              <button
+                onClick={handleConfigureBankAccount}
+                disabled={onboardingLoading}
+                className="text-xs font-semibold text-gris underline disabled:opacity-50"
+              >
+                {onboardingLoading ? "Ouverture..." : "Modifier"}
+              </button>
+            </div>
           ) : (
             <button
               onClick={handleConfigureBankAccount}

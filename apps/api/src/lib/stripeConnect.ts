@@ -30,6 +30,12 @@ export async function createOrRefreshOnboardingLink(params: {
   const returnBase = kind === "pro" ? PRO_APP_URL : RIDER_APP_URL;
 
   let accountId = existingAccountId;
+  // On ne connaît le VRAI état d'avancement (onboarding fini ou pas) qu'en
+  // relisant le compte chez Stripe — un stripeAccountId peut exister sans
+  // que l'inscription soit terminée (ex: la personne a fermé l'onglet en
+  // cours de route), auquel cas il faut redonner "account_onboarding" et
+  // pas "account_update".
+  let onboardingComplete = false;
 
   if (!accountId) {
     const account = await stripe.accounts.create({
@@ -44,6 +50,9 @@ export async function createOrRefreshOnboardingLink(params: {
       },
     });
     accountId = account.id;
+  } else {
+    const account = await stripe.accounts.retrieve(accountId);
+    onboardingComplete = Boolean(account.details_submitted);
   }
 
   const accountLink = await stripe.accountLinks.create({
@@ -53,7 +62,11 @@ export async function createOrRefreshOnboardingLink(params: {
     // redemander un nouveau lien.
     refresh_url: `${returnBase}?stripe_onboarding=refresh`,
     return_url: `${returnBase}?stripe_onboarding=complete`,
-    type: "account_onboarding",
+    // "account_onboarding" tant que l'inscription n'est pas finie,
+    // "account_update" une fois validée (ex: la personne change de banque)
+    // — Stripe refuse account_onboarding sur un compte déjà pleinement
+    // vérifié.
+    type: onboardingComplete ? "account_update" : "account_onboarding",
   });
 
   return { url: accountLink.url, accountId };

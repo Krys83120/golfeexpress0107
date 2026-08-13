@@ -100,6 +100,15 @@ export function EarningsScreen() {
               </View>
             )}
 
+            {stripeStatus?.payoutsEnabled && (
+              <Pressable onPress={handleConfigureBankAccount} disabled={onboardingLoading} style={styles.bankUpdateRow}>
+                <Ionicons name="card-outline" size={16} color="#6B7280" />
+                <Text style={styles.bankUpdateText}>
+                  {onboardingLoading ? "Ouverture..." : "Modifier mes coordonnées bancaires"}
+                </Text>
+              </Pressable>
+            )}
+
             <View style={[styles.balanceCard, { backgroundColor: "#1A1A2E" }]}>
               <Text style={styles.balanceLabel}>Solde disponible</Text>
               <Text style={styles.balanceAmount}>{(summary?.availableBalance ?? 0).toFixed(2).replace(".", ",")} €</Text>
@@ -277,6 +286,15 @@ const styles = StyleSheet.create({
   bankCardSubtitle: { marginTop: 2, fontSize: 12, color: "#6B7280" },
   bankCardBtn: { borderRadius: 8, backgroundColor: "#FF6B35", paddingHorizontal: 14, paddingVertical: 10 },
   bankCardBtnText: { fontSize: 12, fontWeight: "700", color: "white" },
+  bankUpdateRow: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+  },
+  bankUpdateText: { fontSize: 12, fontWeight: "600", color: "#6B7280", textDecorationLine: "underline" },
   balanceCard: { marginHorizontal: 20, marginTop: 12, borderRadius: 16, padding: 20 },
   balanceLabel: { fontSize: 13, color: "rgba(255,255,255,0.7)" },
   balanceAmount: { marginTop: 4, fontSize: 32, fontWeight: "800", color: "white" },

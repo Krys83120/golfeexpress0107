@@ -3,6 +3,7 @@ import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-nati
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import { useFonts } from "expo-font";
 
 import { useAuthStore } from "@/store/useAuthStore";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
@@ -69,9 +70,24 @@ export default function App() {
   const status = useAuthStore((s) => s.status);
   const restoreSession = useAuthStore((s) => s.restoreSession);
 
+  // Sur l'export web, la police d'icônes Ionicons (fichier .ttf) doit être
+  // explicitement chargée avant le premier rendu — sinon les glyphes
+  // s'affichent en petits carrés vides ("tofu") le temps que la police
+  // charge en arrière-plan, ce qui donnait l'impression d'icônes cassées
+  // dans le footer et sur l'écran KYC.
+  const [fontsLoaded] = useFonts({ ...Ionicons.font });
+
   useEffect(() => {
     restoreSession();
   }, []);
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingRoot}>
+        <ActivityIndicator color="#2ECC71" size="large" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
