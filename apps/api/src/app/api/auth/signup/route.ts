@@ -5,6 +5,18 @@ import { prisma } from "@/lib/prisma";
 import { ApiError, withErrorHandling } from "@/middleware/auth";
 import { sendWelcomeEmail } from "@/lib/emails/authEmails";
 import { sendNewProPendingAlert, sendNewRiderPendingAlert } from "@/lib/emails/adminEmails";
+import { PORTAL_URLS } from "@/lib/emails/shared";
+
+function portalUrlForSignupRole(role: string): string {
+  switch (role) {
+    case "PRO":
+      return PORTAL_URLS.pro;
+    case "RIDER":
+      return PORTAL_URLS.rider;
+    default:
+      return PORTAL_URLS.client;
+  }
+}
 
 /**
  * POST /api/auth/signup
@@ -40,6 +52,14 @@ async function handler(req: NextRequest) {
     password,
     options: {
       data: { firstName, lastName, phone, role },
+      // Sans ça, Supabase renvoie vers le "Site URL" par défaut du projet
+      // (qui vaut localhost:3000 en configuration de base) une fois
+      // l'email confirmé — on cible ici la bonne app selon le rôle.
+      // ATTENTION : cette URL doit être ajoutée à la liste blanche
+      // "Redirect URLs" dans Supabase Dashboard > Authentication > URL
+      // Configuration, sinon Supabase l'ignore silencieusement et retombe
+      // sur le Site URL par défaut.
+      emailRedirectTo: portalUrlForSignupRole(role),
     },
   });
 
