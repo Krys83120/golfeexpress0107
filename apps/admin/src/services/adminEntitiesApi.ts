@@ -56,6 +56,16 @@ export async function updateAdminUser(userId: string, payload: UpdateAdminUserPa
   });
 }
 
+/**
+ * DELETE /api/admin/users/[userId]
+ *
+ * Suppression définitive — refusée par l'API (409) si le compte a un
+ * historique de commandes lié, voir le message renvoyé dans ce cas.
+ */
+export async function deleteAdminUser(userId: string): Promise<void> {
+  await apiFetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+}
+
 export interface AdminProRow extends Omit<Pro, "addresses" | "user"> {
   user: Pick<User, "firstName" | "lastName" | "email" | "phone">;
   addresses: Address[];

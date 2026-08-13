@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Search, MoreVertical, X } from "lucide-react";
+import { Search, MoreVertical, X, Trash2 } from "lucide-react";
 import { UserRole, type User } from "@golfeexpress/types";
 import { ROLE_LABELS, STATUS_LABELS } from "@/services/userLabels";
-import { fetchAdminUsers, updateAdminUser } from "@/services/adminEntitiesApi";
+import { fetchAdminUsers, updateAdminUser, deleteAdminUser } from "@/services/adminEntitiesApi";
 
 type RoleFilter = "ALL" | UserRole;
 
@@ -26,6 +26,13 @@ export function UsersPage() {
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Suppression — étape de confirmation séparée du modal d'édition, pour
+  // qu'un clic malheureux sur "Modifier" ne mène jamais accidentellement à
+  // une suppression définitive.
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Debounce la recherche pour éviter un appel API à chaque frappe.
   useEffect(() => {
@@ -89,6 +96,36 @@ export function UsersPage() {
       setSaveError(err instanceof Error ? err.message : "Impossible de modifier cet utilisateur.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function openDeleteModal(user: User) {
+    setDeletingUser(user);
+    setDeleteError(null);
+  }
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setDeletingUser(null);
+    setDeleteError(null);
+  }
+
+  async function confirmDeleteUser() {
+    if (!deletingUser) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      await deleteAdminUser(deletingUser.id);
+      setUsers((currentUsers) => currentUsers.filter((user) => user.id !== deletingUser.id));
+      setDeletingUser(null);
+    } catch (err) {
+      // Le message d'erreur de l'API (ex: "historique de commandes lié")
+      // est directement affichable tel quel, pas besoin de le reformuler.
+      setDeleteError(err instanceof Error ? err.message : "Impossible de supprimer cet utilisateur.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -180,15 +217,26 @@ export function UsersPage() {
                       {new Date(user.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
                     </td>
                     <td className="py-3 pr-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(user)}
-                        className="inline-flex items-center gap-1 rounded-sm px-2 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light hover:text-nuit"
-                        title="Modifier l'utilisateur"
-                      >
-                        <MoreVertical size={16} />
-                        Modifier
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(user)}
+                          className="inline-flex items-center gap-1 rounded-sm px-2 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light hover:text-nuit"
+                          title="Modifier l'utilisateur"
+                        >
+                          <MoreVertical size={16} />
+                          Modifier
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openDeleteModal(user)}
+                          className="inline-flex items-center gap-1 rounded-sm px-2 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50"
+                          title="Supprimer l'utilisateur"
+                        >
+                          <Trash2 size={16} />
+                          Supprimer
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -288,6 +336,49 @@ export function UsersPage() {
                 className="rounded-sm bg-nuit px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
               >
                 {saving ? "Enregistrement..." : "Enregistrer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deletingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-start justify-between">
+              <h2 className="font-heading text-xl font-extrabold text-nuit">Supprimer ce compte ?</h2>
+              <button type="button" onClick={closeDeleteModal} className="rounded-sm p-1.5 text-gris hover:bg-gris-light">
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-sm text-gris">
+              Vous êtes sur le point de supprimer définitivement le compte de{" "}
+              <span className="font-semibold text-nuit">
+                {deletingUser.firstName} {deletingUser.lastName}
+              </span>{" "}
+              ({deletingUser.email}). Cette action est <span className="font-semibold text-red-500">irréversible</span> —
+              le compte, son profil et sa connexion seront supprimés définitivement.
+            </p>
+
+            {deleteError && <div className="mt-4 rounded-sm bg-red-50 p-3 text-sm text-red-500">{deleteError}</div>}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                className="rounded-sm border border-gris-light px-4 py-2 text-sm font-semibold text-gris hover:bg-gris-light disabled:opacity-60"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteUser}
+                disabled={deleting}
+                className="rounded-sm bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+              >
+                {deleting ? "Suppression..." : "Supprimer définitivement"}
               </button>
             </div>
           </div>
