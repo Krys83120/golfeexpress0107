@@ -67,7 +67,7 @@ export function AuthScreen() {
       } else {
         const result = await signup({ email: email.trim(), password, firstName, lastName, phone });
         if (result.requiresEmailConfirmation) {
-          setConfirmationMessage("Compte créé ! Vérifiez vos emails pour confirmer votre adresse avant de vous connecter.");
+          setConfirmationMessage("Un email de confirmation vous a été envoyé sur l'adresse mail indiquée.");
           setMode("login");
         }
       }
