@@ -1,7 +1,6 @@
 import React from "react";
 import { View, Text, Pressable, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useNotificationPrefsStore } from "@/store/useNotificationPrefsStore";
 
 interface NotificationSettingsScreenProps {
@@ -22,7 +21,7 @@ export function NotificationSettingsScreen({ onClose }: NotificationSettingsScre
       <View className="flex-1 px-5 pt-5">
         <View className="mb-6 flex-row items-center gap-3">
           <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-gris-light">
-            <Ionicons name="arrow-back" size={16} color="#1A1A2E" />
+            <Text style={{ fontSize: 16, color: "#1A1A2E" }}>←</Text>
           </Pressable>
           <Text className="font-heading text-xl font-bold text-nuit">🔔 Notifications</Text>
         </View>

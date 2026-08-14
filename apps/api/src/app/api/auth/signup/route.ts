@@ -38,7 +38,7 @@ async function handler(req: NextRequest) {
     throw new ApiError(400, parsed.error.issues.map((i) => i.message).join(" "));
   }
 
-  const { email, password, firstName, lastName, phone, role } = parsed.data;
+  const { email, password, firstName, lastName, phone, role, referralCode } = parsed.data;
 
   // Client Supabase anonyme dédié à cet appel (pas supabaseAdmin : on veut
   // le comportement normal de signUp, avec session retournée).
@@ -104,9 +104,25 @@ async function handler(req: NextRequest) {
         },
       });
     } else {
+      // Code de parrainage (optionnel) : si valide, on lie le nouveau
+      // client au parrain et on crédite 50 points aux DEUX côtés
+      // immédiatement (pas d'attente de première commande — plus simple à
+      // comprendre pour l'utilisateur, cohérent avec le texte affiché dans
+      // l'app "Gagnez 50 points chacun").
+      let referrer: { id: string } | null = null;
+      if (referralCode) {
+        referrer = await prisma.client.findUnique({ where: { referralCode }, select: { id: true } });
+        // Un code invalide/inconnu n'empêche jamais l'inscription — on
+        // l'ignore silencieusement plutôt que de faire échouer le compte.
+      }
+
       await prisma.client.create({
-        data: { userId: data.user.id },
+        data: { userId: data.user.id, referredById: referrer?.id, fidelityPoints: referrer ? 50 : 0 },
       });
+
+      if (referrer) {
+        await prisma.client.update({ where: { id: referrer.id }, data: { fidelityPoints: { increment: 50 } } });
+      }
     }
   } catch (profileError) {
     console.error("[signup] Échec création profil métier, rollback du compte Auth:", profileError);

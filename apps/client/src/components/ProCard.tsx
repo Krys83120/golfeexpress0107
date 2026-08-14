@@ -1,6 +1,5 @@
 import React from "react";
 import { View, Text, Pressable, Image } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import type { ProWithUi } from "@/services/prosApi";
 
 interface ProCardProps {
@@ -35,7 +34,7 @@ export function ProCard({ pro, onPress }: ProCardProps) {
 
         <View className="absolute right-3 top-3">
           <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-white/90">
-            <Ionicons name="heart-outline" size={16} color="#1A1A2E" />
+            <Text style={{ fontSize: 14 }}>🤍</Text>
           </Pressable>
         </View>
       </View>
@@ -46,11 +45,11 @@ export function ProCard({ pro, onPress }: ProCardProps) {
 
         <View className="mt-1 flex-row items-center gap-3">
           <View className="flex-row items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5">
-            <Ionicons name="star" size={11} color="#FF6B35" />
+            <Text style={{ fontSize: 10 }}>⭐</Text>
             <Text className="text-xs font-bold text-corail">{Number(pro.rating)?.toFixed(1)}</Text>
           </View>
           <View className="flex-row items-center gap-1">
-            <Ionicons name="time-outline" size={12} color="#6B7280" />
+            <Text style={{ fontSize: 11 }}>🕒</Text>
             <Text className="text-xs text-gris">
               {pro.estimatedMinMinutes}-{pro.estimatedMaxMinutes} min
             </Text>

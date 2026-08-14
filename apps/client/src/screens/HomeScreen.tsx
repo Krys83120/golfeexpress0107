@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { CATEGORY_CHIPS } from "@/services/categoryChips";
 import { ProCard } from "@/components/ProCard";
 import { NearbyItem } from "@/components/NearbyItem";
@@ -20,6 +19,7 @@ interface HomeScreenProps {
 
 export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenMap }: HomeScreenProps) {
   const [activeCategory, setActiveCategory] = useState<ProCategory>(ProCategory.RESTAURANT);
+  const [searchQuery, setSearchQuery] = useState("");
   const activeAddress = useAddressStore((s) => s.activeAddress);
 
   const pros = useProsStore((s) => s.pros);
@@ -34,10 +34,25 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAddress?.id]);
 
+  // Recherche par nom de commerce ou de produit — filtre côté client
+  // puisque tous les commerçants (et leurs produits déjà chargés) sont
+  // déjà en mémoire dans le store, pas besoin d'un appel réseau dédié.
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const productsByPro = useProsStore((s) => s.productsByPro);
+  const searchedPros =
+    normalizedQuery.length === 0
+      ? null
+      : pros.filter((p) => {
+          if (p.businessName.toLowerCase().includes(normalizedQuery)) return true;
+          const products = productsByPro[p.id] ?? [];
+          return products.some((prod) => prod.name.toLowerCase().includes(normalizedQuery));
+        });
+
   // "En vedette" = commerçants avec un abonnement payant (mis en avant
   // contractuellement), "Près de chez vous" = triés par distance réelle.
-  const featuredPros = pros.filter((p) => p.subscriptionType !== SubscriptionType.FREE);
-  const nearbyPros = [...pros].sort((a, b) => a.distanceKm - b.distanceKm);
+  const basePros = searchedPros ?? pros;
+  const featuredPros = basePros.filter((p) => p.subscriptionType !== SubscriptionType.FREE);
+  const nearbyPros = [...basePros].sort((a, b) => a.distanceKm - b.distanceKm);
 
   return (
     <View className="flex-1 bg-white">
@@ -51,8 +66,8 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
                 <Text className="notranslate font-heading text-[20px] font-extrabold text-white">Do You Geckoo</Text>
               </View>
               <View className="flex-row gap-4">
-                <Ionicons name="notifications-outline" size={20} color="white" />
-                <Ionicons name="person-circle-outline" size={22} color="white" />
+                <Text style={{ fontSize: 18 }}>🔔</Text>
+                <Text style={{ fontSize: 20 }}>👤</Text>
               </View>
             </View>
 
@@ -60,11 +75,11 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
               onPress={onOpenAddressPicker}
               className="mt-3 flex-row items-center gap-2 rounded-sm bg-white/20 px-3.5 py-2.5"
             >
-              <Ionicons name="location" size={14} color="white" />
+              <Text style={{ fontSize: 13 }}>📍</Text>
               <Text className="flex-1 text-[13px] font-medium text-white" numberOfLines={1}>
                 {activeAddress ? `${activeAddress.street}, ${activeAddress.city}` : "Choisir une adresse"}
               </Text>
-              <Ionicons name="chevron-down" size={12} color="white" style={{ opacity: 0.7 }} />
+              <Text style={{ fontSize: 11, color: "white", opacity: 0.7 }}>▾</Text>
             </Pressable>
           </View>
         </SafeAreaView>
@@ -72,13 +87,22 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
         {/* SEARCH */}
         <View className="px-5 py-4">
           <View className="flex-row items-center gap-3 rounded bg-gris-light px-4 py-3.5">
-            <Ionicons name="search" size={18} color="#6B7280" />
+            <Text style={{ fontSize: 16 }}>🔍</Text>
             <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
               placeholder="Poke bowl, parfum, fleurs..."
               placeholderTextColor="#6B7280"
               className="flex-1 font-body text-[15px] text-nuit"
+              returnKeyType="search"
             />
-            <Ionicons name="options-outline" size={18} color="#6B7280" />
+            {searchQuery.length > 0 ? (
+              <Pressable onPress={() => setSearchQuery("")}>
+                <Text style={{ fontSize: 16, color: "#6B7280" }}>✕</Text>
+              </Pressable>
+            ) : (
+              <Text style={{ fontSize: 16 }}>⚙️</Text>
+            )}
           </View>
         </View>
 
@@ -123,7 +147,7 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
             <Text className="font-heading text-lg font-bold text-nuit">🗺️ Carte interactive</Text>
             <Text className="mb-3.5 mt-1 text-[13px] text-gris">Voir les commerçants autour de vous</Text>
             <View className="flex-row items-center gap-2 self-start rounded-sm bg-golfe-green px-5 py-2.5">
-              <Ionicons name="map-outline" size={14} color="white" />
+              <Text style={{ fontSize: 13 }}>🗺️</Text>
               <Text className="text-sm font-semibold text-white">Explorer la carte</Text>
             </View>
 
@@ -190,8 +214,15 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
 
             {/* NEARBY */}
             <View className="flex-row items-center justify-between px-5 pb-3">
-              <Text className="font-heading text-lg font-bold text-nuit">📍 Près de chez vous</Text>
+              <Text className="font-heading text-lg font-bold text-nuit">
+                {searchedPros ? `🔍 Résultats pour "${searchQuery}"` : "📍 Près de chez vous"}
+              </Text>
             </View>
+            {searchedPros && searchedPros.length === 0 && (
+              <View className="items-center px-5 py-6">
+                <Text className="text-sm text-gris">Aucun résultat pour "{searchQuery}".</Text>
+              </View>
+            )}
             <View className="px-5">
               {nearbyPros.map((pro) => (
                 <NearbyItem key={pro.id} pro={pro} onPress={() => onOpenPro(pro)} />

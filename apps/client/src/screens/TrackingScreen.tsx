@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { OrderStatus, type Order } from "@golfeexpress/types";
 import { apiFetch } from "@/services/apiClient";
 import { TrackingMap } from "@/components/TrackingMap";
@@ -89,7 +88,7 @@ export function TrackingScreen({ order: initialOrder, onClose }: TrackingScreenP
         <View className="mb-5 flex-row items-center justify-between">
           <Text className="font-heading text-xl font-bold text-nuit">📦 Suivi de commande</Text>
           <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-gris-light">
-            <Ionicons name="close" size={16} color="#1A1A2E" />
+            <Text style={{ fontSize: 14, color: "#1A1A2E" }}>✕</Text>
           </Pressable>
         </View>
 
@@ -156,7 +155,7 @@ export function TrackingScreen({ order: initialOrder, onClose }: TrackingScreenP
                           backgroundColor: isCompleted ? "#2ECC71" : isActive ? "#FF6B35" : "#F3F4F6",
                         }}
                       >
-                        {isCompleted && <Ionicons name="checkmark" size={14} color="white" />}
+                        {isCompleted && <Text style={{ fontSize: 12, color: "white", fontWeight: "700" }}>✓</Text>}
                       </View>
                       {index < TIMELINE.length - 1 && (
                         <View

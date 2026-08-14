@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { FIDELITY_REWARDS, FIDELITY_TIER, type FidelityReward } from "@/services/fidelityCatalog";
 import { fetchFidelityHistory, type FidelityHistoryEntry } from "@/services/fidelityApi";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -29,6 +29,14 @@ export function FidelityScreen() {
 
   const currentPoints = profile?.fidelityPoints ?? 0;
   const referralCode = profile?.referralCode ?? "—";
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopyCode() {
+    if (referralCode === "—") return;
+    await Clipboard.setStringAsync(referralCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
   const pointsRemaining = Math.max(0, FIDELITY_TIER.pointsToNextTier - currentPoints);
   const progressRatio = currentPoints / FIDELITY_TIER.pointsToNextTier;
 
@@ -60,16 +68,29 @@ export function FidelityScreen() {
         {/* Referral */}
         <View className="mx-5 mt-4 flex-row items-center gap-3 rounded-sm bg-golfe-green/5 p-4">
           <View className="h-10 w-10 items-center justify-center rounded-full bg-golfe-green">
-            <Ionicons name="people" size={18} color="white" />
+            <Text style={{ fontSize: 16 }}>👥</Text>
           </View>
-          <View className="flex-1">
+          {/* minWidth: 0 est indispensable sur web : sans ça, un flex-1 ne
+              se réduit jamais sous la largeur de son contenu (ici le texte),
+              et se fait écraser par la boîte de code à droite qui, elle,
+              garde sa largeur naturelle — d'où le texte qui retombe en
+              colonne d'une lettre par ligne. */}
+          <View className="flex-1" style={{ minWidth: 0 }}>
             <Text className="text-sm font-bold text-nuit">Parrainez un ami</Text>
             <Text className="text-xs text-gris">Gagnez 50 points chacun</Text>
           </View>
-          <View className="rounded-sm bg-white px-3 py-2">
-            <Text className="text-sm font-bold text-golfe-green">{referralCode}</Text>
+          <View className="rounded-sm bg-white px-3 py-2" style={{ flexShrink: 0, maxWidth: 110 }}>
+            <Text className="text-xs font-bold text-golfe-green" numberOfLines={1} ellipsizeMode="tail">
+              {referralCode}
+            </Text>
           </View>
         </View>
+        <Pressable onPress={handleCopyCode} className="mx-5 mt-2 flex-row items-center justify-center gap-1.5 py-1">
+          <Text style={{ fontSize: 12 }}>{copied ? "✅" : "📋"}</Text>
+          <Text className="text-xs font-semibold text-golfe-green">
+            {copied ? "Code copié !" : "Copier mon code de parrainage"}
+          </Text>
+        </Pressable>
 
         {/* Rewards */}
         <View className="mt-6 px-5">
@@ -118,7 +139,7 @@ function RewardCard({ reward, userPoints }: { reward: FidelityReward; userPoints
       <Text className="mt-2 text-sm font-bold text-nuit">{reward.title}</Text>
       <Text className="mt-0.5 text-xs text-gris">{reward.description}</Text>
       <View className="mt-2.5 flex-row items-center gap-1">
-        <Ionicons name="star" size={12} color={isUnlocked ? "#2ECC71" : "#6B7280"} />
+        <Text style={{ fontSize: 11 }}>⭐</Text>
         <Text className="text-xs font-bold" style={{ color: isUnlocked ? "#2ECC71" : "#6B7280" }}>
           {reward.pointsCost} pts
         </Text>

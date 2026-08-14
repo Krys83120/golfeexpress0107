@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useCartStore } from "@/store/useCartStore";
 import { useAddressStore } from "@/store/useAddressStore";
 import { createOrder } from "@/services/ordersApi";
@@ -68,7 +67,7 @@ export function CartScreen({ onClose, onOrderCreated }: CartScreenProps) {
         <View className="mb-5 flex-row items-center justify-between">
           <Text className="font-heading text-xl font-bold text-nuit">🛒 Votre panier</Text>
           <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-gris-light">
-            <Ionicons name="close" size={16} color="#1A1A2E" />
+            <Text style={{ fontSize: 14, color: "#1A1A2E" }}>✕</Text>
           </Pressable>
         </View>
 
@@ -92,7 +91,7 @@ export function CartScreen({ onClose, onOrderCreated }: CartScreenProps) {
                   <View className="flex-row items-start justify-between">
                     <Text className="flex-1 text-sm font-semibold text-nuit">{item.name}</Text>
                     <Pressable onPress={() => removeItem(item.id)} className="ml-2 p-1">
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                      <Text style={{ fontSize: 14 }}>🗑️</Text>
                     </Pressable>
                   </View>
                   {item.optionsLabel ? (

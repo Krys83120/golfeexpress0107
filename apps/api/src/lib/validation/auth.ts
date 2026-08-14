@@ -19,6 +19,10 @@ export const signupSchema = z.object({
     .nativeEnum(UserRole)
     .refine((r) => SELF_SIGNUP_ROLES.includes(r), { message: "Rôle non autorisé à l'auto-inscription." })
     .default(UserRole.CLIENT),
+  /// Code de parrainage d'un autre client (optionnel) — voir
+  /// apps/api/src/app/api/auth/signup/route.ts pour la logique de
+  /// récompense. Ignoré silencieusement pour les inscriptions Pro/Rider.
+  referralCode: z.string().trim().optional(),
 });
 
 export type SignupInput = z.infer<typeof signupSchema>;

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import type { ProWithUi } from "@/services/prosApi";
 import { useProsStore } from "@/store/useProsStore";
 import { useCartStore } from "@/store/useCartStore";
@@ -101,7 +100,7 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
               onPress={onClose}
               className="h-10 w-10 items-center justify-center rounded-full bg-white/90"
             >
-              <Ionicons name="close" size={18} color="#1A1A2E" />
+              <Text style={{ fontSize: 16, color: "#1A1A2E" }}>✕</Text>
             </Pressable>
           </View>
         </View>
@@ -110,7 +109,7 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
           <Text className="font-heading text-xl font-bold text-nuit">{pro.businessName}</Text>
           <View className="mt-1 flex-row flex-wrap items-center gap-3">
             <View className="flex-row items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5">
-              <Ionicons name="star" size={11} color="#FF6B35" />
+              <Text style={{ fontSize: 10 }}>⭐</Text>
               <Text className="text-xs font-bold text-corail">{Number(pro.rating)?.toFixed(1) ?? "—"}</Text>
             </View>
             {pro.googleRating !== null && pro.googleRating !== undefined && (
@@ -121,7 +120,7 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
               </View>
             )}
             <Text className="text-[13px] text-gris">
-              <Ionicons name="time-outline" size={12} /> {pro.estimatedMinMinutes}-{pro.estimatedMaxMinutes} min
+              <Text style={{ fontSize: 11 }}>🕒</Text> {pro.estimatedMinMinutes}-{pro.estimatedMaxMinutes} min
             </Text>
           </View>
 
@@ -129,22 +128,22 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
             <View className="mt-2 flex-row gap-3">
               {pro.instagramUrl && (
                 <Pressable onPress={() => Linking.openURL(pro.instagramUrl!)}>
-                  <Ionicons name="logo-instagram" size={20} color="#6B7280" />
+                  <Text style={{ fontSize: 19 }}>📷</Text>
                 </Pressable>
               )}
               {pro.facebookUrl && (
                 <Pressable onPress={() => Linking.openURL(pro.facebookUrl!)}>
-                  <Ionicons name="logo-facebook" size={20} color="#6B7280" />
+                  <Text style={{ fontSize: 19 }}>📘</Text>
                 </Pressable>
               )}
               {pro.tiktokUrl && (
                 <Pressable onPress={() => Linking.openURL(pro.tiktokUrl!)}>
-                  <Ionicons name="logo-tiktok" size={20} color="#6B7280" />
+                  <Text style={{ fontSize: 19 }}>🎵</Text>
                 </Pressable>
               )}
               {pro.websiteUrl && (
                 <Pressable onPress={() => Linking.openURL(pro.websiteUrl!)}>
-                  <Ionicons name="globe-outline" size={20} color="#6B7280" />
+                  <Text style={{ fontSize: 19 }}>🌐</Text>
                 </Pressable>
               )}
             </View>
@@ -209,7 +208,7 @@ export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
                   onPress={() => handlePressProduct(product)}
                   className="h-8 w-8 self-center items-center justify-center rounded-full bg-golfe-green"
                 >
-                  <Ionicons name="add" size={18} color="white" />
+                  <Text style={{ fontSize: 16, color: "white", fontWeight: "700" }}>+</Text>
                 </Pressable>
               </Pressable>
             ))}

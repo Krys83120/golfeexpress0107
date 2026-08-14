@@ -1,5 +1,5 @@
-import React from "react";
-import { View, StyleSheet, type DimensionValue } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, StyleSheet, Platform, type DimensionValue } from "react-native";
 import { WebView } from "react-native-webview";
 
 export interface MapPinData {
@@ -18,15 +18,21 @@ interface ClientMapViewProps {
 }
 
 /**
- * Carte multi-commerçants via WebView + Leaflet — même approche que la
- * carte de suivi livreur (TrackingMap.tsx) : évite d'avoir à configurer
+ * Carte multi-commerçants via Leaflet — même approche que la carte de
+ * suivi livreur (TrackingMap.tsx) : évite d'avoir à configurer
  * react-native-maps (clé API Google Maps, module natif, build EAS...) et
  * fonctionne directement dans Expo Go.
  *
- * La communication WebView -> React Native (quel pin a été tapé) passe par
- * window.ReactNativeWebView.postMessage, standard pour ce composant.
+ * IMPORTANT : react-native-webview ne supporte PAS la plateforme web
+ * (affiche "React Native WebView does not support this platform" à la
+ * place, ce qui cassait complètement cet écran en PWA). Sur web, on utilise
+ * donc un <iframe> natif du navigateur avec le même HTML — la fonction
+ * postToParent() ci-dessous gère les deux cas de communication retour
+ * (WebView native via window.ReactNativeWebView.postMessage, ou iframe web
+ * via window.parent.postMessage), sans dupliquer le HTML.
  */
 export function ClientMapView({ pins, onPinPress }: ClientMapViewProps) {
+  const isWeb = Platform.OS === "web";
 
   const center =
     pins.length > 0
@@ -44,7 +50,7 @@ export function ClientMapView({ pins, onPinPress }: ClientMapViewProps) {
         iconAnchor: [20, 20],
       })
     }).addTo(map).on('click', function() {
-      window.ReactNativeWebView.postMessage(${JSON.stringify(p.id)});
+      postToParent(${JSON.stringify(p.id)});
     });`
     )
     .join("\n");
@@ -61,12 +67,45 @@ export function ClientMapView({ pins, onPinPress }: ClientMapViewProps) {
   <div id="map"></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    // Un seul HTML pour les deux contextes (WebView native ou iframe web) :
+    // on choisit le bon canal de communication retour selon ce qui existe.
+    function postToParent(id) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(id);
+      } else if (window.parent) {
+        window.parent.postMessage(id, '*');
+      }
+    }
     const map = L.map('map', { zoomControl: true }).setView([${center.lat}, ${center.lng}], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     ${markersJs}
   </script>
 </body>
 </html>`;
+
+  // Web : écoute les messages postés par l'iframe (clic sur un pin).
+  const onPinPressRef = useRef(onPinPress);
+  onPinPressRef.current = onPinPress;
+  useEffect(() => {
+    if (!isWeb) return;
+    function handleMessage(event: MessageEvent) {
+      if (typeof event.data === "string" && pins.some((p) => p.id === event.data)) {
+        onPinPressRef.current(event.data);
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWeb, pins.map((p) => p.id).join(",")]);
+
+  if (isWeb) {
+    return (
+      <View style={styles.wrap}>
+        {/* @ts-ignore — élément DOM natif, valide uniquement sur web (React Native Web) */}
+        <iframe srcDoc={html} style={{ border: 0, width: "100%", height: "100%" }} title="Carte des commerçants" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrap}>

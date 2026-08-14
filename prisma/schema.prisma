@@ -172,10 +172,16 @@ model Client {
   userId          String   @unique @map("user_id")
   fidelityPoints  Int      @default(0) @map("fidelity_points")
   referralCode    String   @unique @default(uuid()) @map("referral_code")
-  
+  /// Renseigné si ce client s'est inscrit via le code de parrainage d'un
+  /// autre client — sert uniquement de traçabilité (les points de
+  /// bienvenue sont déjà crédités à l'inscription, voir signup/route.ts).
+  referredById    String?  @map("referred_by_id")
+
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   orders          Order[]
   reviews         Review[]
+  referredBy      Client?  @relation("Referrals", fields: [referredById], references: [id])
+  referrals       Client[] @relation("Referrals")
 }
 
 // ==================== PRO (COMMERÇANT) ====================

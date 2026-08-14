@@ -16,6 +16,8 @@ interface SignupInput {
   firstName: string;
   lastName: string;
   phone: string;
+  /** Code de parrainage d'un autre client (optionnel). */
+  referralCode?: string;
 }
 
 interface AuthState {

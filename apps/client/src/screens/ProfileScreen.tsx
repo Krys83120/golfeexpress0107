@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "@/store/useAuthStore";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { uploadAvatar, withCacheBust } from "@/services/uploadsApi";
@@ -24,23 +23,23 @@ type SubScreen =
   | null;
 
 interface MenuRow {
-  icon: keyof typeof Ionicons.glyphMap;
+  emoji: string;
   label: string;
   screen: SubScreen;
 }
 
 const ACCOUNT_ROWS: MenuRow[] = [
-  { icon: "person-outline", label: "Informations personnelles", screen: "personal-info" },
-  { icon: "location-outline", label: "Mes adresses", screen: "addresses" },
-  { icon: "card-outline", label: "Moyens de paiement", screen: "payment" },
-  { icon: "notifications-outline", label: "Notifications", screen: "notifications" },
+  { emoji: "👤", label: "Informations personnelles", screen: "personal-info" },
+  { emoji: "📍", label: "Mes adresses", screen: "addresses" },
+  { emoji: "💳", label: "Moyens de paiement", screen: "payment" },
+  { emoji: "🔔", label: "Notifications", screen: "notifications" },
 ];
 
 const SUPPORT_ROWS: MenuRow[] = [
-  { icon: "help-circle-outline", label: "Centre d'aide", screen: "help" },
-  { icon: "chatbubble-ellipses-outline", label: "Contacter le support", screen: "contact" },
-  { icon: "document-text-outline", label: "Conditions générales", screen: "terms" },
-  { icon: "shield-checkmark-outline", label: "Confidentialité", screen: "privacy" },
+  { emoji: "❓", label: "Centre d'aide", screen: "help" },
+  { emoji: "💬", label: "Contacter le support", screen: "contact" },
+  { emoji: "📜", label: "Conditions générales", screen: "terms" },
+  { emoji: "🛡️", label: "Confidentialité", screen: "privacy" },
 ];
 
 const HELP_CONTENT =
@@ -122,7 +121,7 @@ export function ProfileScreen({ onLogout }: ProfileScreenProps) {
             onPress={onLogout}
             className="flex-row items-center justify-center gap-2 rounded-sm border-2 border-red-100 bg-red-50 py-3.5"
           >
-            <Ionicons name="log-out-outline" size={18} color="#F44336" />
+            <Text style={{ fontSize: 16 }}>🚪</Text>
             <Text className="text-sm font-bold text-red-500">Se déconnecter</Text>
           </Pressable>
 
@@ -145,9 +144,9 @@ function MenuSection({ title, rows, onSelect }: { title: string; rows: MenuRow[]
             className="flex-row items-center gap-3 px-4 py-3.5"
             style={{ borderTopWidth: index === 0 ? 0 : 1, borderTopColor: "#E5E7EB" }}
           >
-            <Ionicons name={row.icon} size={18} color="#1A1A2E" />
+            <Text style={{ fontSize: 16 }}>{row.emoji}</Text>
             <Text className="flex-1 text-sm text-nuit">{row.label}</Text>
-            <Ionicons name="chevron-forward" size={16} color="#6B7280" />
+            <Text style={{ fontSize: 14, color: "#6B7280" }}>›</Text>
           </Pressable>
         ))}
       </View>

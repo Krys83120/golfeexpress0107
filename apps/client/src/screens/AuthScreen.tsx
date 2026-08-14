@@ -13,6 +13,7 @@ export function AuthScreen() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [confirmationMessage, setConfirmationMessage] = useState<string | null>(null);
@@ -55,7 +56,14 @@ export function AuthScreen() {
       if (mode === "login") {
         await login(email.trim(), password);
       } else {
-        const result = await signup({ email: email.trim(), password, firstName, lastName, phone });
+        const result = await signup({
+          email: email.trim(),
+          password,
+          firstName,
+          lastName,
+          phone,
+          referralCode: referralCode.trim() || undefined,
+        });
         if (result.requiresEmailConfirmation) {
           setConfirmationMessage("Un email de confirmation vous a été envoyé sur l'adresse mail indiquée.");
           setMode("login");
@@ -118,6 +126,17 @@ export function AuthScreen() {
               placeholder="Téléphone"
               placeholderTextColor="#6B7280"
               keyboardType="phone-pad"
+              className="mb-3 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
+            />
+          )}
+
+          {mode === "signup" && (
+            <TextInput
+              value={referralCode}
+              onChangeText={setReferralCode}
+              placeholder="Code de parrainage (optionnel)"
+              placeholderTextColor="#6B7280"
+              autoCapitalize="none"
               className="mb-3 rounded-sm bg-gris-light px-4 py-3.5 font-body text-[15px] text-nuit"
             />
           )}

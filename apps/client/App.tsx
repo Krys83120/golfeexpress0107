@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, Modal, ActivityIndicator } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { Ionicons } from "@expo/vector-icons";
 import type { Order } from "@golfeexpress/types";
 
 import { useAuthStore } from "@/store/useAuthStore";
@@ -23,11 +22,16 @@ import { useCartStore } from "@/store/useCartStore";
 
 type Tab = "home" | "orders" | "fidelity" | "profile";
 
-const TABS: { key: Tab; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-  { key: "home", icon: "home", label: "Accueil" },
-  { key: "orders", icon: "receipt", label: "Commandes" },
-  { key: "fidelity", icon: "gift", label: "Fidélité" },
-  { key: "profile", icon: "person", label: "Profil" },
+// Emojis plutôt qu'Ionicons : sur l'export web, la police d'icônes Ionicons
+// (fichier .ttf) n'est pas toujours servie correctement une fois déployée
+// (404 constaté), ce qui affichait des carrés vides à la place des icônes.
+// Les emojis s'appuient sur la police système du téléphone/navigateur, donc
+// aucun fichier externe à charger — zéro risque de ce type.
+const TABS: { key: Tab; emoji: string; label: string }[] = [
+  { key: "home", emoji: "🏠", label: "Accueil" },
+  { key: "orders", emoji: "🧾", label: "Commandes" },
+  { key: "fidelity", emoji: "🎁", label: "Fidélité" },
+  { key: "profile", emoji: "👤", label: "Profil" },
 ];
 
 function MainApp() {
@@ -110,7 +114,7 @@ function MainApp() {
                 className="items-center gap-1 rounded-xl px-3 py-1"
                 style={{ backgroundColor: isActive ? "rgba(46,204,113,0.08)" : "transparent" }}
               >
-                <Ionicons name={tab.icon as any} size={22} color={isActive ? "#2ECC71" : "#6B7280"} />
+                <Text style={{ fontSize: 20 }}>{tab.emoji}</Text>
                 <Text className="text-[11px]" style={{ color: isActive ? "#2ECC71" : "#6B7280" }}>
                   {tab.label}
                 </Text>

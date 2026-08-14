@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import type { ProWithUi } from "@/services/prosApi";
 import { useProsStore } from "@/store/useProsStore";
 import { ClientMapView, type MapPinData } from "@/components/ClientMapView";
@@ -45,7 +44,7 @@ export function MapScreen({ onClose, onOpenPro }: MapScreenProps) {
         <SafeAreaView edges={["top"]} className="absolute left-0 right-0 top-0" pointerEvents="box-none">
           <View className="flex-row items-center justify-between px-5 pt-2">
             <Pressable onPress={onClose} className="h-10 w-10 items-center justify-center rounded-full bg-white shadow">
-              <Ionicons name="arrow-back" size={18} color="#1A1A2E" />
+              <Text style={{ fontSize: 18, color: "#1A1A2E" }}>←</Text>
             </Pressable>
             <View className="rounded-full bg-white px-4 py-2 shadow">
               <Text className="text-sm font-semibold text-nuit">{prosWithLocation.length} commerçants</Text>
@@ -78,7 +77,7 @@ export function MapScreen({ onClose, onOpenPro }: MapScreenProps) {
                 <Text className="text-xs text-gris">{selectedPro.distanceKm} km</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#6B7280" />
+            <Text style={{ fontSize: 16, color: "#6B7280" }}>›</Text>
           </Pressable>
         ) : (
           <>

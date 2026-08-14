@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { OrderStatus, type Order } from "@golfeexpress/types";
 import { fetchMyOrders } from "@/services/ordersApi";
 import { getCategoryVisual } from "@/services/categoryVisuals";
@@ -137,7 +136,7 @@ export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
                         onPress={() => onOpenTracking(order)}
                         className="flex-row items-center gap-1.5 rounded-sm bg-golfe-green px-3.5 py-2"
                       >
-                        <Ionicons name="navigate" size={13} color="white" />
+                        <Text style={{ fontSize: 12 }}>🧭</Text>
                         <Text className="text-xs font-bold text-white">Suivre</Text>
                       </Pressable>
                     ) : (
@@ -145,7 +144,7 @@ export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
                         onPress={() => onReorder(order)}
                         className="flex-row items-center gap-1.5 rounded-sm border-2 border-gris-light px-3.5 py-2"
                       >
-                        <Ionicons name="refresh" size={13} color="#1A1A2E" />
+                        <Text style={{ fontSize: 12 }}>🔄</Text>
                         <Text className="text-xs font-semibold text-nuit">Recommander</Text>
                       </Pressable>
                     )}

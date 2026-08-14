@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView, Image, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import type { Product, ProductOption } from "@golfeexpress/types";
 
 interface ProductOptionsModalProps {
@@ -90,7 +89,7 @@ export function ProductOptionsModal({ product, onClose, onConfirm }: ProductOpti
               )}
             </View>
             <Pressable onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={18} color="#1A1A2E" />
+              <Text style={{ fontSize: 16, color: "#1A1A2E" }}>✕</Text>
             </Pressable>
           </View>
 
@@ -151,7 +150,7 @@ export function ProductOptionsModal({ product, onClose, onConfirm }: ProductOpti
                             isSelected && { backgroundColor: "#2ECC71", borderColor: "#2ECC71" },
                           ]}
                         >
-                          {isSelected && <Ionicons name="checkmark" size={13} color="white" />}
+                          {isSelected && <Text style={{ fontSize: 11, color: "white", fontWeight: "700" }}>✓</Text>}
                         </View>
                       </Pressable>
                     );

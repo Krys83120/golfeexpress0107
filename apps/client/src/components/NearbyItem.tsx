@@ -1,6 +1,5 @@
 import React from "react";
 import { View, Text, Pressable, Image } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import type { ProWithUi } from "@/services/prosApi";
 
 interface NearbyItemProps {
@@ -32,11 +31,11 @@ export function NearbyItem({ pro, onPress }: NearbyItemProps) {
 
         <View className="flex-row items-center gap-3">
           <View className="flex-row items-center gap-1">
-            <Ionicons name="star" size={11} color="#FF6B35" />
+            <Text style={{ fontSize: 10 }}>⭐</Text>
             <Text className="text-xs font-bold text-corail">{Number(pro.rating)?.toFixed(1)}</Text>
           </View>
           <View className="flex-row items-center gap-1">
-            <Ionicons name="time-outline" size={11} color="#6B7280" />
+            <Text style={{ fontSize: 10 }}>🕒</Text>
             <Text className="text-xs text-gris">
               {pro.estimatedMinMinutes}-{pro.estimatedMaxMinutes} min
             </Text>

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useAddressStore } from "@/store/useAddressStore";
 
 interface AddAddressFormProps {
@@ -55,7 +54,7 @@ export function AddAddressForm({ onClose, onCreated }: AddAddressFormProps) {
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="font-heading text-lg font-bold text-nuit">Nouvelle adresse</Text>
           <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-gris-light">
-            <Ionicons name="close" size={16} color="#1A1A2E" />
+            <Text style={{ fontSize: 14, color: "#1A1A2E" }}>✕</Text>
           </Pressable>
         </View>
 

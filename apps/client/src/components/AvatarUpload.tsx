@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, Image, ActivityIndicator, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { Ionicons } from "@expo/vector-icons";
 
 interface AvatarUploadProps {
   currentImageUrl?: string | null;
@@ -55,7 +54,7 @@ export function AvatarUpload({ currentImageUrl, initials, onUpload }: AvatarUplo
       </View>
 
       <View className="absolute bottom-0 right-0 h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-nuit">
-        {uploading ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="camera" size={13} color="white" />}
+        {uploading ? <ActivityIndicator size="small" color="white" /> : <Text style={{ fontSize: 12 }}>📷</Text>}
       </View>
     </Pressable>
   );

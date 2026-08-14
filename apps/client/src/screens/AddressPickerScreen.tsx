@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, Modal } from "react-native";
+import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, Modal, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { useAddressStore } from "@/store/useAddressStore";
 import { AddAddressForm } from "@/components/AddAddressForm";
 import type { Address } from "@golfeexpress/types";
@@ -11,9 +11,9 @@ interface AddressPickerScreenProps {
   onSelected: (address: Address) => void;
 }
 
-const LABEL_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  Maison: "home",
-  Bureau: "briefcase",
+const LABEL_EMOJIS: Record<string, string> = {
+  Maison: "🏠",
+  Bureau: "💼",
 };
 
 export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreenProps) {
@@ -24,10 +24,12 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
   const error = useAddressStore((s) => s.error);
   const loadAddresses = useAddressStore((s) => s.loadAddresses);
   const removeAddress = useAddressStore((s) => s.removeAddress);
+  const addAddress = useAddressStore((s) => s.addAddress);
 
   const [search, setSearch] = useState("");
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
 
   useEffect(() => {
     loadAddresses();
@@ -36,6 +38,60 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
   function handleSelect(address: Address) {
     setActiveAddress(address);
     onSelected(address);
+  }
+
+  /**
+   * Géolocalise l'utilisateur (permission GPS), puis transforme les
+   * coordonnées en vraie adresse postale via l'API gratuite et sans clé
+   * api-adresse.data.gouv.fr (déjà utilisée ailleurs sur nos projets pour
+   * du géocodage). L'adresse trouvée est enregistrée comme une adresse
+   * normale, puis sélectionnée automatiquement.
+   */
+  async function handleUseCurrentLocation() {
+    setLocating(true);
+    try {
+      const { status: permissionStatus } = await Location.requestForegroundPermissionsAsync();
+      if (permissionStatus !== "granted") {
+        Alert.alert(
+          "Localisation refusée",
+          "Autorisez l'accès à votre position dans les réglages pour utiliser cette fonctionnalité."
+        );
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude, longitude } = position.coords;
+
+      const response = await fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${longitude}&lat=${latitude}`);
+      const data = await response.json();
+      const feature = data?.features?.[0];
+
+      if (!feature) {
+        Alert.alert("Adresse introuvable", "Impossible de déterminer une adresse à cet endroit précis.");
+        return;
+      }
+
+      const props = feature.properties;
+      await addAddress({
+        label: "Position actuelle",
+        street: props.name ?? props.label ?? "Adresse",
+        zipCode: props.postcode ?? "",
+        city: props.city ?? "",
+        lat: latitude,
+        lng: longitude,
+        isDefault: addresses.length === 0,
+      });
+
+      // La nouvelle adresse vient d'être ajoutée au store — on la
+      // sélectionne directement plutôt que de forcer l'utilisateur à la
+      // rechercher dans la liste juste après l'avoir créée.
+      const newlyAdded = useAddressStore.getState().addresses.at(-1);
+      if (newlyAdded) handleSelect(newlyAdded);
+    } catch (err) {
+      Alert.alert("Erreur", "Impossible de récupérer votre position. Vérifiez que le GPS est activé.");
+    } finally {
+      setLocating(false);
+    }
   }
 
   async function handleDelete(addressId: string) {
@@ -59,12 +115,12 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
         <View className="mb-5 flex-row items-center justify-between">
           <Text className="font-heading text-xl font-bold text-nuit">📍 Choisir une adresse</Text>
           <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-gris-light">
-            <Ionicons name="close" size={16} color="#1A1A2E" />
+          <Text style={{ fontSize: 14, color: "#1A1A2E" }}>✕</Text>
           </Pressable>
         </View>
 
         <View className="mb-4 flex-row items-center gap-3 rounded bg-gris-light px-4 py-3.5">
-          <Ionicons name="search" size={18} color="#6B7280" />
+          <Text style={{ fontSize: 16 }}>🔍</Text>
           <TextInput
             value={search}
             onChangeText={setSearch}
@@ -74,15 +130,20 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
           />
         </View>
 
-        <Pressable className="mb-5 flex-row items-center gap-3 rounded-sm border-2 border-golfe-green/20 bg-golfe-green/5 p-4">
+        <Pressable
+          onPress={handleUseCurrentLocation}
+          disabled={locating}
+          className="mb-5 flex-row items-center gap-3 rounded-sm border-2 border-golfe-green/20 bg-golfe-green/5 p-4"
+          style={{ opacity: locating ? 0.7 : 1 }}
+        >
           <View className="h-10 w-10 items-center justify-center rounded-full bg-golfe-green">
-            <Ionicons name="locate" size={18} color="white" />
+            {locating ? <ActivityIndicator size="small" color="white" /> : <Text style={{ fontSize: 16 }}>📍</Text>}
           </View>
           <View className="flex-1">
             <Text className="text-sm font-bold text-nuit">Utiliser ma position actuelle</Text>
-            <Text className="text-xs text-gris">Géolocalisation GPS</Text>
+            <Text className="text-xs text-gris">{locating ? "Localisation en cours..." : "Géolocalisation GPS"}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color="#6B7280" />
+          <Text style={{ fontSize: 14, color: "#6B7280" }}>›</Text>
         </Pressable>
 
         <Text className="mb-3 text-xs font-semibold uppercase tracking-wide text-gris">
@@ -108,7 +169,7 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
           <ScrollView showsVerticalScrollIndicator={false}>
             {filtered.map((address) => {
               const isActive = activeAddress?.id === address.id;
-              const icon = LABEL_ICONS[address.label] ?? "location";
+              const emoji = LABEL_EMOJIS[address.label] ?? "📍";
               return (
                 <Pressable
                   key={address.id}
@@ -120,7 +181,7 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
                   }}
                 >
                   <View className="h-10 w-10 items-center justify-center rounded-full bg-gris-light">
-                    <Ionicons name={icon} size={18} color="#1A1A2E" />
+                    <Text style={{ fontSize: 16 }}>{emoji}</Text>
                   </View>
                   <View className="flex-1">
                     <Text className="text-sm font-bold text-nuit">{address.label}</Text>
@@ -129,7 +190,7 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
                       {address.complement ? `, ${address.complement}` : ""} — {address.city}
                     </Text>
                   </View>
-                  {isActive && <Ionicons name="checkmark-circle" size={20} color="#2ECC71" />}
+                  {isActive && <Text style={{ fontSize: 18, color: "#2ECC71" }}>✅</Text>}
                   <Pressable
                     onPress={(e) => {
                       e.stopPropagation?.();
@@ -141,7 +202,7 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
                     {deletingId === address.id ? (
                       <ActivityIndicator size="small" color="#EF4444" />
                     ) : (
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                      <Text style={{ fontSize: 14 }}>🗑️</Text>
                     )}
                   </Pressable>
                 </Pressable>
@@ -166,7 +227,7 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
               onPress={() => setAddFormOpen(true)}
               className="mb-6 mt-2 flex-row items-center justify-center gap-2 rounded-sm border-2 border-dashed border-gris-light py-4"
             >
-              <Ionicons name="add-circle-outline" size={18} color="#2ECC71" />
+              <Text style={{ fontSize: 16, color: "#2ECC71" }}>➕</Text>
               <Text className="text-sm font-semibold text-golfe-green">Ajouter une nouvelle adresse</Text>
             </Pressable>
           </ScrollView>

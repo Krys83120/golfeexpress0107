@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Platform } from "react-native";
 import { WebView } from "react-native-webview";
 
 interface TrackingMapProps {
@@ -11,12 +11,17 @@ interface TrackingMapProps {
 }
 
 /**
- * Mini carte de suivi utilisant Leaflet dans une WebView plutôt que
- * react-native-maps : évite d'avoir à configurer un module natif (clé API
- * Google Maps, build EAS...) et fonctionne directement dans Expo Go, comme
- * le reste de l'app ce soir. Le HTML est généré côté client et injecté
- * directement — pas de requête réseau vers un serveur autre que les tuiles
- * OpenStreetMap.
+ * Mini carte de suivi utilisant Leaflet plutôt que react-native-maps :
+ * évite d'avoir à configurer un module natif (clé API Google Maps, build
+ * EAS...) et fonctionne directement dans Expo Go, comme le reste de l'app.
+ * Le HTML est généré côté client et injecté directement — pas de requête
+ * réseau vers un serveur autre que les tuiles OpenStreetMap.
+ *
+ * IMPORTANT : react-native-webview ne supporte PAS la plateforme web
+ * (affiche "React Native WebView does not support this platform" à la
+ * place). Puisque cette app tourne aussi en PWA web, on bascule sur un
+ * <iframe> natif du navigateur dans ce cas — même HTML, juste un conteneur
+ * différent selon la plateforme.
  */
 export function TrackingMap({ riderLat, riderLng, destinationLat, destinationLng, height = 180 }: TrackingMapProps) {
   const hasDestination = destinationLat !== undefined && destinationLng !== undefined;
@@ -72,6 +77,15 @@ export function TrackingMap({ riderLat, riderLng, destinationLat, destinationLng
   </script>
 </body>
 </html>`;
+
+  if (Platform.OS === "web") {
+    return (
+      <View style={[styles.wrap, { height }]}>
+        {/* @ts-ignore — élément DOM natif, valide uniquement sur web (React Native Web) */}
+        <iframe srcDoc={html} style={{ border: 0, width: "100%", height: "100%" }} title="Carte de suivi" />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.wrap, { height }]}>
