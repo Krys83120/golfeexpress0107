@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { requestPasswordReset } from "@/services/passwordResetApi";
+import { fetchBrandingLogoUrl } from "@/services/brandingApi";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -8,6 +9,11 @@ export function LoginPage() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBrandingLogoUrl().then(setLogoUrl);
+  }, []);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -71,7 +77,11 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gris-light/30 p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <span className="text-7xl">🦎</span>
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="mx-auto h-24 w-24 object-contain" />
+          ) : (
+            <span className="text-7xl">🦎</span>
+          )}
           <h1 className="mt-2 font-heading text-xl font-extrabold text-nuit">Do You Geckoo Pro</h1>
           <p className="mt-1 text-sm text-gris">
             {mode === "login"

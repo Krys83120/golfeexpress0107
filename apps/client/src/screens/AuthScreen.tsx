@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Image, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/useAuthStore";
 import { requestPasswordReset } from "@/services/passwordResetApi";
+import { fetchBrandingLogoUrl } from "@/services/brandingApi";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -17,6 +18,11 @@ export function AuthScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [confirmationMessage, setConfirmationMessage] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBrandingLogoUrl().then(setLogoUrl);
+  }, []);
 
   const login = useAuthStore((s) => s.login);
   const signup = useAuthStore((s) => s.signup);
@@ -81,7 +87,11 @@ export function AuthScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 48, padding: 24 }} keyboardShouldPersistTaps="handled">
           <View className="mb-8 items-center">
-            <Text style={{ fontSize: 130 }}>🦎</Text>
+            {logoUrl ? (
+              <Image source={{ uri: logoUrl }} style={{ height: 130, width: 130 }} resizeMode="contain" />
+            ) : (
+              <Text style={{ fontSize: 130 }}>🦎</Text>
+            )}
             <Text className="notranslate mt-3 font-heading text-2xl font-extrabold text-nuit">Do You Geckoo</Text>
             <Text className="mt-1 text-sm text-gris">
               {mode === "login" ? "Connectez-vous pour commander" : mode === "signup" ? "Créez votre compte" : "Réinitialisez votre mot de passe"}

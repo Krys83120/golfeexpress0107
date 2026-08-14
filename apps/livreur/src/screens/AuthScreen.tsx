@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/useAuthStore";
 import { requestPasswordReset } from "@/services/passwordResetApi";
+import { fetchBrandingLogoUrl } from "@/services/brandingApi";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -26,6 +28,11 @@ export function AuthScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [confirmationMessage, setConfirmationMessage] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBrandingLogoUrl().then(setLogoUrl);
+  }, []);
 
   const login = useAuthStore((s) => s.login);
   const signup = useAuthStore((s) => s.signup);
@@ -83,7 +90,11 @@ export function AuthScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 48, padding: 24 }} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Text style={{ fontSize: 130 }}>🦎</Text>
+            {logoUrl ? (
+              <Image source={{ uri: logoUrl }} style={{ height: 130, width: 130 }} resizeMode="contain" />
+            ) : (
+              <Text style={{ fontSize: 130 }}>🦎</Text>
+            )}
             <Text style={styles.title} className="notranslate">Do You Geckoo</Text>
             <Text style={styles.subtitle}>Espace Livreur</Text>
             <Text style={styles.subtitle}>

@@ -7,6 +7,8 @@ import {
   Bike,
   Wallet,
   Settings,
+  Palette,
+  Search,
   LogOut,
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
@@ -35,6 +37,8 @@ export function Sidebar({ activeItem, onSelect, pendingCount }: SidebarProps) {
     { key: "pros", label: "Commerçants", icon: <Store size={18} /> },
     { key: "riders", label: "Livreurs", icon: <Bike size={18} /> },
     { key: "finances", label: "Finances", icon: <Wallet size={18} /> },
+    { key: "branding", label: "Branding", icon: <Palette size={18} /> },
+    { key: "seo", label: "SEO / GEO", icon: <Search size={18} /> },
     { key: "settings", label: "Paramètres globaux", icon: <Settings size={18} /> },
   ];
 

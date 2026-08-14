@@ -6,6 +6,8 @@ import { UsersPage } from "./pages/UsersPage";
 import { ProsPage } from "./pages/ProsPage";
 import { RidersPage } from "./pages/RidersPage";
 import { AdminFinancesPage } from "./pages/AdminFinancesPage";
+import { BrandingPage } from "./pages/BrandingPage";
+import { SeoPage } from "./pages/SeoPage";
 import { AdminSettingsPage } from "./pages/AdminSettingsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { useAdminDashboardStore } from "./store/useAdminDashboardStore";
@@ -29,6 +31,10 @@ function MainApp() {
         return <RidersPage />;
       case "finances":
         return <AdminFinancesPage />;
+      case "branding":
+        return <BrandingPage />;
+      case "seo":
+        return <SeoPage />;
       case "settings":
         return <AdminSettingsPage />;
       default:

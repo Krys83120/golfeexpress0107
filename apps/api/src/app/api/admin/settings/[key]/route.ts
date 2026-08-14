@@ -38,3 +38,32 @@ async function patchHandler(req: NextRequest, ctx: { params: { key: string } }) 
 }
 
 export const PATCH = withErrorHandling(patchHandler);
+
+/**
+ * PUT /api/admin/settings/[key]
+ * Body: { value, description? }
+ *
+ * Upsert — pratique pour les pages Admin (Branding, SEO/GEO...) qui
+ * n'ont pas besoin de savoir si le paramètre existe déjà avant d'écrire
+ * dessus, contrairement à POST (crée, échoue si existe) / PATCH (modifie,
+ * échoue si absent).
+ */
+async function putHandler(req: NextRequest, ctx: { params: { key: string } }) {
+  const auth = await requireAuth(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN]);
+
+  const body = await req.json().catch(() => null);
+  const parsed = updateSettingSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new ApiError(400, "Champ 'value' requis.");
+  }
+
+  const setting = await prisma.globalSetting.upsert({
+    where: { key: ctx.params.key },
+    update: { value: parsed.data.value, updatedBy: auth.userId },
+    create: { key: ctx.params.key, value: parsed.data.value, updatedBy: auth.userId },
+  });
+
+  return NextResponse.json({ setting });
+}
+
+export const PUT = withErrorHandling(putHandler);
