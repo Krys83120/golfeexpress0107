@@ -18,6 +18,7 @@ import { OrdersScreen } from "@/screens/OrdersScreen";
 import { FidelityScreen } from "@/screens/FidelityScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
 import type { ProWithUi } from "@/services/prosApi";
+import { fetchPros } from "@/services/prosApi";
 import { useCartStore } from "@/store/useCartStore";
 
 type Tab = "home" | "orders" | "fidelity" | "profile";
@@ -39,6 +40,7 @@ function MainApp() {
 
   // Modals plein écran (empilés au-dessus des tabs)
   const [selectedPro, setSelectedPro] = useState<ProWithUi | null>(null);
+  const [deepLinkProductId, setDeepLinkProductId] = useState<string | undefined>(undefined);
   const [cartOpen, setCartOpen] = useState(false);
   const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
   const [addressPickerOpen, setAddressPickerOpen] = useState(false);
@@ -46,6 +48,37 @@ function MainApp() {
 
   const logout = useAuthStore((s) => s.logout);
   const clearCart = useCartStore((s) => s.clear);
+
+  // Deep-link depuis le site vitrine (doyougeckoo.fr) : un clic sur
+  // "Commander chez X" ou sur un produit précis ajoute ?pro=<id>[&product=<id>]
+  // à l'URL — on ouvre alors directement la bonne fiche commerçant (et le
+  // bon produit) au lieu de laisser l'utilisateur atterrir sur l'accueil
+  // générique et devoir tout rechercher une seconde fois.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const proId = params.get("pro");
+    if (!proId) return;
+
+    const productId = params.get("product") ?? undefined;
+
+    // On nettoie l'URL tout de suite (avant même la réponse réseau) pour
+    // ne pas rouvrir la même fiche si l'utilisateur navigue ensuite dans
+    // l'app et que ce composant se re-rend.
+    window.history.replaceState({}, "", window.location.pathname);
+
+    fetchPros()
+      .then((pros) => {
+        const match = pros.find((p) => p.id === proId);
+        if (match) {
+          setSelectedPro(match);
+          setDeepLinkProductId(productId);
+        }
+      })
+      .catch(() => {
+        /* lien invalide/expiré : on laisse simplement l'utilisateur sur l'accueil */
+      });
+  }, []);
 
   function handleOrderCreated(order: Order) {
     setCartOpen(false);
@@ -71,7 +104,10 @@ function MainApp() {
       case "home":
         return (
           <HomeScreen
-            onOpenPro={setSelectedPro}
+            onOpenPro={(pro) => {
+              setDeepLinkProductId(undefined);
+              setSelectedPro(pro);
+            }}
             onOpenCart={() => setCartOpen(true)}
             onOpenAddressPicker={() => setAddressPickerOpen(true)}
             onOpenMap={() => setMapOpen(true)}
@@ -125,8 +161,24 @@ function MainApp() {
       </SafeAreaView>
 
       {/* MODAL: Détail Pro */}
-      <Modal visible={!!selectedPro} animationType="slide" onRequestClose={() => setSelectedPro(null)}>
-        {selectedPro && <ProDetailScreen pro={selectedPro} onClose={() => setSelectedPro(null)} />}
+      <Modal
+        visible={!!selectedPro}
+        animationType="slide"
+        onRequestClose={() => {
+          setSelectedPro(null);
+          setDeepLinkProductId(undefined);
+        }}
+      >
+        {selectedPro && (
+          <ProDetailScreen
+            pro={selectedPro}
+            initialProductId={deepLinkProductId}
+            onClose={() => {
+              setSelectedPro(null);
+              setDeepLinkProductId(undefined);
+            }}
+          />
+        )}
       </Modal>
 
       {/* MODAL: Panier */}
@@ -153,6 +205,7 @@ function MainApp() {
           onClose={() => setMapOpen(false)}
           onOpenPro={(pro) => {
             setMapOpen(false);
+            setDeepLinkProductId(undefined);
             setSelectedPro(pro);
           }}
         />

@@ -10,20 +10,38 @@ import type { Product } from "@golfeexpress/types";
 interface ProDetailScreenProps {
   pro: ProWithUi;
   onClose: () => void;
+  /** Ouvre automatiquement la fiche de ce produit dès que la liste des
+   * produits est chargée — utilisé pour le deep-link depuis le site
+   * vitrine (clic sur un produit → arrive directement dessus dans l'app,
+   * au lieu de l'écran d'accueil générique). */
+  initialProductId?: string;
 }
 
-export function ProDetailScreen({ pro, onClose }: ProDetailScreenProps) {
+export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScreenProps) {
   const addItem = useCartStore((s) => s.addItem);
   const productsByPro = useProsStore((s) => s.productsByPro);
   const productsStatus = useProsStore((s) => s.productsStatus[pro.id]);
   const loadProductsForPro = useProsStore((s) => s.loadProductsForPro);
   const [optionsModalProduct, setOptionsModalProduct] = useState<Product | null>(null);
+  const [deepLinkConsumed, setDeepLinkConsumed] = useState(false);
 
   useEffect(() => {
     loadProductsForPro(pro.id);
   }, [pro.id]);
 
   const products = productsByPro[pro.id] ?? [];
+
+  // Une fois les produits chargés, ouvre automatiquement la fiche du
+  // produit visé par le lien — une seule fois (deepLinkConsumed évite de
+  // rouvrir la modal si l'utilisateur la ferme puis que ce composant se
+  // re-rend pour une autre raison).
+  useEffect(() => {
+    if (!initialProductId || deepLinkConsumed || productsStatus !== "loaded") return;
+    const match = products.find((p) => p.id === initialProductId);
+    if (match) setOptionsModalProduct(match);
+    setDeepLinkConsumed(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProductId, productsStatus, deepLinkConsumed]);
 
   const grouped = products.reduce<Record<string, Product[]>>((acc, p) => {
     acc[p.category] = acc[p.category] ?? [];

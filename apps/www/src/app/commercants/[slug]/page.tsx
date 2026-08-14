@@ -81,7 +81,7 @@ export default async function CommercantDetailPage({ params }: PageProps) {
               </div>
             </div>
             <a
-              href={ORDER_URL}
+              href={`${ORDER_URL}/?pro=${pro.id}`}
               className="flex-shrink-0 rounded-full bg-golfe-green px-7 py-3 text-center text-sm font-bold text-nuit transition hover:bg-golfe-green-dark hover:text-white"
             >
               Commander chez {pro.businessName}
@@ -119,7 +119,7 @@ export default async function CommercantDetailPage({ params }: PageProps) {
                       .map((product) => (
                         <a
                           key={product.id}
-                          href={ORDER_URL}
+                          href={`${ORDER_URL}/?pro=${pro.id}&product=${product.id}`}
                           className="flex gap-4 rounded-2xl border border-gris-light p-3 transition hover:border-golfe-green"
                         >
                           <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-sable">
