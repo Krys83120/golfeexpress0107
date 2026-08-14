@@ -21,9 +21,10 @@ export async function GET() {
 
   return NextResponse.json(
     { logoUrl },
-    // Cache court côté CDN/navigateur — le logo ne change pas souvent,
-    // mais on veut qu'une mise à jour depuis l'Admin se propage sans
-    // attendre trop longtemps non plus.
-    { headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=3600" } }
+    // Cache très court : on privilégie la fraîcheur ("en direct, sans
+    // redéploiement" promis dans l'UI Admin) à la charge serveur — cette
+    // route est légère et appelée seulement au chargement des écrans de
+    // connexion, pas à chaque interaction.
+    { headers: { "Cache-Control": "public, max-age=10, stale-while-revalidate=30" } }
   );
 }
