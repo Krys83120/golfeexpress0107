@@ -9,6 +9,26 @@ const updateSettingSchema = z.object({
 });
 
 /**
+ * GET /api/admin/settings/[key]
+ *
+ * Manquait jusqu'ici (seulement PATCH/PUT existaient) — nécessaire pour
+ * que la page Branding puisse relire le logo actuellement configuré au
+ * chargement, sans avoir à tout lister via GET /api/admin/settings.
+ */
+async function getHandler(req: NextRequest, ctx: { params: { key: string } }) {
+  await requireAuth(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN]);
+
+  const setting = await prisma.globalSetting.findUnique({ where: { key: ctx.params.key } });
+  if (!setting) {
+    throw new ApiError(404, "Paramètre introuvable.");
+  }
+
+  return NextResponse.json({ setting });
+}
+
+export const GET = withErrorHandling(getHandler);
+
+/**
  * PATCH /api/admin/settings/[key]
  * Body: { value }
  *
