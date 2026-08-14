@@ -88,7 +88,7 @@ export function AuthScreen() {
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 48, padding: 24 }} keyboardShouldPersistTaps="handled">
           <View className="mb-8 items-center">
             {logoUrl ? (
-              <Image source={{ uri: logoUrl }} style={{ height: 130, width: 130 }} resizeMode="contain" />
+              <Image source={{ uri: logoUrl }} style={{ height: 320, width: 320 }} resizeMode="contain" />
             ) : (
               <Text style={{ fontSize: 130 }}>🦎</Text>
             )}

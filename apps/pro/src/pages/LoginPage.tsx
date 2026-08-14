@@ -78,7 +78,7 @@ export function LoginPage() {
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">
           {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="mx-auto h-24 w-24 object-contain" />
+            <img src={logoUrl} alt="Logo" className="mx-auto h-56 w-56 object-contain" />
           ) : (
             <span className="text-7xl">🦎</span>
           )}
