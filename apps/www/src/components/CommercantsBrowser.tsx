@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import type { PublicPro } from "@/lib/publicApi";
-import { distanceKm, CATEGORY_LABELS } from "@/lib/publicApi";
+import { distanceKm, CATEGORY_LABELS, buildProSlug } from "@/lib/publicApi";
 
 interface CommercantsBrowserProps {
   pros: PublicPro[];
@@ -130,7 +130,7 @@ export function CommercantsBrowser({ pros }: CommercantsBrowserProps) {
           {enrichedPros.map((pro) => (
             <Link
               key={pro.id}
-              href={`/commercants/${pro.id}`}
+              href={`/commercants/${buildProSlug(pro)}`}
               className="group overflow-hidden rounded-3xl border border-gris-light bg-white transition hover:shadow-lg"
             >
               <div className="h-36 w-full overflow-hidden bg-sable">

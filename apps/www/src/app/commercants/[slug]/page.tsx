@@ -2,30 +2,41 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { fetchPublicPro, fetchPublicProProducts, CATEGORY_LABELS } from "@/lib/publicApi";
+import { fetchPublicProBySlug, fetchPublicProProducts, CATEGORY_LABELS, CATEGORY_LABELS_PLAIN } from "@/lib/publicApi";
 
 interface PageProps {
-  params: { proId: string };
+  params: { slug: string };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const pro = await fetchPublicPro(params.proId);
+  const pro = await fetchPublicProBySlug(params.slug);
   if (!pro) return {};
+  const city = pro.addresses?.[0]?.city;
+  const category = CATEGORY_LABELS_PLAIN[pro.category] ?? pro.category;
+  // Titre et description incluent explicitement ville + catégorie + nom —
+  // en plus du slug d'URL déjà optimisé, ça maximise la pertinence perçue
+  // par les moteurs de recherche pour des requêtes du type
+  // "[catégorie] [ville]" (ex: "restaurant Sainte-Maxime").
+  const title = city ? `${pro.businessName} — ${category} à ${city}` : `${pro.businessName} — ${category}`;
   return {
-    title: pro.businessName,
-    description: pro.description ?? `Découvrez les produits de ${pro.businessName} sur Do You Geckoo, livraison locale du Golfe de Saint-Tropez.`,
+    title,
+    description:
+      pro.description ??
+      `${pro.businessName}, ${category.toLowerCase()} ${city ? `à ${city} ` : ""}livré par Do You Geckoo dans tout le Golfe de Saint-Tropez.`,
   };
 }
 
 const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
-const ORDER_URL = "https://deploy-client-gamma.vercel.app";
+const ORDER_URL = "https://commander.doyougeckoo.fr";
 
 export default async function CommercantDetailPage({ params }: PageProps) {
-  const pro = await fetchPublicPro(params.proId);
+  const pro = await fetchPublicProBySlug(params.slug);
   if (!pro) notFound();
 
-  const products = await fetchPublicProProducts(params.proId);
+  const products = await fetchPublicProProducts(pro.id);
   const categories = Array.from(new Set(products.map((p) => p.category)));
+  const city = pro.addresses?.[0]?.city;
+  const categoryLabel = CATEGORY_LABELS_PLAIN[pro.category] ?? pro.category;
 
   return (
     <>
@@ -37,6 +48,25 @@ export default async function CommercantDetailPage({ params }: PageProps) {
         </div>
 
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+          {/* Fil d'Ariane — reprend ville / catégorie / nom, à la fois
+              utile pour l'utilisateur et pour le maillage interne SEO
+              (liens texte vers les pages catégorie/ville). */}
+          <nav aria-label="Fil d'Ariane" className="mb-4 flex flex-wrap items-center gap-1.5 text-xs text-gris">
+            <a href="/commercants" className="hover:text-golfe-green hover:underline">
+              Commerçants
+            </a>
+            {city && (
+              <>
+                <span>/</span>
+                <span>{city}</span>
+              </>
+            )}
+            <span>/</span>
+            <span>{categoryLabel}</span>
+            <span>/</span>
+            <span className="font-semibold text-nuit">{pro.businessName}</span>
+          </nav>
+
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-corail">{CATEGORY_LABELS[pro.category] ?? pro.category}</p>
@@ -47,7 +77,7 @@ export default async function CommercantDetailPage({ params }: PageProps) {
                 {pro.googleRating && (
                   <span>🇬 {Number(pro.googleRating).toFixed(1)} ({pro.googleRatingCount} avis Google)</span>
                 )}
-                {pro.addresses?.[0]?.city && <span>📍 {pro.addresses[0].city}</span>}
+                {city && <span>📍 {city}</span>}
               </div>
             </div>
             <a
