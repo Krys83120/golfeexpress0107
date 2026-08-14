@@ -1,7 +1,27 @@
+import { createClient } from "@supabase/supabase-js";
 import { apiFetch } from "@/services/apiClient";
-import { getSupabaseClient } from "@/services/supabaseClient";
 
 const BUCKET = "branding-assets";
+
+function getPublicStorageClient() {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY doivent être définis (voir .env.example).");
+  }
+
+  // IMPORTANT : contrairement à getSupabaseClient() (utilisé ailleurs dans
+  // l'app pour transporter le JWT courant), on n'injecte PAS le token
+  // custom de l'app ici. Ce token n'est pas émis par Supabase Auth, donc
+  // Supabase le rejette au niveau de sa passerelle (403 "AccessDenied")
+  // AVANT même d'évaluer nos policies RLS Postgres — peu importe que ces
+  // policies soient permissives. Le bucket branding-assets a des policies
+  // "TO public" volontairement larges (voir migration RLS), donc la clé
+  // anon seule suffit : pas besoin d'un token d'auth ici.
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 
 /**
  * Redimensionne une image source vers une taille carrée exacte (utilisé
@@ -131,7 +151,7 @@ export async function generateBrandingAssets(file: File, bgColor = "#2ECC71"): P
 
 /** Upload le logo maître dans Storage et l'enregistre comme logo dynamique affiché en direct dans les 3 apps. */
 export async function uploadInAppLogo(file: File): Promise<string> {
-  const supabase = getSupabaseClient();
+  const supabase = getPublicStorageClient();
   const path = `logo.${file.name.split(".").pop() ?? "png"}`;
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type });
@@ -172,7 +192,7 @@ export async function generateAndUploadOgImage(
   const img = await loadImage(file);
   const blob = await generateOgImage(img, appName, tagline, bgColor);
 
-  const supabase = getSupabaseClient();
+  const supabase = getPublicStorageClient();
   const path = `og-${app}.png`;
   const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: "image/png" });
   if (error) throw new Error(`Échec de l'upload : ${error.message}`);
