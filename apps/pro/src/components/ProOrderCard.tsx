@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Phone, MapPin, Clock, Printer } from "lucide-react";
+import { Phone, MapPin, Clock, Printer, Receipt } from "lucide-react";
 import { OrderStatus, type Order } from "@golfeexpress/types";
 import { getNextStatus, NEXT_ACTION_LABELS } from "@/services/orderStatusFlow";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { printOrderLabel } from "@/services/printLabel";
+import { apiFetchBlob } from "@/services/apiClient";
 
 interface ProOrderCardProps {
   order: Order;
@@ -31,6 +32,28 @@ function formatEstimatedReady(preparingStartedAt: string, estimatedPrepMinutes: 
 export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrderCardProps) {
   const [showPrepPicker, setShowPrepPicker] = useState(false);
   const [customPrepMinutes, setCustomPrepMinutes] = useState("");
+  const [loadingReceipt, setLoadingReceipt] = useState(false);
+
+  // Ticket PDF (justificatif) — même endpoint que côté Client, accessible
+  // aussi au Pro pour ses propres archives/traçabilité comptable.
+  async function handleDownloadReceipt() {
+    setLoadingReceipt(true);
+    try {
+      const blob = await apiFetchBlob(`/api/orders/${order.id}/receipt`);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `ticket-${order.orderNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch {
+      alert("Impossible de récupérer le ticket pour le moment.");
+    } finally {
+      setLoadingReceipt(false);
+    }
+  }
 
   const nextStatus = getNextStatus(order.status);
   const actionLabel = NEXT_ACTION_LABELS[order.status];
@@ -157,6 +180,16 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
           >
             <Printer size={13} /> Étiquette
           </button>
+          {order.paymentStatus === "CAPTURED" && (
+            <button
+              onClick={handleDownloadReceipt}
+              disabled={loadingReceipt}
+              title="Télécharger le ticket"
+              className="flex items-center gap-1.5 rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light disabled:opacity-50"
+            >
+              <Receipt size={13} /> {loadingReceipt ? "..." : "Ticket"}
+            </button>
+          )}
           {!isTerminal && !showPrepPicker && (
             <div className="flex gap-2">
               {canCancel && (

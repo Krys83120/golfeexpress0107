@@ -60,3 +60,41 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const text = await response.text();
   return text ? JSON.parse(text) : (undefined as T);
 }
+
+/**
+ * Variante de apiFetch pour les réponses binaires (PDF de rapport Z, ticket
+ * de commande...) — même logique d'auth/refresh, mais renvoie un Blob
+ * plutôt que de tenter un JSON.parse qui casserait sur un contenu non-JSON.
+ */
+export async function apiFetchBlob(path: string, options: { method?: "GET" | "POST"; body?: unknown } = {}): Promise<Blob> {
+  const { method = "GET", body } = options;
+
+  async function performRequest(): Promise<Response> {
+    const accessToken = useAuthStore.getState().accessToken;
+    return fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  let response = await performRequest();
+
+  if (response.status === 401) {
+    const refreshed = await useAuthStore.getState().refreshSession();
+    if (refreshed) response = await performRequest();
+  }
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ error: "Erreur réseau inconnue." }));
+    if (response.status === 401) {
+      useAuthStore.getState().logout();
+    }
+    throw new ApiRequestError(response.status, errorBody.error ?? "Une erreur est survenue.");
+  }
+
+  return response.blob();
+}

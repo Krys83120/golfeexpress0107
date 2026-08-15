@@ -35,6 +35,12 @@ export enum ProStatus {
   CLOSED = "CLOSED",
 }
 
+/** Voir Pro.isManuallyClosed dans prisma/schema.prisma pour le détail. */
+export enum ManualClosureReason {
+  VACATION = "VACATION",
+  CLOSED = "CLOSED",
+}
+
 export enum SubscriptionType {
   FREE = "FREE",
   PREMIUM = "PREMIUM",

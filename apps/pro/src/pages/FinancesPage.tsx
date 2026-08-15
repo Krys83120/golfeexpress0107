@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { StatCard } from "@/components/StatCard";
-import { fetchMyFinances, type FinanceSummary, type WeeklyFinanceEntry } from "@/services/financesApi";
+import {
+  fetchMyFinances,
+  downloadZReport,
+  emailZReport,
+  type FinanceSummary,
+  type WeeklyFinanceEntry,
+  type ZReportPeriod,
+} from "@/services/financesApi";
 import { fetchStripeConnectStatus, createStripeOnboardingLink, type StripeConnectStatus } from "@/services/stripeConnectApi";
+
+function todayDateStr(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export function FinancesPage() {
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
@@ -9,6 +20,12 @@ export function FinancesPage() {
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
+
+  // Rapport Z (clôture caisse) — jour/semaine/mois, ancré sur une date choisie.
+  const [zPeriod, setZPeriod] = useState<ZReportPeriod>("day");
+  const [zDate, setZDate] = useState(todayDateStr);
+  const [zBusy, setZBusy] = useState<"download" | "email" | null>(null);
+  const [zMessage, setZMessage] = useState<string | null>(null);
 
   function loadStripeStatus() {
     fetchStripeConnectStatus()
@@ -38,6 +55,39 @@ export function FinancesPage() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, []);
+
+  async function handleDownloadZ() {
+    setZBusy("download");
+    setZMessage(null);
+    try {
+      const blob = await downloadZReport(zPeriod, zDate);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `rapport-z-${zDate}-${zPeriod}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch {
+      setZMessage("Téléchargement impossible. Réessayez dans un instant.");
+    } finally {
+      setZBusy(null);
+    }
+  }
+
+  async function handleEmailZ() {
+    setZBusy("email");
+    setZMessage(null);
+    try {
+      const { to } = await emailZReport(zPeriod, zDate);
+      setZMessage(`Rapport envoyé à ${to}.`);
+    } catch {
+      setZMessage("Envoi impossible. Réessayez dans un instant.");
+    } finally {
+      setZBusy(null);
+    }
+  }
 
   async function handleConfigureBankAccount() {
     setOnboardingLoading(true);
@@ -157,6 +207,48 @@ export function FinancesPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+        <h3 className="mb-1 font-heading text-base font-bold text-nuit">📄 Rapport Z (clôture caisse)</h3>
+        <p className="mb-4 text-xs text-gris">
+          Récapitulatif des commandes facturées sur la période choisie — à télécharger ou recevoir par email pour
+          votre comptabilité (traçabilité et archives).
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex overflow-hidden rounded-sm border border-gris-light">
+            {(["day", "week", "month"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setZPeriod(p)}
+                className={`px-3 py-2 text-xs font-semibold ${zPeriod === p ? "bg-golfe-green text-white" : "text-gris"}`}
+              >
+                {p === "day" ? "Jour" : p === "week" ? "Semaine" : "Mois"}
+              </button>
+            ))}
+          </div>
+          <input
+            type="date"
+            value={zDate}
+            onChange={(e) => setZDate(e.target.value)}
+            className="rounded-sm border border-gris-light px-2 py-2 text-sm"
+          />
+          <button
+            onClick={handleDownloadZ}
+            disabled={!!zBusy}
+            className="rounded-sm bg-nuit px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+          >
+            {zBusy === "download" ? "..." : "⬇️ Télécharger"}
+          </button>
+          <button
+            onClick={handleEmailZ}
+            disabled={!!zBusy}
+            className="rounded-sm border border-gris-light px-4 py-2 text-xs font-semibold text-nuit disabled:opacity-60"
+          >
+            {zBusy === "email" ? "..." : "✉️ Envoyer par email"}
+          </button>
+        </div>
+        {zMessage && <p className="mt-3 text-xs text-gris">{zMessage}</p>}
       </div>
     </div>
   );

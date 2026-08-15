@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { OrderStatus, type Order } from "@golfeexpress/types";
 import { fetchMyOrders } from "@/services/ordersApi";
 import { getCategoryVisual } from "@/services/categoryVisuals";
 import { StatusBadge } from "@/components/StatusBadge";
+import { downloadOrderReceipt, emailOrderReceipt } from "@/services/documentsApi";
 
 type Filter = "all" | "active" | "past";
 
@@ -28,6 +29,32 @@ export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
+  // Ticket de commande — état par commande (id -> action en cours), pour
+  // n'afficher le spinner que sur le bouton concerné dans la liste.
+  const [receiptBusy, setReceiptBusy] = useState<Record<string, "download" | "email" | undefined>>({});
+
+  async function handleDownloadReceipt(order: Order) {
+    setReceiptBusy((s) => ({ ...s, [order.id]: "download" }));
+    try {
+      await downloadOrderReceipt(order.id, order.orderNumber);
+    } catch (err) {
+      Alert.alert("Erreur", err instanceof Error ? err.message : "Téléchargement du ticket impossible.");
+    } finally {
+      setReceiptBusy((s) => ({ ...s, [order.id]: undefined }));
+    }
+  }
+
+  async function handleEmailReceipt(order: Order) {
+    setReceiptBusy((s) => ({ ...s, [order.id]: "email" }));
+    try {
+      const { to } = await emailOrderReceipt(order.id);
+      Alert.alert("Ticket envoyé", `Le ticket de la commande ${order.orderNumber} a été envoyé à ${to}.`);
+    } catch (err) {
+      Alert.alert("Erreur", err instanceof Error ? err.message : "Envoi du ticket impossible.");
+    } finally {
+      setReceiptBusy((s) => ({ ...s, [order.id]: undefined }));
+    }
+  }
 
   async function load() {
     setStatus("loading");
@@ -149,6 +176,31 @@ export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
                       </Pressable>
                     )}
                   </View>
+
+                  {order.paymentStatus === "CAPTURED" && (
+                    <View className="mt-2.5 flex-row items-center gap-2 border-t border-gris-light pt-2.5">
+                      <Pressable
+                        onPress={() => handleDownloadReceipt(order)}
+                        disabled={!!receiptBusy[order.id]}
+                        className="flex-row items-center gap-1 rounded-sm border border-gris-light px-2.5 py-1.5"
+                      >
+                        <Text style={{ fontSize: 11 }}>📄</Text>
+                        <Text className="text-[11px] font-semibold text-nuit">
+                          {receiptBusy[order.id] === "download" ? "..." : "Ticket"}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => handleEmailReceipt(order)}
+                        disabled={!!receiptBusy[order.id]}
+                        className="flex-row items-center gap-1 rounded-sm border border-gris-light px-2.5 py-1.5"
+                      >
+                        <Text style={{ fontSize: 11 }}>✉️</Text>
+                        <Text className="text-[11px] font-semibold text-nuit">
+                          {receiptBusy[order.id] === "email" ? "..." : "Par email"}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  )}
                 </Pressable>
               );
             })

@@ -25,11 +25,17 @@ export function ProCard({ pro, onPress }: ProCardProps) {
           <Text style={{ fontSize: 52 }}>{pro.emoji}</Text>
         )}
 
+        {/* "En vacances" distingué visuellement d'un simple "Fermé" (hors
+            horaires ou fermeture ponctuelle) — le client sait s'il doit
+            revenir plus tard dans la journée ou si le commerçant est
+            indisponible pour un moment plus long. */}
         <View
           className="absolute left-3 top-3 rounded-full px-2.5 py-1"
-          style={{ backgroundColor: pro.isOpen ? "#2ECC71" : "#6B7280" }}
+          style={{ backgroundColor: pro.isOpen ? "#2ECC71" : pro.openReason === "VACATION" ? "#FF6B35" : "#6B7280" }}
         >
-          <Text className="text-[11px] font-bold text-white">{pro.isOpen ? "Ouvert" : "Fermé"}</Text>
+          <Text className="text-[11px] font-bold text-white">
+            {pro.isOpen ? "Ouvert" : pro.openReason === "VACATION" ? "🏖️ En vacances" : "Fermé"}
+          </Text>
         </View>
 
         <View className="absolute right-3 top-3">

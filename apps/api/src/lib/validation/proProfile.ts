@@ -45,3 +45,20 @@ export const updateOpeningHoursSchema = z.object({
 });
 
 export type UpdateOpeningHoursInput = z.infer<typeof updateOpeningHoursSchema>;
+
+/// Fermeture manuelle ("En vacances" / "Fermé exceptionnellement") — voir
+/// Pro.isManuallyClosed dans prisma/schema.prisma. manualClosureUntil est
+/// une simple date "YYYY-MM-DD" (pas un datetime complet) car c'est ce que
+/// renvoie un <input type="date"> côté Réglages Pro.
+export const updateClosureSchema = z.object({
+  isManuallyClosed: z.boolean(),
+  manualClosureReason: z.enum(["VACATION", "CLOSED"]).nullable().optional(),
+  manualClosureUntil: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide (AAAA-MM-JJ attendu).")
+    .nullable()
+    .optional(),
+  manualClosureNote: z.string().max(200, "200 caractères maximum.").nullable().optional(),
+});
+
+export type UpdateClosureInput = z.infer<typeof updateClosureSchema>;

@@ -3,6 +3,7 @@ import { UserRole } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { updateProProfileSchema } from "@/lib/validation/proProfile";
+import { computeOpenStatus } from "@/lib/openingHours";
 
 /**
  * GET /api/pros/me
@@ -25,6 +26,12 @@ async function getHandler(req: NextRequest) {
       commissionRate: Number(pro.commissionRate),
       rating: pro.rating !== null ? Number(pro.rating) : null,
       googleRating: pro.googleRating !== null ? Number(pro.googleRating) : null,
+      openStatus: computeOpenStatus(pro.openingHours, {
+        isManuallyClosed: pro.isManuallyClosed,
+        manualClosureReason: pro.manualClosureReason,
+        manualClosureUntil: pro.manualClosureUntil,
+        manualClosureNote: pro.manualClosureNote,
+      }),
     },
   });
 }

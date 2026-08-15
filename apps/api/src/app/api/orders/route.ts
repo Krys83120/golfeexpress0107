@@ -3,6 +3,7 @@ import { UserRole, OrderStatus, PaymentStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { createOrderSchema } from "@/lib/validation/orders";
+import { computeOpenStatus } from "@/lib/openingHours";
 
 // Frais fixes appliqués par la plateforme — à terme, ces valeurs devraient
 // venir de GlobalSetting (min_delivery_fee, max_delivery_fee, etc.) plutôt
@@ -40,9 +41,23 @@ async function postHandler(req: NextRequest) {
 
   const { proId, fromAddressId, toAddressId, items, clientNote } = parsed.data;
 
-  const pro = await prisma.pro.findUnique({ where: { id: proId } });
+  const pro = await prisma.pro.findUnique({ where: { id: proId }, include: { openingHours: true } });
   if (!pro || pro.status !== "ACTIVE") {
     throw new ApiError(404, "Ce commerçant n'est pas disponible actuellement.");
+  }
+
+  // Vérification serveur du statut ouvert/fermé — indispensable en plus du
+  // badge affiché côté Client (qui peut être obsolète de quelques minutes
+  // ou contourné) : évite qu'une commande soit créée chez un commerçant
+  // fermé (horaires ou "En vacances"/"Fermé" — voir lib/openingHours.ts).
+  const openStatus = computeOpenStatus(pro.openingHours, {
+    isManuallyClosed: pro.isManuallyClosed,
+    manualClosureReason: pro.manualClosureReason,
+    manualClosureUntil: pro.manualClosureUntil,
+    manualClosureNote: pro.manualClosureNote,
+  });
+  if (!openStatus.isOpen) {
+    throw new ApiError(400, "Ce commerçant est actuellement fermé — commande impossible pour le moment.");
   }
 
   // fromAddress doit être une adresse du Pro (point de retrait), toAddress

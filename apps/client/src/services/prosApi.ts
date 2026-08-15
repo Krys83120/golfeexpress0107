@@ -1,12 +1,16 @@
 import { apiFetch } from "@/services/apiClient";
 import { getCategoryVisual, haversineDistanceKm, estimateDeliveryMinutes } from "@/services/categoryVisuals";
-import type { Pro, Product } from "@golfeexpress/types";
+import type { Pro, Product, OpenStatus } from "@golfeexpress/types";
 
 export interface ProWithUi extends Pro {
   emoji: string;
   gradientFrom: string;
   gradientTo: string;
   isOpen: boolean;
+  /** Motif détaillé (fermé, en vacances, hors horaires...) — voir OpenStatus. Absent si l'API ne l'a pas renvoyé (repli ouvert). */
+  openReason: OpenStatus["reason"];
+  closedUntil: string | null;
+  closedNote: string | null;
   distanceKm: number;
   estimatedMinMinutes: number;
   estimatedMaxMinutes: number;
@@ -40,12 +44,20 @@ function toProWithUi(pro: Pro & { addresses?: { lat: number; lng: number }[] }, 
 
   const { min, max } = estimateDeliveryMinutes(distanceKm);
 
+  // Calculé côté serveur (voir GET /api/pros -> lib/openingHours.ts) pour
+  // éviter tout décalage de fuseau horaire côté app — repli "ouvert" si le
+  // champ est absent (ex: ancien cache) plutôt que d'afficher "fermé" à tort.
+  const openStatus = pro.openStatus;
+
   return {
     ...pro,
     emoji: visual.emoji,
     gradientFrom: visual.gradientFrom,
     gradientTo: visual.gradientTo,
-    isOpen: true, // TODO: dériver de Pro.openingHours + heure actuelle plutôt qu'une valeur fixe
+    isOpen: openStatus ? openStatus.isOpen : true,
+    openReason: openStatus?.reason ?? "OPEN",
+    closedUntil: openStatus?.manualClosureUntil ?? null,
+    closedNote: openStatus?.manualClosureNote ?? null,
     distanceKm,
     estimatedMinMinutes: min,
     estimatedMaxMinutes: max,

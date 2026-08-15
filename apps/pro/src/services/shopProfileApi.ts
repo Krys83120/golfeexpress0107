@@ -90,3 +90,21 @@ export async function updateMyOpeningHours(hours: OpeningHourInput[]): Promise<O
   });
   return data.openingHours;
 }
+
+export interface ClosureInput {
+  isManuallyClosed: boolean;
+  manualClosureReason?: "VACATION" | "CLOSED" | null;
+  /** "YYYY-MM-DD", optionnel. */
+  manualClosureUntil?: string | null;
+  manualClosureNote?: string | null;
+}
+
+/**
+ * PATCH /api/pros/me/closure — bascule "En vacances"/"Fermé" sans toucher
+ * aux horaires hebdomadaires (voir updateMyOpeningHours ci-dessus, qui
+ * reste inchangé et se réapplique automatiquement à la réouverture).
+ */
+export async function updateMyClosure(input: ClosureInput): Promise<Pro> {
+  const data = await apiFetch<{ pro: Pro }>("/api/pros/me/closure", { method: "PATCH", body: input });
+  return data.pro;
+}

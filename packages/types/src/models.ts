@@ -12,6 +12,7 @@ import {
   EarningStatus,
   WithdrawalStatus,
   NotificationType,
+  ManualClosureReason,
 } from "./enums";
 
 /**
@@ -84,10 +85,28 @@ export interface Pro {
   stripePayoutsEnabled: boolean;
   stripeOnboardingComplete: boolean;
   createdAt: string;
+  /** Voir prisma/schema.prisma Pro.isManuallyClosed pour le détail. */
+  isManuallyClosed: boolean;
+  manualClosureReason?: ManualClosureReason | null;
+  manualClosureUntil?: string | null;
+  manualClosureNote?: string | null;
+  /** Ajouté par GET /api/pros et GET/PATCH /api/pros/me — pas un champ Prisma. */
+  openStatus?: OpenStatus;
   addresses?: Address[];
   products?: Product[];
   openingHours?: OpeningHours[];
   deliveryZones?: DeliveryZone[];
+}
+
+/**
+ * Statut ouvert/fermé calculé côté serveur (jamais côté client, pour éviter
+ * les décalages de fuseau horaire) — voir apps/api/src/lib/openingHours.ts.
+ */
+export interface OpenStatus {
+  isOpen: boolean;
+  reason: "OPEN" | "OUTSIDE_HOURS" | "NO_HOURS_SET" | "VACATION" | "CLOSED";
+  manualClosureUntil?: string | null;
+  manualClosureNote?: string | null;
 }
 
 export type RiderProfessionalStatus = "AUTO_ENTREPRENEUR" | "SALARIE" | "INDEPENDANT" | "AUTRE";

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, Linking } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, Linking, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { ProWithUi } from "@/services/prosApi";
 import { useProsStore } from "@/store/useProsStore";
@@ -65,6 +65,18 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
   }
 
   function handlePressProduct(product: Product) {
+    // Commerçant fermé (horaires, ou "En vacances"/"Fermé" côté Pro) : on
+    // bloque l'ajout au panier ici plutôt que de laisser l'utilisateur
+    // découvrir l'erreur seulement au moment de payer — le serveur refuse
+    // de toute façon la commande dans ce cas (voir orders/route.ts).
+    if (!pro.isOpen) {
+      Alert.alert(
+        pro.openReason === "VACATION" ? "Commerçant en vacances" : "Commerçant fermé",
+        "Ce commerçant n'accepte pas de commande pour le moment."
+      );
+      return;
+    }
+
     // Produit avec des options (taille, base, sauce...) -> on ouvre l'écran
     // de sélection avant d'ajouter au panier. Sinon, ajout direct comme avant.
     if (product.options && product.options.length > 0) {
@@ -167,6 +179,24 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
             </View>
           )}
         </View>
+
+        {!pro.isOpen && (
+          <View
+            className="mx-5 mt-4 rounded-sm p-3.5"
+            style={{ backgroundColor: pro.openReason === "VACATION" ? "#FFF3E0" : "#F3F4F6" }}
+          >
+            <Text className="text-sm font-bold" style={{ color: pro.openReason === "VACATION" ? "#FF6B35" : "#374151" }}>
+              {pro.openReason === "VACATION" ? "🏖️ Ce commerçant est en vacances" : "🚫 Ce commerçant est fermé actuellement"}
+            </Text>
+            {pro.closedUntil && (
+              <Text className="mt-1 text-xs text-gris">
+                Retour prévu le {new Date(pro.closedUntil).toLocaleDateString("fr-FR")}
+              </Text>
+            )}
+            {pro.closedNote && <Text className="mt-1 text-xs text-gris">"{pro.closedNote}"</Text>}
+            <Text className="mt-1 text-xs text-gris">Vous pouvez consulter le menu, mais pas commander pour le moment.</Text>
+          </View>
+        )}
 
         {productsStatus === "loading" && (
           <View className="items-center py-12">

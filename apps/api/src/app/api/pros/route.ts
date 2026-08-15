@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withErrorHandling } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
+import { computeOpenStatus } from "@/lib/openingHours";
 
 const PRO_CATEGORIES = [
   "RESTAURANT",
@@ -58,6 +59,15 @@ async function getHandler(req: NextRequest) {
     googleRating: p.googleRating !== null ? Number(p.googleRating) : null,
     commissionRate: Number(p.commissionRate),
     addresses: p.addresses.map((a) => ({ ...a, lat: Number(a.lat), lng: Number(a.lng) })),
+    // Calculé côté serveur (jamais côté client, pour éviter tout décalage de
+    // fuseau horaire) — alimente le badge Ouvert/Fermé/En vacances côté
+    // Client (voir apps/client/src/services/prosApi.ts).
+    openStatus: computeOpenStatus(p.openingHours, {
+      isManuallyClosed: p.isManuallyClosed,
+      manualClosureReason: p.manualClosureReason,
+      manualClosureUntil: p.manualClosureUntil,
+      manualClosureNote: p.manualClosureNote,
+    }),
   }));
 
   return NextResponse.json({ pros: serialized });

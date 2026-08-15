@@ -44,6 +44,17 @@ enum ProStatus {
   CLOSED
 }
 
+/// Motif de fermeture manuelle temporaire d'un Pro — distinct de ProStatus
+/// (qui reflète la validation/modération du compte). Une fermeture manuelle
+/// n'affecte jamais ProStatus ni les horaires enregistrés (OpeningHours) :
+/// c'est un simple interrupteur, réversible en un clic, qui prime
+/// temporairement sur le calcul ouvert/fermé habituel (voir
+/// apps/api/src/lib/openingHours.ts).
+enum ManualClosureReason {
+  VACATION
+  CLOSED
+}
+
 enum SubscriptionType {
   FREE
   PREMIUM
@@ -268,7 +279,21 @@ model Pro {
   stripeOnboardingComplete Boolean  @default(false) @map("stripe_onboarding_complete")
 
   createdAt         DateTime    @default(now()) @map("created_at")
-  
+
+  /// Fermeture manuelle ("En vacances" / "Fermé exceptionnellement"),
+  /// activable en un clic depuis les Réglages Pro SANS toucher aux horaires
+  /// hebdomadaires ci-dessous (OpeningHours) — ceux-ci restent enregistrés
+  /// tels quels et se réappliquent automatiquement dès la réouverture.
+  /// Prime toujours sur OpeningHours dans le calcul ouvert/fermé exposé aux
+  /// clients (voir lib/openingHours.ts) et bloque la création de nouvelles
+  /// commandes côté serveur (voir orders/route.ts) tant qu'elle est active.
+  isManuallyClosed     Boolean              @default(false) @map("is_manually_closed")
+  manualClosureReason  ManualClosureReason? @map("manual_closure_reason")
+  /// Date de retour prévue, optionnelle — affichée aux clients si renseignée.
+  manualClosureUntil   DateTime?            @map("manual_closure_until")
+  /// Message optionnel affiché aux clients (ex: "Fermeture pour travaux").
+  manualClosureNote    String?              @map("manual_closure_note")
+
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   addresses         Address[]
   products          Product[]

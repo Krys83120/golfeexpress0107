@@ -26,7 +26,19 @@ export function NearbyItem({ pro, onPress }: NearbyItemProps) {
       </View>
 
       <View className="flex-1 justify-center">
-        <Text className="font-heading text-[15px] font-bold text-nuit">{pro.businessName}</Text>
+        <View className="flex-row items-center gap-1.5">
+          <Text className="font-heading text-[15px] font-bold text-nuit">{pro.businessName}</Text>
+          {!pro.isOpen && (
+            <View
+              className="rounded-full px-2 py-0.5"
+              style={{ backgroundColor: pro.openReason === "VACATION" ? "#FFF3E0" : "#F3F4F6" }}
+            >
+              <Text className="text-[10px] font-bold" style={{ color: pro.openReason === "VACATION" ? "#FF6B35" : "#6B7280" }}>
+                {pro.openReason === "VACATION" ? "En vacances" : "Fermé"}
+              </Text>
+            </View>
+          )}
+        </View>
         <Text className="mb-1.5 text-xs text-gris">{pro.description}</Text>
 
         <View className="flex-row items-center gap-3">

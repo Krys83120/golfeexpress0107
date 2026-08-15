@@ -5,6 +5,7 @@ import {
   updateMyShopProfile,
   fetchMyOpeningHours,
   updateMyOpeningHours,
+  updateMyClosure,
   syncGoogleRating,
   verifySiret,
   updateMyShopAddress,
@@ -31,6 +32,15 @@ export function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingHours, setSavingHours] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // Fermeture manuelle ("En vacances" / "Fermé exceptionnellement") — ne
+  // touche jamais aux horaires hebdomadaires ci-dessus (state `hours`).
+  const [isManuallyClosed, setIsManuallyClosed] = useState(false);
+  const [closureReason, setClosureReason] = useState<"VACATION" | "CLOSED">("VACATION");
+  const [closureUntil, setClosureUntil] = useState("");
+  const [closureNote, setClosureNote] = useState("");
+  const [savingClosure, setSavingClosure] = useState(false);
+  const [closureMessage, setClosureMessage] = useState<string | null>(null);
 
   // Réseaux sociaux + Google Avis
   const [instagramUrl, setInstagramUrl] = useState("");
@@ -90,6 +100,10 @@ export function SettingsPage() {
       setManagerLastName(shopProfile.managerLastName ?? "");
       setAcceptTerms(!!shopProfile.termsAcceptedAt);
       setTermsAcceptedAt(shopProfile.termsAcceptedAt ?? null);
+      setIsManuallyClosed(shopProfile.isManuallyClosed ?? false);
+      setClosureReason((shopProfile.manualClosureReason as "VACATION" | "CLOSED") ?? "VACATION");
+      setClosureUntil(shopProfile.manualClosureUntil ? shopProfile.manualClosureUntil.slice(0, 10) : "");
+      setClosureNote(shopProfile.manualClosureNote ?? "");
       const existingAddress = shopProfile.addresses?.[0];
       if (existingAddress) {
         setStreet(existingAddress.street);
@@ -125,6 +139,32 @@ export function SettingsPage() {
 
   function updateHour(dayOfWeek: number, field: "openTime" | "closeTime" | "isClosed", value: string | boolean) {
     setHours((prev) => prev.map((h) => (h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h)));
+  }
+
+  /**
+   * Ferme/réouvre la boutique en un clic. N'écrit jamais dans `hours` —
+   * les horaires hebdomadaires restent tels quels et se réappliquent
+   * automatiquement dès la réouverture (voir PATCH /api/pros/me/closure).
+   */
+  async function handleToggleClosure(nextClosed: boolean) {
+    setSavingClosure(true);
+    setClosureMessage(null);
+    try {
+      const updated = await updateMyClosure({
+        isManuallyClosed: nextClosed,
+        manualClosureReason: nextClosed ? closureReason : null,
+        manualClosureUntil: nextClosed && closureUntil ? closureUntil : null,
+        manualClosureNote: nextClosed ? closureNote || null : null,
+      });
+      setPro(updated);
+      setIsManuallyClosed(updated.isManuallyClosed);
+      setClosureReason((updated.manualClosureReason as "VACATION" | "CLOSED") ?? "VACATION");
+      setClosureMessage(nextClosed ? "Boutique fermée aux clients." : "Boutique réouverte selon vos horaires habituels.");
+    } catch (err) {
+      setClosureMessage(err instanceof Error ? err.message : "Impossible de mettre à jour le statut.");
+    } finally {
+      setSavingClosure(false);
+    }
   }
 
   async function handleSaveProfile(e: React.FormEvent) {
@@ -745,6 +785,82 @@ export function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <div className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+        <h3 className="mb-1 font-heading text-base font-bold text-nuit">🏖️ Vacances / Fermeture exceptionnelle</h3>
+        <p className="mb-4 text-xs text-gris">
+          Fermez votre boutique aux clients en un clic, sans toucher à vos horaires habituels ci-dessous — ils
+          seront simplement réappliqués automatiquement dès la réouverture.
+        </p>
+
+        {isManuallyClosed ? (
+          <div className="rounded-sm bg-orange-50 p-4">
+            <p className="text-sm font-bold text-corail">
+              {closureReason === "VACATION" ? "🏖️ Boutique en vacances" : "🚫 Boutique fermée exceptionnellement"}
+            </p>
+            {closureUntil && (
+              <p className="mt-1 text-xs text-gris">Retour prévu le {new Date(closureUntil).toLocaleDateString("fr-FR")}</p>
+            )}
+            {closureNote && <p className="mt-1 text-xs text-gris">"{closureNote}"</p>}
+            <button
+              onClick={() => handleToggleClosure(false)}
+              disabled={savingClosure}
+              className="mt-3 rounded-sm bg-golfe-green px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+            >
+              {savingClosure ? "..." : "Réouvrir la boutique"}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-4">
+              <label className="flex items-center gap-1.5 text-sm text-nuit">
+                <input
+                  type="radio"
+                  name="closureReason"
+                  checked={closureReason === "VACATION"}
+                  onChange={() => setClosureReason("VACATION")}
+                />
+                En vacances
+              </label>
+              <label className="flex items-center gap-1.5 text-sm text-nuit">
+                <input
+                  type="radio"
+                  name="closureReason"
+                  checked={closureReason === "CLOSED"}
+                  onChange={() => setClosureReason("CLOSED")}
+                />
+                Fermé exceptionnellement
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gris">Retour prévu le (optionnel)</label>
+              <input
+                type="date"
+                value={closureUntil}
+                onChange={(e) => setClosureUntil(e.target.value)}
+                className="rounded-sm border border-gris-light px-2 py-1 text-sm"
+              />
+            </div>
+            <input
+              type="text"
+              placeholder="Message affiché aux clients (optionnel)"
+              value={closureNote}
+              onChange={(e) => setClosureNote(e.target.value)}
+              maxLength={200}
+              className="rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+            <button
+              onClick={() => handleToggleClosure(true)}
+              disabled={savingClosure}
+              className="self-start rounded-sm bg-corail px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+            >
+              {savingClosure ? "..." : "Fermer la boutique"}
+            </button>
+          </div>
+        )}
+
+        {closureMessage && <p className="mt-3 text-xs text-gris">{closureMessage}</p>}
+      </div>
 
       <div className="rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
         <h3 className="mb-4 font-heading text-base font-bold text-nuit">🕐 Horaires d'ouverture</h3>

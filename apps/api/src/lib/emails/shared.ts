@@ -17,6 +17,12 @@ export const PORTAL_URLS = {
   admin: "https://admin.doyougeckoo.fr",
 };
 
+/** Pièce jointe Resend — `content` est le fichier encodé en base64 (pas de préfixe "data:"). */
+export interface EmailAttachment {
+  filename: string;
+  content: string;
+}
+
 /**
  * Envoi bas niveau via l'API Resend. Nécessite RESEND_API_KEY dans
  * l'environnement ; si absente, l'envoi est journalisé et ignoré sans
@@ -24,7 +30,7 @@ export const PORTAL_URLS = {
  * validation, une commande... doivent rester effectives même si l'email
  * ne part pas).
  */
-export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+export async function sendEmail(to: string, subject: string, html: string, attachments?: EmailAttachment[]): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn(`[email] RESEND_API_KEY manquante — email non envoyé (destinataire: ${to}, sujet: ${subject}).`);
@@ -35,7 +41,13 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
     const response = await fetch(RESEND_API_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM_ADDRESS, to, subject, html }),
+      body: JSON.stringify({
+        from: FROM_ADDRESS,
+        to,
+        subject,
+        html,
+        ...(attachments && attachments.length > 0 ? { attachments } : {}),
+      }),
     });
 
     if (!response.ok) {
