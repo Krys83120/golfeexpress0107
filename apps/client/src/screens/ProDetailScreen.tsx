@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, Linking, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import type { ProWithUi } from "@/services/prosApi";
 import { useProsStore } from "@/store/useProsStore";
 import { useCartStore } from "@/store/useCartStore";
@@ -65,7 +66,9 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
     : null;
   const sortedHours = [...(pro.openingHours ?? [])].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
   const hasSocialLinks = Boolean(pro.websiteUrl || pro.instagramUrl || pro.facebookUrl || pro.tiktokUrl);
-  const hasBusinessInfo = Boolean(formattedAddress || pro.defaultPrepTimeMinutes || sortedHours.length > 0 || hasSocialLinks);
+  const hasBusinessInfo = Boolean(
+    formattedAddress || pro.phone || pro.emailContact || pro.defaultPrepTimeMinutes || sortedHours.length > 0 || hasSocialLinks
+  );
 
   function handleAdd(product: Product) {
     addItem(
@@ -172,26 +175,26 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
             </Text>
           </View>
 
-          {(pro.instagramUrl || pro.facebookUrl || pro.tiktokUrl || pro.websiteUrl) && (
-            <View className="mt-2 flex-row gap-3">
+          {hasSocialLinks && (
+            <View className="mt-2 flex-row items-center gap-3.5">
               {pro.instagramUrl && (
                 <Pressable onPress={() => Linking.openURL(pro.instagramUrl!)}>
-                  <Text style={{ fontSize: 19 }}>📷</Text>
+                  <Ionicons name="logo-instagram" size={22} color="#C13584" />
                 </Pressable>
               )}
               {pro.facebookUrl && (
                 <Pressable onPress={() => Linking.openURL(pro.facebookUrl!)}>
-                  <Text style={{ fontSize: 19 }}>📘</Text>
+                  <Ionicons name="logo-facebook" size={22} color="#1877F2" />
                 </Pressable>
               )}
               {pro.tiktokUrl && (
                 <Pressable onPress={() => Linking.openURL(pro.tiktokUrl!)}>
-                  <Text style={{ fontSize: 19 }}>🎵</Text>
+                  <Ionicons name="logo-tiktok" size={20} color="#1A1A2E" />
                 </Pressable>
               )}
               {pro.websiteUrl && (
                 <Pressable onPress={() => Linking.openURL(pro.websiteUrl!)}>
-                  <Text style={{ fontSize: 19 }}>🌐</Text>
+                  <Ionicons name="globe-outline" size={22} color="#2ECC71" />
                 </Pressable>
               )}
             </View>
@@ -204,14 +207,32 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
 
             {formattedAddress && (
               <View className="mb-2 flex-row items-start gap-2">
-                <Text style={{ fontSize: 13 }}>📍</Text>
+                <Ionicons name="location-outline" size={15} color="#6B7280" style={{ marginTop: 1 }} />
                 <Text className="flex-1 text-[13px] text-nuit">{formattedAddress}</Text>
+              </View>
+            )}
+
+            {pro.phone && (
+              <View className="mb-2 flex-row items-center gap-2">
+                <Ionicons name="call-outline" size={15} color="#6B7280" />
+                <Pressable onPress={() => Linking.openURL(`tel:${pro.phone}`)}>
+                  <Text className="text-[13px] text-nuit">{pro.phone}</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {pro.emailContact && (
+              <View className="mb-2 flex-row items-center gap-2">
+                <Ionicons name="mail-outline" size={15} color="#6B7280" />
+                <Pressable onPress={() => Linking.openURL(`mailto:${pro.emailContact}`)}>
+                  <Text className="text-[13px] text-nuit">{pro.emailContact}</Text>
+                </Pressable>
               </View>
             )}
 
             {pro.defaultPrepTimeMinutes ? (
               <View className="mb-2 flex-row items-center gap-2">
-                <Text style={{ fontSize: 13 }}>⏱️</Text>
+                <Ionicons name="timer-outline" size={15} color="#6B7280" />
                 <Text className="flex-1 text-[13px] text-nuit">
                   Temps de préparation habituel : ~{pro.defaultPrepTimeMinutes} min
                 </Text>
@@ -220,7 +241,7 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
 
             {sortedHours.length > 0 && (
               <View className="mb-2 flex-row items-start gap-2">
-                <Text style={{ fontSize: 13 }}>🕒</Text>
+                <Ionicons name="time-outline" size={15} color="#6B7280" style={{ marginTop: 1 }} />
                 <View className="flex-1">
                   {sortedHours.map((h) => (
                     <Text key={h.dayOfWeek} className="text-[12px] leading-5 text-gris">
@@ -232,30 +253,27 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
             )}
 
             {hasSocialLinks && (
-              <View className="flex-row items-start gap-2">
-                <Text style={{ fontSize: 13 }}>🔗</Text>
-                <View className="flex-1 flex-row flex-wrap gap-x-3 gap-y-1">
-                  {pro.websiteUrl && (
-                    <Pressable onPress={() => Linking.openURL(pro.websiteUrl!)}>
-                      <Text className="text-[12px] font-semibold text-golfe-green">Site web</Text>
-                    </Pressable>
-                  )}
-                  {pro.instagramUrl && (
-                    <Pressable onPress={() => Linking.openURL(pro.instagramUrl!)}>
-                      <Text className="text-[12px] font-semibold text-golfe-green">Instagram</Text>
-                    </Pressable>
-                  )}
-                  {pro.facebookUrl && (
-                    <Pressable onPress={() => Linking.openURL(pro.facebookUrl!)}>
-                      <Text className="text-[12px] font-semibold text-golfe-green">Facebook</Text>
-                    </Pressable>
-                  )}
-                  {pro.tiktokUrl && (
-                    <Pressable onPress={() => Linking.openURL(pro.tiktokUrl!)}>
-                      <Text className="text-[12px] font-semibold text-golfe-green">TikTok</Text>
-                    </Pressable>
-                  )}
-                </View>
+              <View className="flex-row items-center gap-3.5 pt-1">
+                {pro.websiteUrl && (
+                  <Pressable onPress={() => Linking.openURL(pro.websiteUrl!)}>
+                    <Ionicons name="globe-outline" size={20} color="#2ECC71" />
+                  </Pressable>
+                )}
+                {pro.instagramUrl && (
+                  <Pressable onPress={() => Linking.openURL(pro.instagramUrl!)}>
+                    <Ionicons name="logo-instagram" size={20} color="#C13584" />
+                  </Pressable>
+                )}
+                {pro.facebookUrl && (
+                  <Pressable onPress={() => Linking.openURL(pro.facebookUrl!)}>
+                    <Ionicons name="logo-facebook" size={20} color="#1877F2" />
+                  </Pressable>
+                )}
+                {pro.tiktokUrl && (
+                  <Pressable onPress={() => Linking.openURL(pro.tiktokUrl!)}>
+                    <Ionicons name="logo-tiktok" size={18} color="#1A1A2E" />
+                  </Pressable>
+                )}
               </View>
             )}
           </View>
