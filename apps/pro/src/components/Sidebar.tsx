@@ -48,16 +48,18 @@ export function Sidebar({ activeItem, onSelect }: SidebarProps) {
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-gris-light bg-white">
-      <div className="flex items-center gap-2 px-6 py-6">
+      <div className="flex flex-col items-start gap-1 px-4 py-4">
         {logoUrl ? (
-          <img src={logoUrl} alt="Do You Geckoo" className="h-14 w-14 object-contain" />
+          // Le logo contient déjà le nom "Do You Geckoo" — pas de texte
+          // redondant à côté. Nettement plus grand pour bien se voir.
+          <img src={logoUrl} alt="Do You Geckoo" className="h-56 w-56 object-contain" />
         ) : (
-          <span className="text-5xl">🦎</span>
+          <div className="flex items-center gap-2">
+            <span className="text-5xl">🦎</span>
+            <p className="notranslate font-heading text-base font-extrabold text-nuit" translate="no">Do You Geckoo</p>
+          </div>
         )}
-        <div>
-          <p className="notranslate font-heading text-base font-extrabold text-nuit" translate="no">Do You Geckoo</p>
-          <p className="text-xs text-gris">Espace Pro</p>
-        </div>
+        <p className="text-xs text-gris">Espace Pro</p>
       </div>
 
       <div className="mx-4 mb-4 flex items-center gap-3 rounded-sm bg-gris-light p-3">
