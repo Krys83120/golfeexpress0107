@@ -26,32 +26,38 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-nuit/95 backdrop-blur">
-      {/* flex-col sur mobile (logo au-dessus, boutons en dessous, sur toute
-          la largeur) ; flex-row à partir de sm (tout sur une seule ligne,
-          comme avant) — évite que "Se connecter" + le menu ☰ se retrouvent
-          coincés à côté d'un gros logo sur petit écran. */}
-      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:py-2 sm:px-6">
-        <a href="/" className="flex w-full items-center sm:w-auto" onClick={closeAll} aria-label="Do You Geckoo — accueil">
-          {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- logo dynamique (URL Supabase Storage), pas un asset local optimisable par next/image
-            // Le logo contient déjà le nom "Do You Geckoo" intégré visuellement
-            // (voir Admin > Branding) — pas de texte séparé à côté. Sur
-            // mobile il prend toute la largeur disponible (w-full, hauteur
-            // proportionnelle) ; à partir de sm, taille fixe généreuse.
-            <img
-              src={logoUrl}
-              alt="Do You Geckoo"
-              className="h-auto w-full max-w-[480px] object-contain sm:h-[440px] sm:w-[440px] sm:max-w-none sm:py-2"
-            />
-          ) : (
-            <>
-              <span className="text-6xl">🦎</span>
-              <span className="notranslate ml-2 font-heading text-base font-extrabold text-white sm:text-lg" translate="no">Do You Geckoo</span>
-            </>
-          )}
-        </a>
+    <>
+      {/* Bannière logo — défile normalement avec la page (PAS sticky),
+          contrairement à la barre de nav juste en dessous. Volontairement
+          séparée : mettre un logo aussi grand dans un élément sticky
+          occuperait une part énorme de l'écran en permanence au scroll. */}
+      <div className="border-b border-white/10 bg-nuit">
+        <div className="mx-auto flex max-w-7xl justify-center px-4 py-3 sm:justify-start sm:px-6">
+          <a href="/" onClick={closeAll} aria-label="Do You Geckoo — accueil">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- logo dynamique (URL Supabase Storage), pas un asset local optimisable par next/image
+              // Le logo contient déjà le nom "Do You Geckoo" intégré
+              // visuellement (voir Admin > Branding) — pas de texte séparé
+              // à côté. Pleine largeur sur mobile, taille fixe généreuse
+              // à partir de sm.
+              <img
+                src={logoUrl}
+                alt="Do You Geckoo"
+                className="h-auto w-full max-w-[480px] object-contain sm:h-[440px] sm:w-[440px] sm:max-w-none"
+              />
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-6xl">🦎</span>
+                <span className="notranslate font-heading text-base font-extrabold text-white sm:text-lg" translate="no">Do You Geckoo</span>
+              </div>
+            )}
+          </a>
+        </div>
+      </div>
 
+      {/* Barre de navigation fine — reste collée en haut au défilement. */}
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-nuit/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <nav className="hidden items-center gap-8 lg:flex">
           {NAV_LINKS.map((link) => (
             <a key={link.href} href={link.href} className="text-sm font-medium text-white/80 transition hover:text-white">
@@ -136,6 +142,7 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
           ))}
         </nav>
       )}
-    </header>
+      </header>
+    </>
   );
 }
