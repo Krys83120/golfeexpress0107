@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { getCategoryEmoji } from "@/services/categoryVisuals";
+import { fetchBrandingLogoUrl, getCachedBrandingLogoUrl } from "@/services/brandingApi";
 
 interface NavItem {
   key: string;
@@ -36,6 +37,11 @@ interface SidebarProps {
 export function Sidebar({ activeItem, onSelect }: SidebarProps) {
   const profile = useAuthStore((s) => s.profile);
   const logout = useAuthStore((s) => s.logout);
+  const [logoUrl, setLogoUrl] = useState<string | null>(() => getCachedBrandingLogoUrl());
+
+  useEffect(() => {
+    fetchBrandingLogoUrl().then(setLogoUrl);
+  }, []);
 
   const emoji = profile ? getCategoryEmoji(profile.category) : "🏪";
   const isOpen = profile?.status === "ACTIVE";
@@ -43,7 +49,11 @@ export function Sidebar({ activeItem, onSelect }: SidebarProps) {
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-gris-light bg-white">
       <div className="flex items-center gap-2 px-6 py-6">
-        <span className="text-5xl">🦎</span>
+        {logoUrl ? (
+          <img src={logoUrl} alt="Do You Geckoo" className="h-14 w-14 object-contain" />
+        ) : (
+          <span className="text-5xl">🦎</span>
+        )}
         <div>
           <p className="notranslate font-heading text-base font-extrabold text-nuit" translate="no">Do You Geckoo</p>
           <p className="text-xs text-gris">Espace Pro</p>

@@ -1,18 +1,31 @@
-import React from "react";
-import { View, Text, Pressable, Switch, ActivityIndicator, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, Pressable, Switch, ActivityIndicator, StyleSheet, Image } from "react-native";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
+import { fetchBrandingLogoUrl, getCachedBrandingLogoUrl } from "@/services/brandingApi";
 
 export function OnlineToggleHeader() {
   const isOnline = useRiderSessionStore((s) => s.isOnline);
   const isTogglingOnline = useRiderSessionStore((s) => s.isTogglingOnline);
   const toggleOnlineError = useRiderSessionStore((s) => s.toggleOnlineError);
   const toggleOnline = useRiderSessionStore((s) => s.toggleOnline);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    getCachedBrandingLogoUrl().then((cached) => {
+      if (cached) setLogoUrl(cached);
+    });
+    fetchBrandingLogoUrl().then(setLogoUrl);
+  }, []);
 
   return (
     <View style={{ backgroundColor: "#1A1A2E" }}>
       <View style={styles.row}>
         <View style={styles.brand}>
-          <Text style={{ fontSize: 50 }}>🦎</Text>
+          {logoUrl ? (
+            <Image source={{ uri: logoUrl }} style={{ height: 50, width: 50 }} resizeMode="contain" />
+          ) : (
+            <Text style={{ fontSize: 50 }}>🦎</Text>
+          )}
           <View>
             <Text style={styles.brandName} className="notranslate">Do You Geckoo</Text>
             <Text style={styles.brandSub}>Espace Livreur</Text>

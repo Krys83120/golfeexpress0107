@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   ShieldCheck,
@@ -12,6 +12,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
+import { fetchInAppLogoUrl } from "@/services/brandingApi";
 
 interface NavItem {
   key: string;
@@ -29,6 +30,11 @@ interface SidebarProps {
 export function Sidebar({ activeItem, onSelect, pendingCount }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchInAppLogoUrl().then(setLogoUrl);
+  }, []);
 
   const navItems: NavItem[] = [
     { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
@@ -45,7 +51,11 @@ export function Sidebar({ activeItem, onSelect, pendingCount }: SidebarProps) {
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-gris-light bg-nuit">
       <div className="flex items-center gap-2 px-6 py-6">
-        <span className="text-5xl">🦎</span>
+        {logoUrl ? (
+          <img src={logoUrl} alt="Do You Geckoo" className="h-14 w-14 object-contain" />
+        ) : (
+          <span className="text-5xl">🦎</span>
+        )}
         <div>
           <p className="notranslate font-heading text-base font-extrabold text-white" translate="no">Do You Geckoo</p>
           <p className="text-xs text-white/50">

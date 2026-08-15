@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CATEGORY_CHIPS } from "@/services/categoryChips";
 import { ProCard } from "@/components/ProCard";
@@ -9,6 +9,7 @@ import { useAddressStore } from "@/store/useAddressStore";
 import { useProsStore } from "@/store/useProsStore";
 import { ProCategory, SubscriptionType } from "@golfeexpress/types";
 import type { ProWithUi } from "@/services/prosApi";
+import { fetchBrandingLogoUrl, getCachedBrandingLogoUrl } from "@/services/brandingApi";
 
 interface HomeScreenProps {
   onOpenPro: (pro: ProWithUi) => void;
@@ -20,7 +21,15 @@ interface HomeScreenProps {
 export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenMap }: HomeScreenProps) {
   const [activeCategory, setActiveCategory] = useState<ProCategory>(ProCategory.RESTAURANT);
   const [searchQuery, setSearchQuery] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const activeAddress = useAddressStore((s) => s.activeAddress);
+
+  useEffect(() => {
+    getCachedBrandingLogoUrl().then((cached) => {
+      if (cached) setLogoUrl(cached);
+    });
+    fetchBrandingLogoUrl().then(setLogoUrl);
+  }, []);
 
   const pros = useProsStore((s) => s.pros);
   const status = useProsStore((s) => s.status);
@@ -62,7 +71,11 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
           <View className="rounded-b px-5 pb-4 pt-2" style={{ backgroundColor: "#2ECC71" }}>
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center gap-2">
-                <Text style={{ fontSize: 50 }}>🦎</Text>
+                {logoUrl ? (
+                  <Image source={{ uri: logoUrl }} style={{ height: 50, width: 50 }} resizeMode="contain" />
+                ) : (
+                  <Text style={{ fontSize: 50 }}>🦎</Text>
+                )}
                 <Text className="notranslate font-heading text-[20px] font-extrabold text-white">Do You Geckoo</Text>
               </View>
               <View className="flex-row gap-4">
