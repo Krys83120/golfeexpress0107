@@ -40,7 +40,16 @@ export async function buildReceiptPdf(data: ReceiptData): Promise<Buffer> {
     // mêmes) — voir fonts.ts pour le pourquoi (ENOENT sur Vercel). Un appel
     // ultérieur à doc.registerFont()/doc.font() est donc trop tard : le
     // crash a déjà eu lieu dans le constructeur.
-    const doc = new PDFDocument({ size: "A4", margin: 50, font: loadBodyFont() });
+    //
+    // Le cast ci-dessous est nécessaire : le typage communautaire
+    // @types/pdfkit déclare `font` comme `string` uniquement sur les
+    // options du constructeur, alors que pdfkit accepte bien un Buffer au
+    // runtime (voir le type PDFFontSource utilisé par .font()/.registerFont()
+    // dans ce même package de types — décalage/oubli des types, pas un vrai
+    // problème d'exécution). Sans ce cast, `next build` échoue sur une
+    // erreur TypeScript et Vercel garde silencieusement l'ancien déploiement
+    // en ligne — ce qui explique que l'erreur précédente n'ait jamais changé.
+    const doc = new PDFDocument({ size: "A4", margin: 50, font: loadBodyFont() as unknown as string });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk as Buffer));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
