@@ -34,17 +34,17 @@ export interface ReceiptData {
  */
 export async function buildReceiptPdf(data: ReceiptData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    // La police doit être fournie dès la construction de PDFDocument : son
+    // constructeur appelle initFonts() en interne, qui charge IMMÉDIATEMENT
+    // "Helvetica" par défaut (avant même qu'on puisse appeler .font() nous-
+    // mêmes) — voir fonts.ts pour le pourquoi (ENOENT sur Vercel). Un appel
+    // ultérieur à doc.registerFont()/doc.font() est donc trop tard : le
+    // crash a déjà eu lieu dans le constructeur.
+    const doc = new PDFDocument({ size: "A4", margin: 50, font: loadBodyFont() });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk as Buffer));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
-
-    // Voir fonts.ts : on évite la police standard "Helvetica" intégrée à
-    // pdfkit (chargée dynamiquement depuis un .afm sur disque), qui casse
-    // sur Vercel car le fichier n'est pas inclus dans la fonction déployée.
-    doc.registerFont("Body", loadBodyFont());
-    doc.font("Body");
 
     doc.fontSize(20).fillColor("#1A1A2E").text("Do You Geckoo");
     doc.fontSize(10).fillColor("#6B7280").text("Sainte-Maxime — Golfe de Saint-Tropez");
