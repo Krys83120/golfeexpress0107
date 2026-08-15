@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
 import { formatEuros } from "./shared";
+import { loadBodyFont } from "./fonts";
 import type { ZReportData } from "@/lib/zReport";
 
 /**
@@ -15,6 +16,12 @@ export async function buildZReportPdf(data: ZReportData): Promise<Buffer> {
     doc.on("data", (chunk) => chunks.push(chunk as Buffer));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
+
+    // Voir fonts.ts : on évite la police standard "Helvetica" intégrée à
+    // pdfkit (chargée dynamiquement depuis un .afm sur disque), qui casse
+    // sur Vercel car le fichier n'est pas inclus dans la fonction déployée.
+    doc.registerFont("Body", loadBodyFont());
+    doc.font("Body");
 
     const right = 545;
 

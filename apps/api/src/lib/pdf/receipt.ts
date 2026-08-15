@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
 import { formatEuros, formatDateTimeFr, translatePaymentStatus } from "./shared";
+import { loadBodyFont } from "./fonts";
 
 export interface ReceiptItemData {
   productName: string;
@@ -38,6 +39,12 @@ export async function buildReceiptPdf(data: ReceiptData): Promise<Buffer> {
     doc.on("data", (chunk) => chunks.push(chunk as Buffer));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
+
+    // Voir fonts.ts : on évite la police standard "Helvetica" intégrée à
+    // pdfkit (chargée dynamiquement depuis un .afm sur disque), qui casse
+    // sur Vercel car le fichier n'est pas inclus dans la fonction déployée.
+    doc.registerFont("Body", loadBodyFont());
+    doc.font("Body");
 
     doc.fontSize(20).fillColor("#1A1A2E").text("Do You Geckoo");
     doc.fontSize(10).fillColor("#6B7280").text("Sainte-Maxime — Golfe de Saint-Tropez");
