@@ -17,24 +17,30 @@ export const dynamic = "force-dynamic";
  * Route PUBLIQUE (aucune auth) — contrairement à /api/admin/settings qui
  * expose tous les GlobalSetting et nécessite un rôle Admin. Les écrans de
  * connexion/chargement des 3 apps (Client/Livreur/Pro) l'appellent AVANT
- * que la personne soit connectée, donc l'auth y est impossible.
+ * que la personne soit connectée, donc l'auth y est impossible. Le site
+ * vitrine (www) l'appelle aussi, côté serveur, pour son propre logo
+ * (wwwLogoUrl), volontairement distinct et indépendant de celui des apps.
  *
  * On expose ici volontairement une liste blanche minimaliste (juste
- * logoUrl) plutôt que de rendre /api/admin/settings public — voir le TODO
- * déjà présent dans ce fichier historiquement.
+ * logoUrl/wwwLogoUrl) plutôt que de rendre /api/admin/settings public.
  */
 export async function GET() {
-  const setting = await prisma.globalSetting.findUnique({ where: { key: "branding.logo_url" } });
-  const logoUrl = setting && typeof setting.value === "object" && setting.value !== null && "url" in (setting.value as any)
-    ? (setting.value as { url: string }).url
-    : null;
+  const [logoSetting, wwwLogoSetting] = await Promise.all([
+    prisma.globalSetting.findUnique({ where: { key: "branding.logo_url" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.www_logo_url" } }),
+  ]);
+
+  function extractUrl(setting: typeof logoSetting): string | null {
+    return setting && typeof setting.value === "object" && setting.value !== null && "url" in (setting.value as any)
+      ? (setting.value as { url: string }).url
+      : null;
+  }
 
   return NextResponse.json(
-    { logoUrl },
-    // Cache très court : on privilégie la fraîcheur ("en direct, sans
-    // redéploiement" promis dans l'UI Admin) à la charge serveur — cette
-    // route est légère et appelée seulement au chargement des écrans de
-    // connexion, pas à chaque interaction.
+    { logoUrl: extractUrl(logoSetting), wwwLogoUrl: extractUrl(wwwLogoSetting) },
+    // Cache court côté CDN/navigateur — le logo ne change pas souvent,
+    // mais on veut qu'une mise à jour depuis l'Admin se propage sans
+    // attendre trop longtemps non plus.
     { headers: { "Cache-Control": "public, max-age=10, stale-while-revalidate=30" } }
   );
 }
