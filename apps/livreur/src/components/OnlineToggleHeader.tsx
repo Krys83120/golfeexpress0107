@@ -19,18 +19,26 @@ export function OnlineToggleHeader() {
 
   return (
     <View style={{ backgroundColor: "#1A1A2E" }}>
-      <View style={styles.row}>
-        <View style={styles.brand}>
-          {logoUrl ? (
-            <Image source={{ uri: logoUrl }} style={{ height: 50, width: 50 }} resizeMode="contain" />
-          ) : (
-            <Text style={{ fontSize: 50 }}>🦎</Text>
-          )}
-          <View>
-            <Text style={styles.brandName} className="notranslate">Do You Geckoo</Text>
-            <Text style={styles.brandSub}>Espace Livreur</Text>
-          </View>
+      {logoUrl ? (
+        // Logo sur sa propre ligne (bien plus grand, contient déjà le nom
+        // "Do You Geckoo") — le toggle en ligne/hors ligne passe en
+        // dessous plutôt qu'à côté, pour ne pas être écrasé.
+        <View style={{ alignItems: "center", paddingTop: 8 }}>
+          <Image source={{ uri: logoUrl }} style={{ height: 200, width: 200 }} resizeMode="contain" />
+          <Text style={[styles.brandSub, { marginTop: -8, marginBottom: 4 }]}>Espace Livreur</Text>
         </View>
+      ) : null}
+
+      <View style={[styles.row, logoUrl ? { justifyContent: "flex-end" } : null]}>
+        {!logoUrl && (
+          <View style={styles.brand}>
+            <Text style={{ fontSize: 50 }}>🦎</Text>
+            <View>
+              <Text style={styles.brandName} className="notranslate">Do You Geckoo</Text>
+              <Text style={styles.brandSub}>Espace Livreur</Text>
+            </View>
+          </View>
+        )}
 
         <Pressable
           onPress={toggleOnline}

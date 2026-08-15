@@ -69,19 +69,25 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
         {/* HEADER */}
         <SafeAreaView edges={["top"]} style={{ backgroundColor: "#2ECC71" }}>
           <View className="rounded-b px-5 pb-4 pt-2" style={{ backgroundColor: "#2ECC71" }}>
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                {logoUrl ? (
-                  <Image source={{ uri: logoUrl }} style={{ height: 50, width: 50 }} resizeMode="contain" />
-                ) : (
+            {/* Icônes notif/profil sur leur propre ligne, discrètes en haut
+                à droite — libère la place pour un gros logo en dessous sans
+                casser la mise en page (contrairement à un logo 4x plus
+                grand posé à côté d'icônes sur une seule ligne). */}
+            <View className="flex-row justify-end gap-4">
+              <Text style={{ fontSize: 18 }}>🔔</Text>
+              <Text style={{ fontSize: 20 }}>👤</Text>
+            </View>
+            <View className="items-center">
+              {logoUrl ? (
+                // Le logo contient déjà le nom "Do You Geckoo" — pas de
+                // texte redondant à côté. Nettement plus grand.
+                <Image source={{ uri: logoUrl }} style={{ height: 200, width: 200 }} resizeMode="contain" />
+              ) : (
+                <View className="flex-row items-center gap-2">
                   <Text style={{ fontSize: 50 }}>🦎</Text>
-                )}
-                <Text className="notranslate font-heading text-[20px] font-extrabold text-white">Do You Geckoo</Text>
-              </View>
-              <View className="flex-row gap-4">
-                <Text style={{ fontSize: 18 }}>🔔</Text>
-                <Text style={{ fontSize: 20 }}>👤</Text>
-              </View>
+                  <Text className="notranslate font-heading text-[20px] font-extrabold text-white">Do You Geckoo</Text>
+                </View>
+              )}
             </View>
 
             <Pressable
