@@ -241,6 +241,16 @@ model Pro {
   googleRatingCount   Int?      @map("google_rating_count")
   googleRatingSyncedAt DateTime? @map("google_rating_synced_at")
 
+  /// Temps de préparation habituel (en minutes), réglable par le Pro dans
+  /// ses paramètres — sert d'indication affichée sur la fiche commerçant
+  /// côté Client (délai moyen avant qu'une commande soit prête). Distinct
+  /// de Order.estimatedPrepMinutes, qui est la valeur choisie AU CAS PAR
+  /// CAS par le Pro pour CHAQUE commande au moment de démarrer sa
+  /// préparation (voir ProOrderCard.tsx côté Pro) — ce champ-ci ne sert
+  /// que de valeur par défaut/indicative, jamais lu pour calculer le
+  /// timing réel d'une commande en cours.
+  defaultPrepTimeMinutes Int?   @default(15) @map("default_prep_time_minutes")
+
   /// Preuve de consentement CGU/CGV — date, version acceptée, et IP au
   /// moment de l'acceptation (utile en cas de litige).
   termsAcceptedAt   DateTime?   @map("terms_accepted_at")

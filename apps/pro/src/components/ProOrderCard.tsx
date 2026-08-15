@@ -5,6 +5,7 @@ import { getNextStatus, NEXT_ACTION_LABELS } from "@/services/orderStatusFlow";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { printOrderLabel } from "@/services/printLabel";
 import { apiFetchBlob } from "@/services/apiClient";
+import { useAuthStore } from "@/store/useAuthStore";
 
 interface ProOrderCardProps {
   order: Order;
@@ -33,6 +34,11 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
   const [showPrepPicker, setShowPrepPicker] = useState(false);
   const [customPrepMinutes, setCustomPrepMinutes] = useState("");
   const [loadingReceipt, setLoadingReceipt] = useState(false);
+  // Temps de préparation habituel réglé dans les Paramètres — juste utilisé
+  // pour pré-signaler visuellement le palier recommandé ci-dessous, ne
+  // présélectionne/ne force jamais un choix : le Pro reste libre d'estimer
+  // au cas par cas selon la commande réelle (voir Pro.defaultPrepTimeMinutes).
+  const defaultPrepMinutes = useAuthStore((s) => s.profile?.defaultPrepTimeMinutes) ?? 15;
 
   // Ticket PDF (justificatif) — même endpoint que côté Client, accessible
   // aussi au Pro pour ses propres archives/traçabilité comptable.
@@ -134,9 +140,13 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
               <button
                 key={minutes}
                 onClick={() => handleStartPreparing(minutes)}
-                className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-nuit shadow-sm hover:bg-golfe-green hover:text-white"
+                title={minutes === defaultPrepMinutes ? "Temps habituel de votre boutique" : undefined}
+                className={
+                  "rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-nuit shadow-sm hover:bg-golfe-green hover:text-white " +
+                  (minutes === defaultPrepMinutes ? "ring-2 ring-golfe-green" : "")
+                }
               >
-                {minutes} min
+                {minutes} min{minutes === defaultPrepMinutes ? " ★" : ""}
               </button>
             ))}
           </div>

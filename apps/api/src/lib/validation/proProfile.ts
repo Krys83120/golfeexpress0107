@@ -20,6 +20,8 @@ export const updateProProfileSchema = z.object({
   tiktokUrl: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
   websiteUrl: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
   googlePlaceId: z.string().nullable().optional().or(z.literal("").transform(() => null)),
+  /** Temps de préparation habituel affiché sur la fiche commerçant (voir Pro.defaultPrepTimeMinutes). */
+  defaultPrepTimeMinutes: z.number().int().min(1).max(180).optional(),
   legalName: z.string().nullable().optional(),
   legalForm: z.string().nullable().optional(),
   vatNumber: z.string().nullable().optional(),

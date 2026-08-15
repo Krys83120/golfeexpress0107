@@ -79,6 +79,8 @@ export interface Pro {
   googleRating?: number | null;
   googleRatingCount?: number | null;
   googleRatingSyncedAt?: string | null;
+  /** Temps de préparation habituel (min), affiché sur la fiche commerçant. Voir prisma/schema.prisma. */
+  defaultPrepTimeMinutes?: number | null;
   pickupAddressId?: string | null;
   stripeAccountId?: string | null;
   stripeChargesEnabled: boolean;

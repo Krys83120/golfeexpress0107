@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import { formatEuros, formatDateTimeFr, translatePaymentStatus } from "./shared";
 import { loadBodyFont } from "./fonts";
+import { loadLogoImage } from "./logo";
 
 export interface ReceiptItemData {
   productName: string;
@@ -33,6 +34,12 @@ export interface ReceiptData {
  * Node, sans binaire chromium à gérer sur les fonctions serverless Vercel.
  */
 export async function buildReceiptPdf(data: ReceiptData): Promise<Buffer> {
+  // Récupéré AVANT la construction du PDFDocument (au lieu de dans
+  // l'executor de la Promise ci-dessous, qui reste volontairement
+  // synchrone) — évite de mélanger async/await avec le flux d'événements
+  // "data"/"end" de pdfkit plus bas.
+  const logo = await loadLogoImage();
+
   return new Promise((resolve, reject) => {
     // La police doit être fournie dès la construction de PDFDocument : son
     // constructeur appelle initFonts() en interne, qui charge IMMÉDIATEMENT
@@ -66,6 +73,18 @@ export async function buildReceiptPdf(data: ReceiptData): Promise<Buffer> {
     doc.on("data", (chunk) => chunks.push(chunk as Buffer));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
+
+    // Logo carré de la plateforme, en haut à droite — position fixe pour
+    // ne jamais perturber le flux du texte (qui continue de couler
+    // normalement à gauche, à partir de la marge). Ignoré silencieusement
+    // si absent ou si pdfkit ne parvient pas à le décoder (voir logo.ts).
+    if (logo) {
+      try {
+        doc.image(logo, 495, 40, { width: 50, height: 50, fit: [50, 50] });
+      } catch (err) {
+        console.error("[PDF][receipt] Logo ignoré (image invalide) :", err);
+      }
+    }
 
     doc.fontSize(20).fillColor("#1A1A2E").text("Do You Geckoo");
     doc.fontSize(10).fillColor("#6B7280").text("Sainte-Maxime — Golfe de Saint-Tropez");

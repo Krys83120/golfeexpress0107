@@ -7,6 +7,9 @@ import { useCartStore } from "@/store/useCartStore";
 import { ProductOptionsModal } from "@/components/ProductOptionsModal";
 import type { Product } from "@golfeexpress/types";
 
+// Même ordre que côté Pro (SettingsPage.tsx) : dayOfWeek 0 = Dimanche.
+const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+
 interface ProDetailScreenProps {
   pro: ProWithUi;
   onClose: () => void;
@@ -48,6 +51,21 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
     acc[p.category].push(p);
     return acc;
   }, {});
+
+  // Infos du commerce (adresse, horaires, temps de préparation, site web /
+  // réseaux sociaux) — affichées sous la bannière, en dessous du nom/de la
+  // note. Toutes optionnelles : un commerçant n'ayant pas encore renseigné
+  // certains champs (voir Réglages côté Pro) n'affiche simplement pas la
+  // ligne correspondante plutôt qu'un espace vide ou "—".
+  const proAddress = pro.addresses?.[0];
+  const formattedAddress = proAddress
+    ? [proAddress.street, proAddress.complement, `${proAddress.zipCode} ${proAddress.city}`.trim()]
+        .filter(Boolean)
+        .join(", ")
+    : null;
+  const sortedHours = [...(pro.openingHours ?? [])].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  const hasSocialLinks = Boolean(pro.websiteUrl || pro.instagramUrl || pro.facebookUrl || pro.tiktokUrl);
+  const hasBusinessInfo = Boolean(formattedAddress || pro.defaultPrepTimeMinutes || sortedHours.length > 0 || hasSocialLinks);
 
   function handleAdd(product: Product) {
     addItem(
@@ -179,6 +197,69 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
             </View>
           )}
         </View>
+
+        {hasBusinessInfo && (
+          <View className="mx-5 mt-4 rounded-sm bg-gris-light p-4">
+            <Text className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-gris">Infos du commerce</Text>
+
+            {formattedAddress && (
+              <View className="mb-2 flex-row items-start gap-2">
+                <Text style={{ fontSize: 13 }}>📍</Text>
+                <Text className="flex-1 text-[13px] text-nuit">{formattedAddress}</Text>
+              </View>
+            )}
+
+            {pro.defaultPrepTimeMinutes ? (
+              <View className="mb-2 flex-row items-center gap-2">
+                <Text style={{ fontSize: 13 }}>⏱️</Text>
+                <Text className="flex-1 text-[13px] text-nuit">
+                  Temps de préparation habituel : ~{pro.defaultPrepTimeMinutes} min
+                </Text>
+              </View>
+            ) : null}
+
+            {sortedHours.length > 0 && (
+              <View className="mb-2 flex-row items-start gap-2">
+                <Text style={{ fontSize: 13 }}>🕒</Text>
+                <View className="flex-1">
+                  {sortedHours.map((h) => (
+                    <Text key={h.dayOfWeek} className="text-[12px] leading-5 text-gris">
+                      {DAY_LABELS[h.dayOfWeek]} : {h.isClosed ? "Fermé" : `${h.openTime} - ${h.closeTime}`}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {hasSocialLinks && (
+              <View className="flex-row items-start gap-2">
+                <Text style={{ fontSize: 13 }}>🔗</Text>
+                <View className="flex-1 flex-row flex-wrap gap-x-3 gap-y-1">
+                  {pro.websiteUrl && (
+                    <Pressable onPress={() => Linking.openURL(pro.websiteUrl!)}>
+                      <Text className="text-[12px] font-semibold text-golfe-green">Site web</Text>
+                    </Pressable>
+                  )}
+                  {pro.instagramUrl && (
+                    <Pressable onPress={() => Linking.openURL(pro.instagramUrl!)}>
+                      <Text className="text-[12px] font-semibold text-golfe-green">Instagram</Text>
+                    </Pressable>
+                  )}
+                  {pro.facebookUrl && (
+                    <Pressable onPress={() => Linking.openURL(pro.facebookUrl!)}>
+                      <Text className="text-[12px] font-semibold text-golfe-green">Facebook</Text>
+                    </Pressable>
+                  )}
+                  {pro.tiktokUrl && (
+                    <Pressable onPress={() => Linking.openURL(pro.tiktokUrl!)}>
+                      <Text className="text-[12px] font-semibold text-golfe-green">TikTok</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+            )}
+          </View>
+        )}
 
         {!pro.isOpen && (
           <View

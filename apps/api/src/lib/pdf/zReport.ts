@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import { formatEuros } from "./shared";
 import { loadBodyFont } from "./fonts";
+import { loadLogoImage } from "./logo";
 import type { ZReportData } from "@/lib/zReport";
 
 /**
@@ -10,6 +11,10 @@ import type { ZReportData } from "@/lib/zReport";
  * commande : pdfkit, pur Node, pas de binaire chromium.
  */
 export async function buildZReportPdf(data: ZReportData): Promise<Buffer> {
+  // Voir le commentaire équivalent dans receipt.ts — récupéré avant la
+  // Promise pour garder l'executor ci-dessous purement synchrone.
+  const logo = await loadLogoImage();
+
   return new Promise((resolve, reject) => {
     // La police doit être fournie dès la construction de PDFDocument : son
     // constructeur appelle initFonts() en interne, qui charge IMMÉDIATEMENT
@@ -45,6 +50,16 @@ export async function buildZReportPdf(data: ZReportData): Promise<Buffer> {
     doc.on("error", reject);
 
     const right = 545;
+
+    // Logo carré de la plateforme, en haut à droite — voir le commentaire
+    // équivalent dans receipt.ts.
+    if (logo) {
+      try {
+        doc.image(logo, 495, 40, { width: 50, height: 50, fit: [50, 50] });
+      } catch (err) {
+        console.error("[PDF][zReport] Logo ignoré (image invalide) :", err);
+      }
+    }
 
     doc.fontSize(20).fillColor("#1A1A2E").text("Do You Geckoo");
     doc.fontSize(10).fillColor("#6B7280").text("Sainte-Maxime — Golfe de Saint-Tropez");

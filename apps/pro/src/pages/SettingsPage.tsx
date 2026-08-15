@@ -17,6 +17,12 @@ import { MapView, type MapPin } from "@/components/MapView";
 
 const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
+// Mêmes paliers que le sélecteur "Démarrer la préparation" côté commande
+// (ProOrderCard.tsx) — juste pour rester cohérent visuellement, cette
+// valeur-ci n'est qu'une indication par défaut affichée sur la fiche
+// commerçant, jamais utilisée pour calculer le timing d'une commande réelle.
+const PREP_TIME_PRESETS = [10, 15, 20, 30];
+
 export function SettingsPage() {
   const [pro, setPro] = useState<Pro | null>(null);
   const [hours, setHours] = useState<OpeningHours[]>([]);
@@ -29,6 +35,7 @@ export function SettingsPage() {
   const [description, setDescription] = useState("");
   const [phone, setPhone] = useState("");
   const [emailContact, setEmailContact] = useState("");
+  const [defaultPrepTimeMinutes, setDefaultPrepTimeMinutes] = useState(15);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingHours, setSavingHours] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -86,6 +93,7 @@ export function SettingsPage() {
       setDescription(shopProfile.description ?? "");
       setPhone(shopProfile.phone);
       setEmailContact(shopProfile.emailContact);
+      setDefaultPrepTimeMinutes(shopProfile.defaultPrepTimeMinutes ?? 15);
       setInstagramUrl(shopProfile.instagramUrl ?? "");
       setFacebookUrl(shopProfile.facebookUrl ?? "");
       setTiktokUrl(shopProfile.tiktokUrl ?? "");
@@ -172,7 +180,14 @@ export function SettingsPage() {
     setSavingProfile(true);
     setSaveMessage(null);
     try {
-      const updated = await updateMyShopProfile({ businessName, category: category || undefined, description, phone, emailContact });
+      const updated = await updateMyShopProfile({
+        businessName,
+        category: category || undefined,
+        description,
+        phone,
+        emailContact,
+        defaultPrepTimeMinutes,
+      });
       setPro(updated);
       setSaveMessage("Informations enregistrées.");
     } catch (err) {
@@ -424,6 +439,39 @@ export function SettingsPage() {
               rows={2}
               className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
             />
+          </div>
+          <div className="col-span-2">
+            <label className="mb-1.5 block text-xs font-semibold text-gris">Temps de préparation habituel</label>
+            <p className="mb-2 text-xs text-gris">
+              Indication affichée sur votre fiche commerçant côté Client — n'affecte pas le délai que vous
+              choisissez pour chaque commande au moment de démarrer sa préparation.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {PREP_TIME_PRESETS.map((minutes) => (
+                <button
+                  key={minutes}
+                  type="button"
+                  onClick={() => setDefaultPrepTimeMinutes(minutes)}
+                  className={
+                    "rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm " +
+                    (defaultPrepTimeMinutes === minutes
+                      ? "bg-golfe-green text-white"
+                      : "bg-gris-light text-nuit hover:bg-golfe-green/20")
+                  }
+                >
+                  {minutes} min
+                </button>
+              ))}
+              <input
+                type="number"
+                min={1}
+                max={180}
+                value={defaultPrepTimeMinutes}
+                onChange={(e) => setDefaultPrepTimeMinutes(Number(e.target.value) || 1)}
+                className="w-24 rounded-sm border border-gris-light px-2 py-1.5 text-xs"
+              />
+              <span className="text-xs text-gris">min</span>
+            </div>
           </div>
         </div>
         <button

@@ -15,6 +15,7 @@ interface UpdateProProfileInput {
   tiktokUrl?: string | null;
   websiteUrl?: string | null;
   googlePlaceId?: string | null;
+  defaultPrepTimeMinutes?: number;
   legalName?: string | null;
   legalForm?: string | null;
   vatNumber?: string | null;
