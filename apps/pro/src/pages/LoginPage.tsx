@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { requestPasswordReset } from "@/services/passwordResetApi";
-import { fetchBrandingLogoUrl } from "@/services/brandingApi";
+import { fetchBrandingLogoUrl, getCachedBrandingLogoUrl } from "@/services/brandingApi";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -9,7 +9,7 @@ export function LoginPage() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(() => getCachedBrandingLogoUrl());
 
   useEffect(() => {
     fetchBrandingLogoUrl().then(setLogoUrl);

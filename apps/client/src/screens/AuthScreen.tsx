@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Image,
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/useAuthStore";
 import { requestPasswordReset } from "@/services/passwordResetApi";
-import { fetchBrandingLogoUrl } from "@/services/brandingApi";
+import { fetchBrandingLogoUrl, getCachedBrandingLogoUrl } from "@/services/brandingApi";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -21,6 +21,12 @@ export function AuthScreen() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    // Affiche d'abord le logo mis en cache localement (instantané, sans
+    // attendre le réseau) — évite le flash de l'emoji 🦎 le temps que
+    // l'appel API se termine, sur toutes les visites après la première.
+    getCachedBrandingLogoUrl().then((cached) => {
+      if (cached) setLogoUrl(cached);
+    });
     fetchBrandingLogoUrl().then(setLogoUrl);
   }, []);
 

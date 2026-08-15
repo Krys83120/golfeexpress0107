@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/useAuthStore";
 import { requestPasswordReset } from "@/services/passwordResetApi";
-import { fetchBrandingLogoUrl } from "@/services/brandingApi";
+import { fetchBrandingLogoUrl, getCachedBrandingLogoUrl } from "@/services/brandingApi";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -31,6 +31,9 @@ export function AuthScreen() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    getCachedBrandingLogoUrl().then((cached) => {
+      if (cached) setLogoUrl(cached);
+    });
     fetchBrandingLogoUrl().then(setLogoUrl);
   }, []);
 
