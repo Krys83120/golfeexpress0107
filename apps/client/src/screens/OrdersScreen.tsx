@@ -32,13 +32,23 @@ export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
   // Ticket de commande — état par commande (id -> action en cours), pour
   // n'afficher le spinner que sur le bouton concerné dans la liste.
   const [receiptBusy, setReceiptBusy] = useState<Record<string, "download" | "email" | undefined>>({});
+  // Affiché en plus de Alert.alert (pas à sa place) : sur le web, un
+  // window.alert() déclenché après un await peut être silencieusement
+  // bloqué par le navigateur une fois "l'activation utilisateur" expirée
+  // (déjà rencontré avec l'upload d'avatar) — ce texte persistant garantit
+  // que l'utilisateur voit toujours le résultat, même si l'alerte est bloquée.
+  const [receiptMessage, setReceiptMessage] = useState<Record<string, string | undefined>>({});
 
   async function handleDownloadReceipt(order: Order) {
     setReceiptBusy((s) => ({ ...s, [order.id]: "download" }));
+    setReceiptMessage((s) => ({ ...s, [order.id]: undefined }));
     try {
       await downloadOrderReceipt(order.id, order.orderNumber);
+      setReceiptMessage((s) => ({ ...s, [order.id]: "Ticket téléchargé." }));
     } catch (err) {
-      Alert.alert("Erreur", err instanceof Error ? err.message : "Téléchargement du ticket impossible.");
+      const message = err instanceof Error ? err.message : "Téléchargement du ticket impossible.";
+      setReceiptMessage((s) => ({ ...s, [order.id]: message }));
+      Alert.alert("Erreur", message);
     } finally {
       setReceiptBusy((s) => ({ ...s, [order.id]: undefined }));
     }
@@ -46,11 +56,16 @@ export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
 
   async function handleEmailReceipt(order: Order) {
     setReceiptBusy((s) => ({ ...s, [order.id]: "email" }));
+    setReceiptMessage((s) => ({ ...s, [order.id]: undefined }));
     try {
       const { to } = await emailOrderReceipt(order.id);
+      const message = `Ticket envoyé à ${to}.`;
+      setReceiptMessage((s) => ({ ...s, [order.id]: message }));
       Alert.alert("Ticket envoyé", `Le ticket de la commande ${order.orderNumber} a été envoyé à ${to}.`);
     } catch (err) {
-      Alert.alert("Erreur", err instanceof Error ? err.message : "Envoi du ticket impossible.");
+      const message = err instanceof Error ? err.message : "Envoi du ticket impossible.";
+      setReceiptMessage((s) => ({ ...s, [order.id]: message }));
+      Alert.alert("Erreur", message);
     } finally {
       setReceiptBusy((s) => ({ ...s, [order.id]: undefined }));
     }
@@ -200,6 +215,10 @@ export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
                         </Text>
                       </Pressable>
                     </View>
+                  )}
+
+                  {receiptMessage[order.id] && (
+                    <Text className="mt-1.5 text-[11px] text-gris">{receiptMessage[order.id]}</Text>
                   )}
                 </Pressable>
               );

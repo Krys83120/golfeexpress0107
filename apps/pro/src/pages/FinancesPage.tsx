@@ -69,8 +69,11 @@ export function FinancesPage() {
       link.click();
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-    } catch {
-      setZMessage("Téléchargement impossible. Réessayez dans un instant.");
+    } catch (err) {
+      // On affiche le vrai message d'erreur (au lieu d'un texte générique
+      // fixe) pour pouvoir diagnostiquer sans avoir à ouvrir la console.
+      console.error("Rapport Z — téléchargement échoué :", err);
+      setZMessage(err instanceof Error ? err.message : "Téléchargement impossible. Réessayez dans un instant.");
     } finally {
       setZBusy(null);
     }
@@ -82,8 +85,9 @@ export function FinancesPage() {
     try {
       const { to } = await emailZReport(zPeriod, zDate);
       setZMessage(`Rapport envoyé à ${to}.`);
-    } catch {
-      setZMessage("Envoi impossible. Réessayez dans un instant.");
+    } catch (err) {
+      console.error("Rapport Z — envoi email échoué :", err);
+      setZMessage(err instanceof Error ? err.message : "Envoi impossible. Réessayez dans un instant.");
     } finally {
       setZBusy(null);
     }
