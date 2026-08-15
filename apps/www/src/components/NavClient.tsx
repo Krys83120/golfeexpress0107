@@ -27,15 +27,23 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-nuit/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 sm:px-6">
-        <a href="/" className="flex items-center" onClick={closeAll} aria-label="Do You Geckoo — accueil">
+      {/* flex-col sur mobile (logo au-dessus, boutons en dessous, sur toute
+          la largeur) ; flex-row à partir de sm (tout sur une seule ligne,
+          comme avant) — évite que "Se connecter" + le menu ☰ se retrouvent
+          coincés à côté d'un gros logo sur petit écran. */}
+      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:py-2 sm:px-6">
+        <a href="/" className="flex w-full items-center sm:w-auto" onClick={closeAll} aria-label="Do You Geckoo — accueil">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- logo dynamique (URL Supabase Storage), pas un asset local optimisable par next/image
             // Le logo contient déjà le nom "Do You Geckoo" intégré visuellement
-            // (voir Admin > Branding) — pas de texte séparé à côté, pour éviter
-            // la redondance. Taille nettement plus grande pour bien se voir
-            // dans le header (contrairement au petit texte qu'il remplace).
-            <img src={logoUrl} alt="Do You Geckoo" className="h-[220px] w-[220px] object-contain py-2 sm:h-[260px] sm:w-[260px]" />
+            // (voir Admin > Branding) — pas de texte séparé à côté. Sur
+            // mobile il prend toute la largeur disponible (w-full, hauteur
+            // proportionnelle) ; à partir de sm, taille fixe généreuse.
+            <img
+              src={logoUrl}
+              alt="Do You Geckoo"
+              className="h-auto w-full max-w-[480px] object-contain sm:h-[440px] sm:w-[440px] sm:max-w-none sm:py-2"
+            />
           ) : (
             <>
               <span className="text-6xl">🦎</span>
@@ -52,7 +60,7 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2 sm:justify-start">
           {/* Portails (Se connecter) — toujours visible, même sur mobile */}
           <div className="relative">
             <button
