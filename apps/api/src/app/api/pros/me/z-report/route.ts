@@ -33,7 +33,10 @@ async function getHandler(req: NextRequest) {
   const data = await buildZReportData(pro.id, pro.businessName, pro.siret, range);
   const pdf = await buildZReportPdf(data);
 
-  return new NextResponse(pdf, {
+  // Voir commentaire équivalent dans orders/[orderId]/receipt/route.ts —
+  // Uint8Array est assignable à BodyInit, Buffer<ArrayBufferLike> ne l'est
+  // pas structurellement selon les types de ce projet.
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="rapport-z-${anchorDateStr}-${period}.pdf"`,

@@ -17,7 +17,10 @@ async function getHandler(req: NextRequest, ctx: { params: { orderId: string } }
   const order = await loadOrderForReceipt(ctx.params.orderId, auth);
   const pdf = await buildReceiptPdf(toReceiptData(order));
 
-  return new NextResponse(pdf, {
+  // Buffer<ArrayBufferLike> n'est pas structurellement assignable à
+  // BodyInit selon les types Next.js/@types/node de ce projet (bien qu'il
+  // le soit à l'exécution) — Uint8Array l'est explicitement, sans "as any".
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="ticket-${order.orderNumber}.pdf"`,
