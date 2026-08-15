@@ -4,6 +4,8 @@ import {
   generateBrandingAssets,
   uploadInAppLogo,
   fetchInAppLogoUrl,
+  uploadWwwLogo,
+  fetchWwwLogoUrl,
   type BrandingAssetSet,
 } from "@/services/brandingApi";
 
@@ -27,8 +29,15 @@ export function BrandingPage() {
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   const [logoUpdated, setLogoUpdated] = useState(false);
 
+  const [uploadingWwwLogo, setUploadingWwwLogo] = useState(false);
+  const [currentWwwLogoUrl, setCurrentWwwLogoUrl] = useState<string | null>(null);
+  const [wwwLogoUpdated, setWwwLogoUpdated] = useState(false);
+  const [wwwFile, setWwwFile] = useState<File | null>(null);
+  const [wwwPreview, setWwwPreview] = useState<string | null>(null);
+
   useEffect(() => {
     fetchInAppLogoUrl().then(setCurrentLogoUrl);
+    fetchWwwLogoUrl().then(setCurrentWwwLogoUrl);
   }, []);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -68,6 +77,31 @@ export function BrandingPage() {
       setError(err instanceof Error ? err.message : "Échec de la mise à jour.");
     } finally {
       setUploadingLogo(false);
+    }
+  }
+
+  function handleWwwFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setWwwFile(f);
+    setWwwPreview(URL.createObjectURL(f));
+    setError(null);
+  }
+
+  async function handleUpdateWwwLogo() {
+    if (!wwwFile) return;
+    setUploadingWwwLogo(true);
+    setError(null);
+    setWwwLogoUpdated(false);
+    try {
+      const url = await uploadWwwLogo(wwwFile);
+      setCurrentWwwLogoUrl(url);
+      setWwwLogoUpdated(true);
+      setTimeout(() => setWwwLogoUpdated(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de la mise à jour.");
+    } finally {
+      setUploadingWwwLogo(false);
     }
   }
 
@@ -123,9 +157,45 @@ export function BrandingPage() {
         </div>
       </div>
 
+      {/* Logo du site vitrine — indépendant du logo des 3 apps */}
+      <div className="mt-6 rounded bg-white p-6 shadow-sm">
+        <h2 className="font-heading text-base font-bold text-nuit">3. Logo du site vitrine (doyougeckoo.fr)</h2>
+        <p className="mt-1 text-sm text-gris">
+          Logo affiché dans l'en-tête du site public — <strong>indépendant</strong> du logo des apps ci-dessus,
+          modifiable séparément. Mis à jour en direct, sans redéploiement.
+        </p>
+
+        <div className="mt-4 flex items-center gap-4">
+          <label className="flex cursor-pointer items-center gap-2 rounded-sm border border-gris-light px-4 py-2.5 text-sm font-semibold text-nuit hover:bg-gris-light">
+            <Upload size={16} />
+            Choisir une image
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleWwwFileChange} className="hidden" />
+          </label>
+          {wwwPreview && <img src={wwwPreview} alt="Aperçu" className="h-14 w-14 rounded-sm border border-gris-light object-cover" />}
+        </div>
+
+        <div className="mt-4 flex items-center gap-4">
+          {currentWwwLogoUrl && (
+            <img src={currentWwwLogoUrl} alt="Logo actuel du site" className="h-16 w-16 rounded-sm border border-gris-light bg-nuit object-contain p-1" />
+          )}
+          <button
+            onClick={handleUpdateWwwLogo}
+            disabled={!wwwFile || uploadingWwwLogo}
+            className="rounded-sm bg-golfe-green px-5 py-2.5 text-sm font-semibold text-nuit disabled:opacity-50"
+          >
+            {uploadingWwwLogo ? "Mise à jour..." : "Mettre à jour le logo du site"}
+          </button>
+          {wwwLogoUpdated && (
+            <span className="flex items-center gap-1 text-sm font-semibold text-golfe-green">
+              <CheckCircle2 size={16} /> Mis à jour !
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Génération icône / favicon / splash */}
       <div className="mt-6 rounded bg-white p-6 shadow-sm">
-        <h2 className="font-heading text-base font-bold text-nuit">3. Icône, favicon, écran de démarrage</h2>
+        <h2 className="font-heading text-base font-bold text-nuit">4. Icône, favicon, écran de démarrage</h2>
         <p className="mt-1 text-sm text-gris">
           Ces fichiers sont intégrés au build de chaque app (contrainte des stores/PWA) — ils ne peuvent pas être
           changés en direct. Génère-les ici, télécharge-les, puis place-les dans le dossier{" "}

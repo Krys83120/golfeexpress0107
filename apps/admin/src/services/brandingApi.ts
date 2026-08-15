@@ -151,8 +151,21 @@ export async function generateBrandingAssets(file: File, bgColor = "#2ECC71"): P
 
 /** Upload le logo maître dans Storage et l'enregistre comme logo dynamique affiché en direct dans les 3 apps. */
 export async function uploadInAppLogo(file: File): Promise<string> {
+  return uploadLogoToSetting(file, "logo.", "branding.logo_url");
+}
+
+/**
+ * Upload un logo distinct pour le header du site vitrine (doyougeckoo.fr)
+ * — volontairement indépendant du logo des 3 apps, pour permettre une
+ * identité visuelle différente si souhaité.
+ */
+export async function uploadWwwLogo(file: File): Promise<string> {
+  return uploadLogoToSetting(file, "www-logo.", "branding.www_logo_url");
+}
+
+async function uploadLogoToSetting(file: File, pathPrefix: string, settingKey: string): Promise<string> {
   const supabase = getPublicStorageClient();
-  const path = `logo.${file.name.split(".").pop() ?? "png"}`;
+  const path = `${pathPrefix}${file.name.split(".").pop() ?? "png"}`;
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type });
   if (error) throw new Error(`Échec de l'upload : ${error.message}`);
@@ -160,14 +173,23 @@ export async function uploadInAppLogo(file: File): Promise<string> {
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   const url = `${data.publicUrl}?t=${Date.now()}`; // cache-bust
 
-  await apiFetch("/api/admin/settings/branding.logo_url", { method: "PUT", body: { value: { url } } });
+  await apiFetch(`/api/admin/settings/${settingKey}`, { method: "PUT", body: { value: { url } } });
   return url;
 }
 
 /** Récupère l'URL du logo dynamique actuellement enregistré (ou null si jamais configuré). */
 export async function fetchInAppLogoUrl(): Promise<string | null> {
+  return fetchLogoSetting("branding.logo_url");
+}
+
+/** Récupère l'URL du logo actuel du site vitrine (ou null si jamais configuré). */
+export async function fetchWwwLogoUrl(): Promise<string | null> {
+  return fetchLogoSetting("branding.www_logo_url");
+}
+
+async function fetchLogoSetting(settingKey: string): Promise<string | null> {
   try {
-    const data = await apiFetch<{ setting: { value: { url: string } } }>("/api/admin/settings/branding.logo_url");
+    const data = await apiFetch<{ setting: { value: { url: string } } }>(`/api/admin/settings/${settingKey}`);
     return data.setting?.value?.url ?? null;
   } catch {
     return null;

@@ -1,4 +1,4 @@
-import { fetchBrandingLogoUrl } from "@/lib/brandingApi";
+import { fetchWwwLogoUrl } from "@/lib/brandingApi";
 import { NavClient } from "@/components/NavClient";
 
 /**
@@ -9,6 +9,6 @@ import { NavClient } from "@/components/NavClient";
  * défaut). Ici, avec Next.js, on peut simplement ne JAMAIS avoir ce flash.
  */
 export async function Nav() {
-  const logoUrl = await fetchBrandingLogoUrl();
+  const logoUrl = await fetchWwwLogoUrl();
   return <NavClient logoUrl={logoUrl} />;
 }
