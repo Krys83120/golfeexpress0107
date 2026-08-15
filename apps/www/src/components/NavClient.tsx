@@ -32,7 +32,7 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
           séparée : mettre un logo aussi grand dans un élément sticky
           occuperait une part énorme de l'écran en permanence au scroll. */}
       <div className="border-b border-white/10 bg-nuit">
-        <div className="mx-auto flex max-w-7xl justify-center px-4 py-3 sm:justify-start sm:px-6">
+        <div className="mx-auto flex max-w-7xl justify-center px-4 py-3 sm:px-6">
           <a href="/" onClick={closeAll} aria-label="Do You Geckoo — accueil">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- logo dynamique (URL Supabase Storage), pas un asset local optimisable par next/image
@@ -43,7 +43,7 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
               <img
                 src={logoUrl}
                 alt="Do You Geckoo"
-                className="h-auto w-full max-w-[480px] object-contain sm:h-[440px] sm:w-[440px] sm:max-w-none"
+                className="h-auto w-full max-w-[480px] object-contain sm:h-[880px] sm:w-[880px] sm:max-w-none"
               />
             ) : (
               <div className="flex items-center gap-2">
