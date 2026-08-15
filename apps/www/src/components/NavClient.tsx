@@ -87,13 +87,20 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
             {portalsOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setPortalsOpen(false)} />
-                {/* Sur mobile : position "fixed" ancrée aux marges de
-                    l'écran (inset-x-4) plutôt qu'au bouton — sinon le menu
-                    w-64 ancré à droite du bouton déborde hors écran côté
-                    gauche (le bouton étant lui-même près du bord gauche).
-                    À partir de sm : comportement d'origine (absolute,
-                    ancré à droite du bouton, largeur fixe). */}
-                <div className="fixed inset-x-4 top-16 z-20 overflow-hidden rounded-2xl border border-black/5 bg-white shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-64">
+                {/* Position "fixed" ancrée aux marges de l'écran (inset-x-4)
+                    plutôt qu'au bouton, tant que la nav est en mode
+                    mobile/tablette — sinon le menu w-64 ancré à droite du
+                    bouton déborde hors écran côté gauche (le bouton étant
+                    lui-même près du bord gauche tant que les liens de nav
+                    horizontaux sont cachés). Le seuil DOIT correspondre à
+                    celui où le header bascule réellement en layout desktop
+                    (nav à gauche / bouton à droite) — c'est lg, pas sm : le
+                    bouton reste collé à gauche jusqu'à lg (voir "hidden
+                    lg:flex" sur la nav et "lg:hidden" sur le hamburger plus
+                    bas). Utiliser sm: ici cassait l'affichage sur tablette
+                    (~640-1024px), où le menu débordait déjà à gauche alors
+                    que le bouton n'avait pas encore rejoint la droite. */}
+                <div className="fixed inset-x-4 top-16 z-20 overflow-hidden rounded-2xl border border-black/5 bg-white shadow-xl lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-2 lg:w-64">
                   {PORTAL_LINKS.map((link) => (
                     <a
                       key={link.label}
