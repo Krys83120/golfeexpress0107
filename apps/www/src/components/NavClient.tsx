@@ -32,7 +32,7 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
           séparée : mettre un logo aussi grand dans un élément sticky
           occuperait une part énorme de l'écran en permanence au scroll. */}
       <div className="border-b border-white/10 bg-nuit">
-        <div className="mx-auto flex max-w-7xl justify-center px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-7xl justify-center px-4 py-3 sm:justify-start sm:px-6">
           <a href="/" onClick={closeAll} aria-label="Do You Geckoo — accueil">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- logo dynamique (URL Supabase Storage), pas un asset local optimisable par next/image
@@ -43,7 +43,7 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
               <img
                 src={logoUrl}
                 alt="Do You Geckoo"
-                className="h-auto w-full max-w-[480px] object-contain sm:h-[880px] sm:w-[880px] sm:max-w-none"
+                className="h-auto w-full max-w-[480px] object-contain sm:h-[440px] sm:w-[440px] sm:max-w-none"
               />
             ) : (
               <div className="flex items-center gap-2">
@@ -87,7 +87,13 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
             {portalsOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setPortalsOpen(false)} />
-                <div className="absolute right-0 top-full z-20 mt-2 w-64 overflow-hidden rounded-2xl border border-black/5 bg-white shadow-xl">
+                {/* Sur mobile : position "fixed" ancrée aux marges de
+                    l'écran (inset-x-4) plutôt qu'au bouton — sinon le menu
+                    w-64 ancré à droite du bouton déborde hors écran côté
+                    gauche (le bouton étant lui-même près du bord gauche).
+                    À partir de sm : comportement d'origine (absolute,
+                    ancré à droite du bouton, largeur fixe). */}
+                <div className="fixed inset-x-4 top-16 z-20 overflow-hidden rounded-2xl border border-black/5 bg-white shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-64">
                   {PORTAL_LINKS.map((link) => (
                     <a
                       key={link.label}
