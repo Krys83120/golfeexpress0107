@@ -1,6 +1,4 @@
 import { getSupabaseClient } from "@/services/supabaseClient";
-import { decode } from "base64-arraybuffer";
-import * as FileSystem from "expo-file-system";
 
 export class UploadError extends Error {}
 
@@ -20,21 +18,30 @@ function mimeTypeForExtension(ext: string): string {
 /**
  * Upload la photo de profil de l'utilisateur connecté. Chemin
  * "{userId}/avatar.ext" — écrase systématiquement le fichier précédent.
+ *
+ * On lit l'URI renvoyée par expo-image-picker via fetch()+blob() plutôt que
+ * expo-file-system : sur le web (export Expo Web, notre cible ici),
+ * expo-image-picker renvoie une URI "blob:" ou "data:" que
+ * FileSystem.getInfoAsync/readAsStringAsync ne savent pas lire (le module
+ * ne supporte que le filesystem natif) — l'upload échouait silencieusement
+ * à chaque fois. fetch()+blob() fonctionne de façon identique sur web et
+ * natif (iOS/Android), et le SDK Supabase accepte un Blob directement.
  */
 export async function uploadAvatar(userId: string, localUri: string): Promise<string> {
-  const fileInfo = await FileSystem.getInfoAsync(localUri);
-  if (fileInfo.exists && fileInfo.size > MAX_FILE_SIZE_BYTES) {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+
+  if (blob.size > MAX_FILE_SIZE_BYTES) {
     throw new UploadError("Image trop lourde (2 Mo maximum).");
   }
 
-  const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
   const ext = extensionFromUri(localUri);
-  const contentType = mimeTypeForExtension(ext);
+  const contentType = blob.type || mimeTypeForExtension(ext);
 
   const supabase = getSupabaseClient();
   const path = `${userId}/avatar.${ext}`;
 
-  const { error } = await supabase.storage.from("avatars").upload(path, decode(base64), {
+  const { error } = await supabase.storage.from("avatars").upload(path, blob, {
     upsert: true,
     contentType,
   });
