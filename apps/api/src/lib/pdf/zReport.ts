@@ -26,7 +26,19 @@ export async function buildZReportPdf(data: ZReportData): Promise<Buffer> {
     // problème d'exécution). Sans ce cast, `next build` échoue sur une
     // erreur TypeScript et Vercel garde silencieusement l'ancien déploiement
     // en ligne — ce qui explique que l'erreur précédente n'ait jamais changé.
-    const doc = new PDFDocument({ size: "A4", margin: 50, font: loadBodyFont() as unknown as string });
+    //
+    // Garde-fou temporaire (à retirer une fois le bug de production
+    // confirmé résolu) : si jamais ce déploiement tourne encore avec une
+    // ancienne version de ce fichier (cache de build, etc.), on préfère un
+    // message d'erreur explicite et immédiatement reconnaissable dans les
+    // logs plutôt que de laisser pdfkit replonger silencieusement sur sa
+    // police par défaut (Helvetica) et l'ENOENT habituel.
+    const bodyFont = loadBodyFont();
+    console.error(`[PDF][zReport] bodyFont chargée : ${bodyFont?.length ?? "undefined"} octets`);
+    if (!bodyFont || bodyFont.length < 1000) {
+      throw new Error(`[PDF][zReport] Police introuvable ou corrompue (taille=${bodyFont?.length}).`);
+    }
+    const doc = new PDFDocument({ size: "A4", margin: 50, font: bodyFont as unknown as string });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk as Buffer));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
