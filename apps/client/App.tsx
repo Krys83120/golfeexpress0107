@@ -48,6 +48,7 @@ function MainApp() {
 
   const logout = useAuthStore((s) => s.logout);
   const clearCart = useCartStore((s) => s.clear);
+  const cartItemCount = useCartStore((s) => s.itemCount());
 
   // Deep-link depuis le site vitrine (doyougeckoo.fr) : un clic sur
   // "Commander chez X" ou sur un produit précis ajoute ?pro=<id>[&product=<id>]
@@ -141,7 +142,52 @@ function MainApp() {
       {/* BOTTOM NAV */}
       <SafeAreaView edges={["bottom"]} className="border-t border-gris-light bg-white">
         <View className="flex-row justify-around py-3">
-          {TABS.map((tab) => {
+          {/* Accueil en premier */}
+          {(() => {
+            const tab = TABS[0];
+            const isActive = activeTab === tab.key;
+            return (
+              <Pressable
+                key={tab.key}
+                onPress={() => setActiveTab(tab.key)}
+                className="items-center gap-1 rounded-xl px-3 py-1"
+                style={{ backgroundColor: isActive ? "rgba(46,204,113,0.08)" : "transparent" }}
+              >
+                <Text style={{ fontSize: 20 }}>{tab.emoji}</Text>
+                <Text className="text-[11px]" style={{ color: isActive ? "#2ECC71" : "#6B7280" }}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })()}
+
+          {/* Panier — n'est pas un onglet de contenu (comme les autres), il ouvre
+              la modal panier déjà câblée via cartOpen/setCartOpen. Affiché en
+              permanence dans le footer (contrairement à FloatingCart, qui ne
+              vit que sur l'écran Accueil et disparaît dès qu'on en sort). */}
+          <Pressable
+            onPress={() => setCartOpen(true)}
+            className="items-center gap-1 rounded-xl px-3 py-1"
+            style={{ backgroundColor: cartOpen ? "rgba(46,204,113,0.08)" : "transparent" }}
+          >
+            <View>
+              <Text style={{ fontSize: 20 }}>🛒</Text>
+              {cartItemCount > 0 && (
+                <View
+                  className="absolute items-center justify-center rounded-full bg-corail"
+                  style={{ height: 16, width: 16, right: -8, top: -4 }}
+                >
+                  <Text style={{ fontSize: 9, fontWeight: "bold", color: "white" }}>{cartItemCount}</Text>
+                </View>
+              )}
+            </View>
+            <Text className="text-[11px]" style={{ color: cartOpen ? "#2ECC71" : "#6B7280" }}>
+              Panier
+            </Text>
+          </Pressable>
+
+          {/* Reste des onglets (Commandes, Fidélité, Profil) */}
+          {TABS.slice(1).map((tab) => {
             const isActive = activeTab === tab.key;
             return (
               <Pressable
