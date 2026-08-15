@@ -27,7 +27,7 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-nuit/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 sm:px-6">
         <a href="/" className="flex items-center" onClick={closeAll} aria-label="Do You Geckoo — accueil">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- logo dynamique (URL Supabase Storage), pas un asset local optimisable par next/image
@@ -35,7 +35,7 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
             // (voir Admin > Branding) — pas de texte séparé à côté, pour éviter
             // la redondance. Taille nettement plus grande pour bien se voir
             // dans le header (contrairement au petit texte qu'il remplace).
-            <img src={logoUrl} alt="Do You Geckoo" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
+            <img src={logoUrl} alt="Do You Geckoo" className="h-[220px] w-[220px] object-contain py-2 sm:h-[260px] sm:w-[260px]" />
           ) : (
             <>
               <span className="text-6xl">🦎</span>
