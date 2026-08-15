@@ -19,7 +19,10 @@ interface HomeScreenProps {
 }
 
 export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenMap }: HomeScreenProps) {
-  const [activeCategory, setActiveCategory] = useState<ProCategory>(ProCategory.RESTAURANT);
+  // null = aucune catégorie sélectionnée -> on affiche tous les commerçants
+  // (comportement par défaut de la page d'accueil). Une catégorie active
+  // filtre la liste ; recliquer sur la catégorie déjà active la désélectionne.
+  const [activeCategory, setActiveCategory] = useState<ProCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const activeAddress = useAddressStore((s) => s.activeAddress);
@@ -43,6 +46,10 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAddress?.id]);
 
+  // Filtre par catégorie sélectionnée (chips Resto/Boucherie/Fleurs/...) —
+  // appliqué avant la recherche texte, qui affine ensuite dans le sous-ensemble.
+  const categoryPros = activeCategory ? pros.filter((p) => p.category === activeCategory) : pros;
+
   // Recherche par nom de commerce ou de produit — filtre côté client
   // puisque tous les commerçants (et leurs produits déjà chargés) sont
   // déjà en mémoire dans le store, pas besoin d'un appel réseau dédié.
@@ -51,7 +58,7 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
   const searchedPros =
     normalizedQuery.length === 0
       ? null
-      : pros.filter((p) => {
+      : categoryPros.filter((p) => {
           if (p.businessName.toLowerCase().includes(normalizedQuery)) return true;
           const products = productsByPro[p.id] ?? [];
           return products.some((prod) => prod.name.toLowerCase().includes(normalizedQuery));
@@ -59,7 +66,7 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
 
   // "En vedette" = commerçants avec un abonnement payant (mis en avant
   // contractuellement), "Près de chez vous" = triés par distance réelle.
-  const basePros = searchedPros ?? pros;
+  const basePros = searchedPros ?? categoryPros;
   const featuredPros = basePros.filter((p) => p.subscriptionType !== SubscriptionType.FREE);
   const nearbyPros = [...basePros].sort((a, b) => a.distanceKm - b.distanceKm);
 
@@ -136,7 +143,7 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
             return (
               <Pressable
                 key={chip.category}
-                onPress={() => setActiveCategory(chip.category)}
+                onPress={() => setActiveCategory((current) => (current === chip.category ? null : chip.category))}
                 className="items-center gap-1.5 rounded border-2 px-4 py-3"
                 style={{
                   minWidth: 80,
@@ -211,7 +218,19 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
           </View>
         )}
 
-        {status === "loaded" && pros.length > 0 && (
+        {status === "loaded" && pros.length > 0 && categoryPros.length === 0 && (
+          <View className="items-center px-5 py-10">
+            <Text style={{ fontSize: 40 }}>🦎</Text>
+            <Text className="mt-2 text-center text-sm text-gris">
+              Aucun commerçant dans cette catégorie pour le moment.
+            </Text>
+            <Pressable onPress={() => setActiveCategory(null)} className="mt-3">
+              <Text className="text-sm font-semibold text-golfe-green">Voir toutes les catégories</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {status === "loaded" && categoryPros.length > 0 && (
           <>
             {/* FEATURED */}
             {featuredPros.length > 0 && (
@@ -234,7 +253,11 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
             {/* NEARBY */}
             <View className="flex-row items-center justify-between px-5 pb-3">
               <Text className="font-heading text-lg font-bold text-nuit">
-                {searchedPros ? `🔍 Résultats pour "${searchQuery}"` : "📍 Près de chez vous"}
+                {searchedPros
+                  ? `🔍 Résultats pour "${searchQuery}"`
+                  : activeCategory
+                    ? `📍 ${CATEGORY_CHIPS.find((c) => c.category === activeCategory)?.label ?? ""}`
+                    : "📍 Près de chez vous"}
               </Text>
             </View>
             {searchedPros && searchedPros.length === 0 && (
