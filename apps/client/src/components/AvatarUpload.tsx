@@ -11,11 +11,20 @@ interface AvatarUploadProps {
 export function AvatarUpload({ currentImageUrl, initials, onUpload }: AvatarUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
+  // Affiché en plus de Alert.alert (pas à sa place) : sur le web, un
+  // window.alert() déclenché après un await peut être silencieusement
+  // bloqué par le navigateur (activation utilisateur expirée), ce qui
+  // donnait l'impression que "rien ne se passe" en cas d'échec — ce texte
+  // reste visible quoi qu'il arrive.
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handlePick() {
+    setErrorMessage(null);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission requise", "Autorisez l'accès à vos photos pour changer votre photo de profil.");
+      const message = "Autorisez l'accès à vos photos pour changer votre photo de profil.";
+      Alert.alert("Permission requise", message);
+      setErrorMessage(message);
       return;
     }
 
@@ -34,7 +43,9 @@ export function AvatarUpload({ currentImageUrl, initials, onUpload }: AvatarUplo
     try {
       await onUpload(localUri);
     } catch (err) {
-      Alert.alert("Erreur", err instanceof Error ? err.message : "Échec de l'upload de la photo.");
+      const message = err instanceof Error ? err.message : "Échec de l'upload de la photo.";
+      Alert.alert("Erreur", message);
+      setErrorMessage(message);
       setPreviewUri(null);
     } finally {
       setUploading(false);
@@ -44,18 +55,24 @@ export function AvatarUpload({ currentImageUrl, initials, onUpload }: AvatarUplo
   const displayUri = previewUri ?? currentImageUrl;
 
   return (
-    <Pressable onPress={handlePick} disabled={uploading} className="relative">
-      <View className="h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-golfe-green">
-        {displayUri ? (
-          <Image source={{ uri: displayUri }} style={{ width: 80, height: 80 }} />
-        ) : (
-          <Text className="font-heading text-2xl font-extrabold text-white">{initials}</Text>
-        )}
-      </View>
+    <View className="items-center">
+      <Pressable onPress={handlePick} disabled={uploading} className="relative">
+        <View className="h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-golfe-green">
+          {displayUri ? (
+            <Image source={{ uri: displayUri }} style={{ width: 80, height: 80 }} />
+          ) : (
+            <Text className="font-heading text-2xl font-extrabold text-white">{initials}</Text>
+          )}
+        </View>
 
-      <View className="absolute bottom-0 right-0 h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-nuit">
-        {uploading ? <ActivityIndicator size="small" color="white" /> : <Text style={{ fontSize: 12 }}>📷</Text>}
-      </View>
-    </Pressable>
+        <View className="absolute bottom-0 right-0 h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-nuit">
+          {uploading ? <ActivityIndicator size="small" color="white" /> : <Text style={{ fontSize: 12 }}>📷</Text>}
+        </View>
+      </Pressable>
+
+      {errorMessage && (
+        <Text className="mt-2 max-w-[220px] text-center text-xs text-red-500">{errorMessage}</Text>
+      )}
+    </View>
   );
 }
