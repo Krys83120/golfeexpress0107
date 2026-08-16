@@ -103,16 +103,26 @@ export async function findPack(tier: SubscriptionType): Promise<AdminPartnerPack
  * qui a modifié les prix — utile en cas de litige avec un Pro.
  */
 export async function saveAdminPacks(packs: AdminPartnerPack[], adminUserId: string): Promise<void> {
+  // Prisma type son champ Json de façon récursive (InputJsonValue) et refuse
+  // structurellement un objet TypeScript "fort" comme AdminPartnerPack[]
+  // (l'enum SubscriptionType sur `tier` fait échouer la vérification —
+  // erreur de build Vercel constatée : "Index signature for type 'string'
+  // is missing"). Le round-trip JSON.parse(JSON.stringify(...)) produit un
+  // objet JS neutre (type `any`), toujours accepté par Prisma, sans perte
+  // de données puisque tous les champs de AdminPartnerPack sont déjà des
+  // types JSON-safe (string/number/boolean/null/tableaux).
+  const value = JSON.parse(JSON.stringify({ packs }));
+
   await prisma.globalSetting.upsert({
     where: { key: PACKS_SETTING_KEY },
     create: {
       key: PACKS_SETTING_KEY,
-      value: { packs },
+      value,
       description: "Configuration des packs partenaires (Pro) — modifiable depuis Admin > Packs Partenaires.",
       updatedBy: adminUserId,
     },
     update: {
-      value: { packs },
+      value,
       updatedBy: adminUserId,
     },
   });
