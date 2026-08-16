@@ -205,7 +205,7 @@ async function fetchLogoSetting(settingKey: string): Promise<string | null> {
  * les apps.
  */
 export async function generateAndUploadOgImage(
-  app: "commander" | "livreur" | "pro",
+  app: "commander" | "livreur" | "pro" | "www",
   file: File,
   appName: string,
   tagline: string,
@@ -224,7 +224,31 @@ export async function generateAndUploadOgImage(
 }
 
 /** URL publique stable d'une image OG déjà générée (utile pour l'aperçu/vérification). */
-export function ogImagePublicUrl(app: "commander" | "livreur" | "pro"): string {
+export function ogImagePublicUrl(app: "commander" | "livreur" | "pro" | "www"): string {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
   return `${supabaseUrl}/storage/v1/object/public/${BUCKET}/og-${app}.png`;
+}
+
+/**
+ * Titre/description actuellement enregistrés pour l'aperçu de partage du
+ * site vitrine (ou null si jamais configurés — le site garde alors ses
+ * valeurs par défaut). On relit la même route publique que le site vitrine
+ * lui-même consomme, pour préremplir le formulaire Admin avec ce qui est
+ * réellement affiché en direct.
+ */
+export async function fetchWwwOgText(): Promise<{ title: string; description: string } | null> {
+  try {
+    const data = await apiFetch<{ wwwOgText: { title: string; description: string } | null }>("/api/settings/branding");
+    return data.wwwOgText;
+  } catch {
+    return null;
+  }
+}
+
+/** Enregistre le titre/description utilisés pour l'aperçu de partage du site vitrine. */
+export async function saveWwwOgText(title: string, description: string): Promise<void> {
+  await apiFetch("/api/admin/settings/seo.www_og_text", {
+    method: "PUT",
+    body: { value: { title, description } },
+  });
 }

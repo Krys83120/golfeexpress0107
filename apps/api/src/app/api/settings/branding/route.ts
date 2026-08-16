@@ -25,9 +25,10 @@ export const dynamic = "force-dynamic";
  * logoUrl/wwwLogoUrl) plutôt que de rendre /api/admin/settings public.
  */
 export async function GET() {
-  const [logoSetting, wwwLogoSetting] = await Promise.all([
+  const [logoSetting, wwwLogoSetting, wwwOgTextSetting] = await Promise.all([
     prisma.globalSetting.findUnique({ where: { key: "branding.logo_url" } }),
     prisma.globalSetting.findUnique({ where: { key: "branding.www_logo_url" } }),
+    prisma.globalSetting.findUnique({ where: { key: "seo.www_og_text" } }),
   ]);
 
   function extractUrl(setting: typeof logoSetting): string | null {
@@ -36,8 +37,21 @@ export async function GET() {
       : null;
   }
 
+  // Titre/description utilisés pour l'aperçu de partage (WhatsApp/iMessage/
+  // Facebook...) du site vitrine — éditables depuis Admin > SEO/GEO, avec
+  // repli sur null si jamais configurés (le site vitrine garde alors ses
+  // valeurs par défaut codées en dur dans layout.tsx).
+  const wwwOgText =
+    wwwOgTextSetting &&
+    typeof wwwOgTextSetting.value === "object" &&
+    wwwOgTextSetting.value !== null &&
+    "title" in (wwwOgTextSetting.value as any) &&
+    "description" in (wwwOgTextSetting.value as any)
+      ? (wwwOgTextSetting.value as { title: string; description: string })
+      : null;
+
   return NextResponse.json(
-    { logoUrl: extractUrl(logoSetting), wwwLogoUrl: extractUrl(wwwLogoSetting) },
+    { logoUrl: extractUrl(logoSetting), wwwLogoUrl: extractUrl(wwwLogoSetting), wwwOgText },
     // Cache court côté CDN/navigateur — le logo ne change pas souvent,
     // mais on veut qu'une mise à jour depuis l'Admin se propage sans
     // attendre trop longtemps non plus.

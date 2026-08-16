@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Upload, ExternalLink } from "lucide-react";
-import { generateAndUploadOgImage, ogImagePublicUrl } from "@/services/brandingApi";
+import { generateAndUploadOgImage, ogImagePublicUrl, fetchWwwOgText, saveWwwOgText } from "@/services/brandingApi";
 
-type AppKey = "commander" | "livreur" | "pro";
+type AppKey = "commander" | "livreur" | "pro" | "www";
 
 const APPS: { key: AppKey; name: string; tagline: string; bgColor: string; domain: string }[] = [
   {
@@ -26,7 +26,18 @@ const APPS: { key: AppKey; name: string; tagline: string; bgColor: string; domai
     bgColor: "#1A1A2E",
     domain: "pro.doyougeckoo.fr",
   },
+  {
+    key: "www",
+    name: "Do You Geckoo",
+    tagline: "La livraison locale du Golfe de Saint-Tropez.",
+    bgColor: "#2ECC71",
+    domain: "doyougeckoo.fr",
+  },
 ];
+
+const DEFAULT_WWW_OG_TITLE = "Do You Geckoo — La livraison locale du Golfe de Saint-Tropez, en juste";
+const DEFAULT_WWW_OG_DESCRIPTION =
+  "Livraison de vos commerces préférés en 20-30 minutes. Des livreurs mieux payés, des commerçants moins taxés, un service 100% local.";
 
 export function SeoPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -34,6 +45,30 @@ export function SeoPage() {
   const [generatingFor, setGeneratingFor] = useState<AppKey | null>(null);
   const [generatedUrls, setGeneratedUrls] = useState<Record<AppKey, string>>({} as any);
   const [error, setError] = useState<string | null>(null);
+
+  // Texte de l'aperçu de partage (og:title/og:description) du site
+  // vitrine — distinct de l'image, éditable séparément puisqu'il alimente
+  // directement les balises <meta> lues par WhatsApp/iMessage/Facebook.
+  const [wwwTitle, setWwwTitle] = useState(DEFAULT_WWW_OG_TITLE);
+  const [wwwDescription, setWwwDescription] = useState(DEFAULT_WWW_OG_DESCRIPTION);
+  const [wwwTextStatus, setWwwTextStatus] = useState<"idle" | "loading" | "saving" | "saved" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchWwwOgText()
+      .then((text) => {
+        if (cancelled) return;
+        if (text) {
+          setWwwTitle(text.title);
+          setWwwDescription(text.description);
+        }
+        setWwwTextStatus("idle");
+      })
+      .catch(() => !cancelled && setWwwTextStatus("idle"));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -56,16 +91,26 @@ export function SeoPage() {
     }
   }
 
+  async function handleSaveWwwText() {
+    setWwwTextStatus("saving");
+    try {
+      await saveWwwOgText(wwwTitle, wwwDescription);
+      setWwwTextStatus("saved");
+    } catch {
+      setWwwTextStatus("error");
+    }
+  }
+
   return (
     <div className="p-8">
       <h1 className="font-heading text-2xl font-extrabold text-nuit">🔍 SEO / GEO</h1>
       <p className="mt-1 text-sm text-gris">
-        Aperçu partagé (WhatsApp, iMessage, Facebook...) des 3 apps, et référence SEO du site vitrine.
+        Aperçu partagé (WhatsApp, iMessage, Facebook...) des 4 sites/apps, et référence SEO du site vitrine.
       </p>
 
-      {/* Site vitrine — déjà optimisé, rappel pour référence */}
+      {/* Site vitrine — SEO technique déjà en place (l'image/texte de partage se gèrent juste en dessous) */}
       <div className="mt-6 rounded bg-white p-6 shadow-sm">
-        <h2 className="font-heading text-base font-bold text-nuit">✅ Site vitrine (doyougeckoo.fr)</h2>
+        <h2 className="font-heading text-base font-bold text-nuit">✅ SEO technique du site vitrine (doyougeckoo.fr)</h2>
         <p className="mt-1 text-sm text-gris">
           Déjà optimisé : URLs lisibles par commerçant (ville/catégorie/nom), titres et meta descriptions
           personnalisés par fiche, fil d'Ariane, sitemap étendu.
@@ -87,9 +132,9 @@ export function SeoPage() {
         {error && <div className="mt-4 rounded-sm bg-red-50 p-3 text-sm text-red-500">{error}</div>}
       </div>
 
-      {/* Une carte par app */}
+      {/* Une carte par app (client/livreur/pro) */}
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
-        {APPS.map((app) => {
+        {APPS.filter((app) => app.key !== "www").map((app) => {
           const displayUrl = generatedUrls[app.key] ?? ogImagePublicUrl(app.key);
           return (
             <div key={app.key} className="rounded bg-white p-5 shadow-sm">
@@ -137,6 +182,78 @@ export function SeoPage() {
       <div className="mt-6 rounded bg-golfe-green/5 p-4 text-xs text-gris">
         💡 Les images générées ici sont automatiquement prises en compte par les apps (l'URL est fixe, déjà
         configurée dans leur code) — pas besoin de redéployer pour une simple régénération.
+      </div>
+
+      {/* Aperçu de partage du site vitrine — image + texte, séparés car le
+          texte alimente directement les balises <meta> og:title/og:description
+          lues par WhatsApp/iMessage/Facebook, indépendamment de l'image. */}
+      <div className="mt-6 rounded bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h3 className="font-heading text-sm font-bold text-nuit">Site vitrine — Do You Geckoo</h3>
+          <a
+            href="https://doyougeckoo.fr"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 text-xs text-gris hover:text-golfe-green"
+          >
+            doyougeckoo.fr <ExternalLink size={11} />
+          </a>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {/* Image */}
+          <div>
+            <div className="overflow-hidden rounded-sm border border-gris-light">
+              <img
+                src={generatedUrls.www ?? ogImagePublicUrl("www")}
+                alt="Aperçu Do You Geckoo"
+                className="aspect-[1200/630] w-full object-cover"
+                style={{ backgroundColor: "#2ECC71" }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+              <div className="p-2">
+                <p className="text-[11px] text-gris">doyougeckoo.fr</p>
+                <p className="text-xs font-semibold text-nuit">{wwwTitle}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleGenerate(APPS.find((a) => a.key === "www")!)}
+              disabled={!file || generatingFor === "www"}
+              className="mt-3 w-full rounded-sm bg-nuit py-2 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {generatingFor === "www" ? "Génération..." : "Régénérer l'image de partage"}
+            </button>
+          </div>
+
+          {/* Texte (og:title / og:description) */}
+          <div>
+            <label className="block text-xs font-semibold text-nuit">Titre affiché lors du partage</label>
+            <input
+              type="text"
+              value={wwwTitle}
+              onChange={(e) => setWwwTitle(e.target.value)}
+              className="mt-1 w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+            <label className="mt-3 block text-xs font-semibold text-nuit">Description affichée lors du partage</label>
+            <textarea
+              value={wwwDescription}
+              onChange={(e) => setWwwDescription(e.target.value)}
+              rows={3}
+              className="mt-1 w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            />
+            <button
+              onClick={handleSaveWwwText}
+              disabled={wwwTextStatus === "saving" || wwwTextStatus === "loading"}
+              className="mt-3 w-full rounded-sm bg-golfe-green py-2 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {wwwTextStatus === "saving" ? "Enregistrement..." : "Enregistrer le texte"}
+            </button>
+            {wwwTextStatus === "saved" && <p className="mt-2 text-xs text-golfe-green">✅ Texte enregistré.</p>}
+            {wwwTextStatus === "error" && <p className="mt-2 text-xs text-red-500">Échec de l'enregistrement.</p>}
+          </div>
+        </div>
       </div>
     </div>
   );

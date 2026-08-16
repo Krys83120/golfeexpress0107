@@ -15,3 +15,19 @@ export async function fetchWwwLogoUrl(): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Titre/description à utiliser pour l'aperçu de partage (og:title/
+ * og:description) du site vitrine, si configurés depuis Admin > SEO/GEO —
+ * sinon null, et l'appelant garde ses valeurs par défaut codées en dur.
+ */
+export async function fetchWwwOgText(): Promise<{ title: string; description: string } | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/settings/branding`, { next: { revalidate: 10 } });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { wwwOgText: { title: string; description: string } | null };
+    return data.wwwOgText;
+  } catch {
+    return null;
+  }
+}
