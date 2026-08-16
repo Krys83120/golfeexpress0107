@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat, Inter } from "next/font/google";
 import "./globals.css";
+import { SplashLoader } from "@/components/SplashLoader";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -84,7 +85,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
       </head>
-      <body className="font-body bg-white text-nuit antialiased">{children}</body>
+      <body className="font-body bg-white text-nuit antialiased">
+        <SplashLoader>{children}</SplashLoader>
+      </body>
     </html>
   );
 }

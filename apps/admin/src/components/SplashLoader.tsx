@@ -4,9 +4,14 @@ import React, { useEffect, useRef, useState } from "react";
  * Écran de chargement animé affiché pendant l'initialisation de l'app
  * (restauration de session) — équivalent Admin du composant du même nom
  * côté Pro (apps/pro/src/components/SplashLoader.tsx). Même raisonnement :
- * fausse progression plafonnée à 92% tant que le vrai chargement (`ready`)
- * n'est pas terminé, puis complétion rapide jusqu'à 100%.
+ * fausse progression programmée sur ~5 secondes (courbe ease-out, plafonnée
+ * à 92%) MÊME SI le vrai chargement (`ready`) est déjà terminé avant. Dès
+ * que les 5 secondes sont écoulées ET que `ready` est vrai, complétion
+ * rapide jusqu'à 100%.
  */
+
+const MIN_DURATION_MS = 5000;
+const CAP = 92;
 
 const STARS = [
   { top: "8%", left: "12%", size: 3, opacity: 0.6 },
@@ -43,32 +48,23 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
   const [progress, setProgress] = useState(0);
   const readyRef = useRef(ready);
   readyRef.current = ready;
+  const startRef = useRef(Date.now());
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setProgress((p) => {
-        if (readyRef.current) return p;
-        const cap = 92;
-        if (p >= cap) return cap;
-        return Math.min(p + (cap - p) * 0.12 + 0.5, cap);
+      const elapsed = Date.now() - startRef.current;
+      setProgress((prev) => {
+        if (prev >= 100) return prev;
+        if (elapsed >= MIN_DURATION_MS && readyRef.current) {
+          return Math.min(prev + 7, 100);
+        }
+        const t = Math.min(elapsed / MIN_DURATION_MS, 1);
+        const eased = 1 - (1 - t) * (1 - t); // ease-out quad
+        return Math.max(prev, CAP * eased);
       });
-    }, 90);
+    }, 50);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    const interval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return Math.min(p + 7, 100);
-      });
-    }, 20);
-    return () => clearInterval(interval);
-  }, [ready]);
 
   useEffect(() => {
     if (progress < 100) return;
