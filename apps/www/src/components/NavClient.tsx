@@ -16,6 +16,11 @@ const NAV_LINKS = [
   { label: "Devenir partenaire", href: "/#devenir-partenaire" },
 ];
 
+// Jaune exact du logo/mascotte Do You Geckoo (échantillonné sur
+// assets/splash-badge.png) — utilisé pour le bouton "Devenir Partenaire"
+// afin qu'il reprenne la même teinte que le logo plutôt qu'un jaune générique.
+const PARTNER_YELLOW = "#FEB903";
+
 export function NavClient({ logoUrl }: { logoUrl: string | null }) {
   const [portalsOpen, setPortalsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -66,7 +71,19 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
           ))}
         </nav>
 
-        <div className="flex items-center justify-end gap-2 sm:justify-start">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:justify-start">
+          {/* "Devenir Partenaire" — bouton dédié uniquement sur mobile/tablette
+              (lg:hidden) : à partir de lg, le lien équivalent est déjà présent
+              dans la nav horizontale (NAV_LINKS), pas besoin de le dupliquer. */}
+          <a
+            href="/#devenir-partenaire"
+            onClick={closeAll}
+            className="whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold text-nuit transition hover:opacity-90 sm:px-5 sm:py-2.5 sm:text-sm lg:hidden"
+            style={{ backgroundColor: PARTNER_YELLOW }}
+          >
+            Devenir Partenaire
+          </a>
+
           {/* Portails (Se connecter) — toujours visible, même sur mobile */}
           <div className="relative">
             <button
