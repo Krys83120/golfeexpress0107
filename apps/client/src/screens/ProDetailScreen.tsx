@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, Linking, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import type { ProWithUi } from "@/services/prosApi";
 import { useProsStore } from "@/store/useProsStore";
 import { useCartStore } from "@/store/useCartStore";
 import { ProductOptionsModal } from "@/components/ProductOptionsModal";
+import { BusinessInfoCard } from "@/components/BusinessInfoCard";
 import type { Product } from "@golfeexpress/types";
-
-// Même ordre que côté Pro (SettingsPage.tsx) : dayOfWeek 0 = Dimanche.
-const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
 interface ProDetailScreenProps {
   pro: ProWithUi;
@@ -53,24 +50,21 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
     return acc;
   }, {});
 
-  // Infos du commerce (adresse, horaires, temps de préparation, site web /
-  // réseaux sociaux) — affichées sous la bannière, en dessous du nom/de la
-  // note. Toutes optionnelles : un commerçant n'ayant pas encore renseigné
-  // certains champs (voir Réglages côté Pro) n'affiche simplement pas la
-  // ligne correspondante plutôt qu'un espace vide ou "—".
-  const proAddress = pro.addresses?.[0];
-  const formattedAddress = proAddress
-    ? [proAddress.street, proAddress.complement, `${proAddress.zipCode} ${proAddress.city}`.trim()]
-        .filter(Boolean)
-        .join(", ")
-    : null;
-  const sortedHours = [...(pro.openingHours ?? [])].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
-  const hasSocialLinks = Boolean(pro.websiteUrl || pro.instagramUrl || pro.facebookUrl || pro.tiktokUrl);
-  const hasBusinessInfo = Boolean(
-    formattedAddress || pro.phone || pro.emailContact || pro.defaultPrepTimeMinutes || sortedHours.length > 0 || hasSocialLinks
-  );
-
   function handleAdd(product: Product) {
+    // Commerçant fermé (horaires, ou "En vacances"/"Fermé" côté Pro) : on
+    // bloque l'ajout au panier ici plutôt que de laisser l'utilisateur
+    // découvrir l'erreur seulement au moment de payer — le serveur refuse
+    // de toute façon la commande dans ce cas (voir orders/route.ts). La
+    // consultation du produit (description, photos, options) reste
+    // possible même fermé : voir handlePressProduct ci-dessous.
+    if (!pro.isOpen) {
+      Alert.alert(
+        pro.openReason === "VACATION" ? "Commerçant en vacances" : "Commerçant fermé",
+        "Ce commerçant n'accepte pas de commande pour le moment."
+      );
+      return;
+    }
+
     addItem(
       {
         id: product.id,
@@ -86,20 +80,10 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
   }
 
   function handlePressProduct(product: Product) {
-    // Commerçant fermé (horaires, ou "En vacances"/"Fermé" côté Pro) : on
-    // bloque l'ajout au panier ici plutôt que de laisser l'utilisateur
-    // découvrir l'erreur seulement au moment de payer — le serveur refuse
-    // de toute façon la commande dans ce cas (voir orders/route.ts).
-    if (!pro.isOpen) {
-      Alert.alert(
-        pro.openReason === "VACATION" ? "Commerçant en vacances" : "Commerçant fermé",
-        "Ce commerçant n'accepte pas de commande pour le moment."
-      );
-      return;
-    }
-
-    // Produit avec des options (taille, base, sauce...) -> on ouvre l'écran
-    // de sélection avant d'ajouter au panier. Sinon, ajout direct comme avant.
+    // Toujours autorisé, même commerçant fermé : consulter la fiche d'un
+    // produit (photos, description complète, options) n'est pas une
+    // commande. Seul l'ajout réel au panier (handleAdd / handleConfirmOptions
+    // ci-dessous) est bloqué tant que le commerçant est fermé.
     if (product.options && product.options.length > 0) {
       setOptionsModalProduct(product);
     } else {
@@ -110,6 +94,17 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
   function handleConfirmOptions(selection: { options: Record<string, string>; optionsLabel: string; extraPrice: number }) {
     const product = optionsModalProduct;
     if (!product) return;
+
+    // Même garde que handleAdd — le bouton de confirmation de la modal est
+    // déjà désactivé quand le commerçant est fermé (voir prop `canOrder`
+    // passée à ProductOptionsModal), ceci est une sécurité supplémentaire.
+    if (!pro.isOpen) {
+      Alert.alert(
+        pro.openReason === "VACATION" ? "Commerçant en vacances" : "Commerçant fermé",
+        "Ce commerçant n'accepte pas de commande pour le moment."
+      );
+      return;
+    }
 
     // Un id de ligne de panier différent par combinaison d'options choisie
     // (deux "Poke Saumon" avec des tailles différentes doivent rester deux
@@ -174,110 +169,9 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
               <Text style={{ fontSize: 11 }}>🕒</Text> {pro.estimatedMinMinutes}-{pro.estimatedMaxMinutes} min
             </Text>
           </View>
-
-          {hasSocialLinks && (
-            <View className="mt-2 flex-row items-center gap-3.5">
-              {pro.instagramUrl && (
-                <Pressable onPress={() => Linking.openURL(pro.instagramUrl!)}>
-                  <Ionicons name="logo-instagram" size={22} color="#C13584" />
-                </Pressable>
-              )}
-              {pro.facebookUrl && (
-                <Pressable onPress={() => Linking.openURL(pro.facebookUrl!)}>
-                  <Ionicons name="logo-facebook" size={22} color="#1877F2" />
-                </Pressable>
-              )}
-              {pro.tiktokUrl && (
-                <Pressable onPress={() => Linking.openURL(pro.tiktokUrl!)}>
-                  <Ionicons name="logo-tiktok" size={20} color="#1A1A2E" />
-                </Pressable>
-              )}
-              {pro.websiteUrl && (
-                <Pressable onPress={() => Linking.openURL(pro.websiteUrl!)}>
-                  <Ionicons name="globe-outline" size={22} color="#2ECC71" />
-                </Pressable>
-              )}
-            </View>
-          )}
         </View>
 
-        {hasBusinessInfo && (
-          <View className="mx-5 mt-4 rounded-sm bg-gris-light p-4">
-            <Text className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-gris">Infos du commerce</Text>
-
-            {formattedAddress && (
-              <View className="mb-2 flex-row items-start gap-2">
-                <Ionicons name="location-outline" size={15} color="#6B7280" style={{ marginTop: 1 }} />
-                <Text className="flex-1 text-[13px] text-nuit">{formattedAddress}</Text>
-              </View>
-            )}
-
-            {pro.phone && (
-              <View className="mb-2 flex-row items-center gap-2">
-                <Ionicons name="call-outline" size={15} color="#6B7280" />
-                <Pressable onPress={() => Linking.openURL(`tel:${pro.phone}`)}>
-                  <Text className="text-[13px] text-nuit">{pro.phone}</Text>
-                </Pressable>
-              </View>
-            )}
-
-            {pro.emailContact && (
-              <View className="mb-2 flex-row items-center gap-2">
-                <Ionicons name="mail-outline" size={15} color="#6B7280" />
-                <Pressable onPress={() => Linking.openURL(`mailto:${pro.emailContact}`)}>
-                  <Text className="text-[13px] text-nuit">{pro.emailContact}</Text>
-                </Pressable>
-              </View>
-            )}
-
-            {pro.defaultPrepTimeMinutes ? (
-              <View className="mb-2 flex-row items-center gap-2">
-                <Ionicons name="timer-outline" size={15} color="#6B7280" />
-                <Text className="flex-1 text-[13px] text-nuit">
-                  Temps de préparation habituel : ~{pro.defaultPrepTimeMinutes} min
-                </Text>
-              </View>
-            ) : null}
-
-            {sortedHours.length > 0 && (
-              <View className="mb-2 flex-row items-start gap-2">
-                <Ionicons name="time-outline" size={15} color="#6B7280" style={{ marginTop: 1 }} />
-                <View className="flex-1">
-                  {sortedHours.map((h) => (
-                    <Text key={h.dayOfWeek} className="text-[12px] leading-5 text-gris">
-                      {DAY_LABELS[h.dayOfWeek]} : {h.isClosed ? "Fermé" : `${h.openTime} - ${h.closeTime}`}
-                    </Text>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {hasSocialLinks && (
-              <View className="flex-row items-center gap-3.5 pt-1">
-                {pro.websiteUrl && (
-                  <Pressable onPress={() => Linking.openURL(pro.websiteUrl!)}>
-                    <Ionicons name="globe-outline" size={20} color="#2ECC71" />
-                  </Pressable>
-                )}
-                {pro.instagramUrl && (
-                  <Pressable onPress={() => Linking.openURL(pro.instagramUrl!)}>
-                    <Ionicons name="logo-instagram" size={20} color="#C13584" />
-                  </Pressable>
-                )}
-                {pro.facebookUrl && (
-                  <Pressable onPress={() => Linking.openURL(pro.facebookUrl!)}>
-                    <Ionicons name="logo-facebook" size={20} color="#1877F2" />
-                  </Pressable>
-                )}
-                {pro.tiktokUrl && (
-                  <Pressable onPress={() => Linking.openURL(pro.tiktokUrl!)}>
-                    <Ionicons name="logo-tiktok" size={18} color="#1A1A2E" />
-                  </Pressable>
-                )}
-              </View>
-            )}
-          </View>
-        )}
+        <BusinessInfoCard pro={pro} />
 
         {!pro.isOpen && (
           <View
@@ -366,6 +260,7 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
       {optionsModalProduct && (
         <ProductOptionsModal
           product={optionsModalProduct}
+          canOrder={pro.isOpen}
           onClose={() => setOptionsModalProduct(null)}
           onConfirm={handleConfirmOptions}
         />

@@ -1,11 +1,12 @@
 import "./global.css";
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, Modal, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, Modal } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import type { Order } from "@golfeexpress/types";
 
 import { useAuthStore } from "@/store/useAuthStore";
+import { SplashLoader } from "@/components/SplashLoader";
 import { AuthScreen } from "@/screens/AuthScreen";
 import { ResetPasswordScreen } from "@/screens/ResetPasswordScreen";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -264,6 +265,13 @@ export default function App() {
   const status = useAuthStore((s) => s.status);
   const restoreSession = useAuthStore((s) => s.restoreSession);
 
+  // Écran de chargement animé affiché tant que `showSplash` est vrai —
+  // reste affiché un court instant même après que `status` ait basculé
+  // (voir SplashLoader.tsx : la barre doit visuellement atteindre 100%
+  // avant de céder la place au vrai contenu, sinon l'animation serait
+  // coupée net et la fausse progression n'aurait servi à rien).
+  const [showSplash, setShowSplash] = useState(true);
+
   // Arrivée depuis le lien "mot de passe oublié" reçu par email
   // (?reset_token=...) — voir apps/pro/src/App.tsx pour le détail du
   // raisonnement (identique ici).
@@ -294,10 +302,8 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      {status === "idle" || status === "loading" ? (
-        <View className="flex-1 items-center justify-center bg-white">
-          <ActivityIndicator color="#2ECC71" size="large" />
-        </View>
+      {showSplash ? (
+        <SplashLoader ready={status !== "idle" && status !== "loading"} onFinished={() => setShowSplash(false)} />
       ) : status === "authenticated" ? (
         <MainApp />
       ) : (

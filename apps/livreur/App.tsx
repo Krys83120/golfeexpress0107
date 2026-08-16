@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { useAuthStore } from "@/store/useAuthStore";
+import { SplashLoader } from "@/components/SplashLoader";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
 import { AuthScreen } from "@/screens/AuthScreen";
 import { ResetPasswordScreen } from "@/screens/ResetPasswordScreen";
@@ -82,6 +83,10 @@ export default function App() {
     return new URLSearchParams(window.location.search).get("reset_token");
   });
 
+  // Écran de chargement animé affiché tant que `showSplash` est vrai — voir
+  // apps/client/App.tsx pour le détail du raisonnement (identique ici).
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     restoreSession();
   }, []);
@@ -104,10 +109,8 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      {status === "idle" || status === "loading" ? (
-        <View style={styles.loadingRoot}>
-          <ActivityIndicator color="#2ECC71" size="large" />
-        </View>
+      {showSplash ? (
+        <SplashLoader ready={status !== "idle" && status !== "loading"} onFinished={() => setShowSplash(false)} />
       ) : status === "authenticated" ? (
         <MainApp />
       ) : (
@@ -119,7 +122,6 @@ export default function App() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "white" },
-  loadingRoot: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "white" },
   navSafeArea: { borderTopWidth: 1, borderTopColor: "#E5E7EB", backgroundColor: "white" },
   navRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: 12 },
   navItem: { alignItems: "center", gap: 4, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 },

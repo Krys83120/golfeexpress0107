@@ -5,6 +5,11 @@ import type { Product, ProductOption } from "@golfeexpress/types";
 
 interface ProductOptionsModalProps {
   product: Product;
+  /** false si le commerçant est actuellement fermé — la fiche produit
+   * (photos, description, options) reste consultable, mais la confirmation
+   * de commande est désactivée et relabellisée. Par défaut true (consultation
+   * hors contexte fiche Pro, ex: deep-link). */
+  canOrder?: boolean;
   onClose: () => void;
   onConfirm: (selection: { options: Record<string, string>; optionsLabel: string; extraPrice: number }) => void;
 }
@@ -16,7 +21,7 @@ function isSelectionComplete(options: ProductOption[], selection: SelectionState
   return options.every((group) => !group.isRequired || (selection[group.name]?.size ?? 0) > 0);
 }
 
-export function ProductOptionsModal({ product, onClose, onConfirm }: ProductOptionsModalProps) {
+export function ProductOptionsModal({ product, canOrder = true, onClose, onConfirm }: ProductOptionsModalProps) {
   const options = product.options ?? [];
   // Number(...) défensif — un prix reçu en texte (bug de sérialisation
   // Decimal déjà rencontré côté API) ferait planter .toFixed() sinon.
@@ -60,9 +65,11 @@ export function ProductOptionsModal({ product, onClose, onConfirm }: ProductOpti
   }, [selection, options]);
 
   const totalPrice = basePrice + extraPrice;
-  const canConfirm = isSelectionComplete(options, selection);
+  const optionsComplete = isSelectionComplete(options, selection);
+  const canConfirm = optionsComplete && canOrder;
 
   function handleConfirm() {
+    if (!canConfirm) return;
     const flatOptions: Record<string, string> = {};
     for (const group of options) {
       const chosen = selection[group.name];
@@ -165,10 +172,12 @@ export function ProductOptionsModal({ product, onClose, onConfirm }: ProductOpti
           <Pressable
             onPress={handleConfirm}
             disabled={!canConfirm}
-            style={[styles.confirmBtn, { opacity: canConfirm ? 1 : 0.5 }]}
+            style={[styles.confirmBtn, { opacity: canConfirm ? 1 : 0.5 }, !canOrder && { backgroundColor: "#9CA3AF" }]}
           >
             <Text style={styles.confirmText}>
-              Ajouter à la commande • {totalPrice.toFixed(2).replace(".", ",")} €
+              {canOrder
+                ? `Ajouter à la commande • ${totalPrice.toFixed(2).replace(".", ",")} €`
+                : "Commerçant fermé pour le moment"}
             </Text>
           </Pressable>
         </View>

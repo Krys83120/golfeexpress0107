@@ -7,6 +7,22 @@ import { useAuthStore } from "@/store/useAuthStore";
  */
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
+/**
+ * Un `fetch` sans limite de temps peut rester bloqué indéfiniment (cold
+ * start serveur, connexion qui ne répond jamais...) — l'app restait alors
+ * figée en "chargement" sans jamais échouer ni réessayer, obligeant
+ * l'utilisateur à recharger la page pour s'en sortir. On borne donc chaque
+ * appel réseau à 15s : passé ce délai, la requête est annulée et remonte
+ * comme une erreur réseau normale, que le code appelant sait déjà gérer.
+ */
+const FETCH_TIMEOUT_MS = 15000;
+
+function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 export class ApiRequestError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -30,7 +46,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   async function performRequest(): Promise<Response> {
     const accessToken = skipAuth ? null : useAuthStore.getState().accessToken;
 
-    return fetch(`${API_BASE_URL}${path}`, {
+    return fetchWithTimeout(`${API_BASE_URL}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -71,7 +87,7 @@ export async function apiFetchBlob(path: string, options: { method?: "GET" | "PO
 
   async function performRequest(): Promise<Response> {
     const accessToken = useAuthStore.getState().accessToken;
-    return fetch(`${API_BASE_URL}${path}`, {
+    return fetchWithTimeout(`${API_BASE_URL}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",

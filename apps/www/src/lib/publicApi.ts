@@ -1,5 +1,21 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
+/**
+ * Un fetch serveur sans limite de temps peut laisser la page entière
+ * bloquée en chargement côté visiteur (cold start API, connexion qui ne
+ * répond jamais...) jusqu'au timeout de la fonction Vercel — trop long
+ * pour une navigation qui semble alors "plantée". On borne donc chaque
+ * appel à 15s, avec un repli gracieux (liste vide) plutôt qu'une erreur
+ * qui ferait planter le rendu de la page.
+ */
+const FETCH_TIMEOUT_MS = 15000;
+
+function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 export interface PublicAddress {
   city: string;
   lat: number;
@@ -56,10 +72,16 @@ export interface PublicProduct {
 }
 
 export async function fetchPublicPros(): Promise<PublicPro[]> {
-  const res = await fetch(`${API_URL}/api/pros`, { next: { revalidate: 60 } });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data.pros ?? []).filter((p: PublicPro) => p.status === "ACTIVE");
+  try {
+    const res = await fetchWithTimeout(`${API_URL}/api/pros`, { next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.pros ?? []).filter((p: PublicPro) => p.status === "ACTIVE");
+  } catch {
+    // Timeout ou erreur réseau : on affiche une liste vide plutôt que de
+    // faire planter le rendu de la page (voir commentaire sur FETCH_TIMEOUT_MS).
+    return [];
+  }
 }
 
 export async function fetchPublicPro(proId: string): Promise<PublicPro | null> {
@@ -75,10 +97,14 @@ export async function fetchPublicProBySlug(slug: string): Promise<PublicPro | nu
 }
 
 export async function fetchPublicProProducts(proId: string): Promise<PublicProduct[]> {
-  const res = await fetch(`${API_URL}/api/pros/${proId}/products`, { next: { revalidate: 60 } });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.products ?? [];
+  try {
+    const res = await fetchWithTimeout(`${API_URL}/api/pros/${proId}/products`, { next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.products ?? [];
+  } catch {
+    return [];
+  }
 }
 
 /** Distance à vol d'oiseau en km (formule haversine) — suffisante pour trier/afficher une estimation. */

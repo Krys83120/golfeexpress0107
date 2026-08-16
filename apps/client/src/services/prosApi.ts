@@ -42,7 +42,10 @@ function toProWithUi(pro: Pro & { addresses?: { lat: number; lng: number }[] }, 
       ? haversineDistanceKm(userLat, userLng, proAddress.lat, proAddress.lng)
       : 1.5; // valeur neutre si on ne connaît pas encore la position de l'utilisateur
 
-  const { min, max } = estimateDeliveryMinutes(distanceKm);
+  // Relie l'estimation affichée en haut de la fiche au temps de préparation
+  // réellement configuré par le commerçant (Pro Settings) plutôt qu'à une
+  // marge générique — sinon les deux valeurs divergent silencieusement.
+  const { min, max } = estimateDeliveryMinutes(distanceKm, pro.defaultPrepTimeMinutes ?? 10);
 
   // Calculé côté serveur (voir GET /api/pros -> lib/openingHours.ts) pour
   // éviter tout décalage de fuseau horaire côté app — repli "ouvert" si le

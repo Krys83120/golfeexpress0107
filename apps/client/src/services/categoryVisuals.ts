@@ -39,11 +39,18 @@ export function haversineDistanceKm(lat1: number, lng1: number, lat2: number, ln
   return Math.round(R * c * 10) / 10;
 }
 
-/** Estimation grossière du temps de trajet à partir de la distance (15 km/h moyen en scooter urbain). */
-export function estimateDeliveryMinutes(distanceKm: number): { min: number; max: number } {
-  const baseMinutes = (distanceKm / 15) * 60;
+/**
+ * Estimation du temps total (préparation + trajet) affiché sur la fiche
+ * Pro : trajet dérivé de la distance (15 km/h moyen en scooter urbain),
+ * préparation dérivée du `defaultPrepTimeMinutes` réel du commerçant (voir
+ * Pro Settings côté apps/pro) — plutôt qu'une marge fixe de 10 min qui
+ * ignorait totalement ce réglage.
+ */
+export function estimateDeliveryMinutes(distanceKm: number, prepTimeMinutes: number = 10): { min: number; max: number } {
+  const travelMinutes = (distanceKm / 15) * 60;
+  const prep = Math.max(0, prepTimeMinutes);
   return {
-    min: Math.max(10, Math.round(baseMinutes * 0.8)),
-    max: Math.max(20, Math.round(baseMinutes * 1.4) + 10), // +10 min de marge préparation
+    min: Math.max(10, Math.round(travelMinutes * 0.8 + prep * 0.7)),
+    max: Math.max(20, Math.round(travelMinutes * 1.4 + prep)),
   };
 }

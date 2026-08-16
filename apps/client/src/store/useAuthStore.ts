@@ -5,6 +5,21 @@ import type { User, Client } from "@golfeexpress/types";
 const STORAGE_KEY = "golfeexpress-client-session";
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
+// Sans timeout, un fetch qui ne répond jamais (cold start serveur, réseau
+// mobile capricieux...) laisse `restoreSession` bloquée en "loading" pour
+// toujours : l'écran de chargement (SplashLoader) reste alors figé à 92%
+// indéfiniment, sans jamais céder la place à l'app — seul un rechargement
+// manuel de la page "débloquait" la situation. On borne donc chaque appel
+// à 15s pour que l'échec soit détecté et géré normalement (retry via
+// refreshSession, ou passage en "unauthenticated").
+const FETCH_TIMEOUT_MS = 15000;
+
+function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 interface StoredSession {
   accessToken: string;
   refreshToken: string;
@@ -67,7 +82,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ accessToken: session.accessToken, refreshToken: session.refreshToken });
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${session.accessToken}` },
       });
       if (!res.ok) throw new Error("Session invalide");
@@ -87,7 +102,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email, password) => {
     set({ status: "loading", error: null });
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -117,7 +132,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signup: async (input) => {
     set({ status: "loading", error: null });
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...input, role: "CLIENT" }),
@@ -157,7 +172,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!currentRefreshToken) return false;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken: currentRefreshToken }),
@@ -182,7 +197,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  */
 async function fetchAndSetProfile(accessToken: string, set: (partial: Partial<AuthState>) => void) {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (res.ok) {
