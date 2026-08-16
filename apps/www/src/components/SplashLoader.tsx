@@ -25,7 +25,7 @@ const CAP = 92;
 // Taille x2.6 (demande explicite), fluide selon la largeur de fenêtre
 // (clamp) pour rester cohérent sur mobile comme sur grand écran desktop.
 const BADGE_CSS_SIZE = "clamp(340px, 42vw, 620px)";
-const RUNNER_ANIM_MS = 2000;
+const RUNNER_ANIM_MS = 4000;
 const FADE_MS = 200;
 
 const STARS = [
