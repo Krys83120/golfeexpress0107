@@ -3,16 +3,25 @@ import React, { useEffect, useRef, useState } from "react";
 /**
  * Écran de chargement animé affiché pendant l'initialisation de l'app
  * (restauration de session) — équivalent web du composant du même nom côté
- * Client/Livreur (apps/client/src/components/SplashLoader.tsx). Même
- * raisonnement : fausse progression programmée sur ~5 secondes (courbe
- * ease-out, plafonnée à 92%) MÊME SI le vrai chargement (`ready`) est déjà
- * terminé avant — l'animation doit toujours donner l'impression d'un vrai
- * chargement. Dès que les 5 secondes sont écoulées ET que `ready` est vrai,
- * complétion rapide jusqu'à 100% avant de céder la place au vrai contenu.
+ * Client/Livreur (apps/client/src/components/SplashLoader.tsx).
+ *
+ *  - Le badge est la vraie illustration de la mascotte (fichier statique
+ *    /splash-badge.png servi depuis public/), affiché en grand.
+ *  - La barre suit une courbe programmée sur ~5 secondes (ease-out,
+ *    plafonnée à 92%) MÊME SI le vrai chargement (`ready`) est déjà
+ *    terminé avant.
+ *  - Une fois à 100% : le contenu s'efface en fondu, puis la mascotte
+ *    (/splash-runner.png) traverse l'écran de gauche à droite à la même
+ *    taille que le badge, avant de céder la place au vrai contenu.
  */
 
 const MIN_DURATION_MS = 5000;
 const CAP = 92;
+const BADGE_SIZE = 220;
+const RUNNER_WIDTH = BADGE_SIZE;
+const RUNNER_HEIGHT = Math.round(RUNNER_WIDTH * (758 / 900));
+const RUNNER_ANIM_MS = 800;
+const FADE_MS = 200;
 
 const STARS = [
   { top: "8%", left: "12%", size: 3, opacity: 0.6 },
@@ -51,6 +60,10 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
   readyRef.current = ready;
   const startRef = useRef(Date.now());
 
+  const [contentFading, setContentFading] = useState(false);
+  const [showRunner, setShowRunner] = useState(false);
+  const [runnerMoved, setRunnerMoved] = useState(false);
+
   useEffect(() => {
     const interval = setInterval(() => {
       const elapsed = Date.now() - startRef.current;
@@ -67,10 +80,21 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
     return () => clearInterval(interval);
   }, []);
 
+  // Une fois à 100% : fondu du contenu, puis la mascotte traverse l'écran
+  // (transition CSS déclenchée sur 2 frames pour partir bien de hors-champ),
+  // puis on referme l'écran.
   useEffect(() => {
     if (progress < 100) return;
-    const timeout = setTimeout(onFinished, 250);
-    return () => clearTimeout(timeout);
+    const fadeTimeout = setTimeout(() => {
+      setShowRunner(true);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setRunnerMoved(true));
+      });
+      const runTimeout = setTimeout(onFinished, RUNNER_ANIM_MS);
+      return () => clearTimeout(runTimeout);
+    }, FADE_MS);
+    setContentFading(true);
+    return () => clearTimeout(fadeTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress]);
 
@@ -101,39 +125,24 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
           alignItems: "center",
           justifyContent: "center",
           padding: "0 28px",
+          opacity: contentFading ? 0 : 1,
+          transition: `opacity ${FADE_MS}ms ease`,
         }}
       >
         <div
           style={{
             position: "absolute",
-            width: 220,
-            height: 220,
-            borderRadius: 110,
+            width: BADGE_SIZE + 60,
+            height: BADGE_SIZE + 60,
+            borderRadius: (BADGE_SIZE + 60) / 2,
             backgroundColor: "#2ECC71",
             opacity: 0.14,
           }}
         />
 
-        <div
-          style={{
-            width: 116,
-            height: 116,
-            borderRadius: 58,
-            backgroundColor: "white",
-            border: "3px solid #2ECC71",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <span style={{ fontSize: 52 }}>🦎</span>
-        </div>
+        <img src="/splash-badge.png" alt="Do You Geckoo" style={{ width: BADGE_SIZE, height: BADGE_SIZE }} />
 
-        <p className="font-heading" style={{ marginTop: 14, fontSize: 22, fontWeight: 800, color: "white", textAlign: "center" }}>
-          Do You Geckoo Pro
-        </p>
-
-        <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
           {BULLETS.map((b, i) => (
             <div key={i} style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
               <span style={{ fontSize: 20, marginTop: 1 }}>{b.emoji}</span>
@@ -173,7 +182,17 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
         </p>
       </div>
 
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "0 24px 40px" }}>
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          padding: "0 24px 40px",
+          opacity: contentFading ? 0 : 1,
+          transition: `opacity ${FADE_MS}ms ease`,
+        }}
+      >
         <p style={{ textAlign: "center", marginBottom: 10, fontSize: 12, fontWeight: 800, color: "white", letterSpacing: 1 }}>
           CHARGEMENT...
         </p>
@@ -192,6 +211,23 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
           </div>
         </div>
       </div>
+
+      {showRunner && (
+        <img
+          src="/splash-runner.png"
+          alt=""
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: 0,
+            width: RUNNER_WIDTH,
+            height: RUNNER_HEIGHT,
+            marginTop: -RUNNER_HEIGHT / 2,
+            transform: `translateX(${runnerMoved ? `calc(100vw + ${RUNNER_WIDTH}px)` : `-${RUNNER_WIDTH}px`})`,
+            transition: `transform ${RUNNER_ANIM_MS}ms cubic-bezier(0.45, 0, 0.55, 1)`,
+          }}
+        />
+      )}
     </div>
   );
 }

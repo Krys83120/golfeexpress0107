@@ -12,13 +12,21 @@ import React, { useEffect, useRef, useState } from "react";
  * vraiment prêt".
  *
  * Le composant reste monté au-dessus de `children` (qui continue de
- * s'hydrater en dessous) plutôt que de bloquer le rendu — dès que la barre
- * atteint 100%, l'overlay disparaît.
+ * s'hydrater en dessous) plutôt que de bloquer le rendu.
  *
  * La barre suit une courbe programmée sur ~5 secondes (ease-out, plafonnée
- * à 92%) MÊME SI la page est déjà chargée avant — l'animation doit toujours
- * donner l'impression d'un vrai chargement, pas d'un flash.
+ * à 92%) MÊME SI la page est déjà chargée avant. Une fois à 100% : le
+ * contenu s'efface en fondu, puis la mascotte traverse l'écran de gauche à
+ * droite à la même taille que le badge, avant de céder la place au site.
  */
+
+const MIN_DURATION_MS = 5000;
+const CAP = 92;
+const BADGE_SIZE = 220;
+const RUNNER_WIDTH = BADGE_SIZE;
+const RUNNER_HEIGHT = Math.round(RUNNER_WIDTH * (758 / 900));
+const RUNNER_ANIM_MS = 800;
+const FADE_MS = 200;
 
 const STARS = [
   { top: "8%", left: "12%", size: 3, opacity: 0.6 },
@@ -46,14 +54,15 @@ const BULLETS: BulletLine[] = [
 
 const CLOSING_LINE = "Vos courses, vos repas, vos colis... on s'occupe de tout !";
 
-const MIN_DURATION_MS = 5000;
-const CAP = 92;
-
 export function SplashLoader({ children }: { children: React.ReactNode }) {
   const [showSplash, setShowSplash] = useState(true);
   const [progress, setProgress] = useState(0);
   const readyRef = useRef(false);
   const startRef = useRef(Date.now());
+
+  const [contentFading, setContentFading] = useState(false);
+  const [showRunner, setShowRunner] = useState(false);
+  const [runnerMoved, setRunnerMoved] = useState(false);
 
   useEffect(() => {
     function markReady() {
@@ -96,8 +105,16 @@ export function SplashLoader({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (progress < 100) return;
-    const timeout = setTimeout(() => setShowSplash(false), 250);
-    return () => clearTimeout(timeout);
+    setContentFading(true);
+    const fadeTimeout = setTimeout(() => {
+      setShowRunner(true);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setRunnerMoved(true));
+      });
+      const runTimeout = setTimeout(() => setShowSplash(false), RUNNER_ANIM_MS);
+      return () => clearTimeout(runTimeout);
+    }, FADE_MS);
+    return () => clearTimeout(fadeTimeout);
   }, [progress]);
 
   return (
@@ -130,39 +147,24 @@ export function SplashLoader({ children }: { children: React.ReactNode }) {
               alignItems: "center",
               justifyContent: "center",
               padding: "0 28px",
+              opacity: contentFading ? 0 : 1,
+              transition: `opacity ${FADE_MS}ms ease`,
             }}
           >
             <div
               style={{
                 position: "absolute",
-                width: 220,
-                height: 220,
-                borderRadius: 110,
+                width: BADGE_SIZE + 60,
+                height: BADGE_SIZE + 60,
+                borderRadius: (BADGE_SIZE + 60) / 2,
                 backgroundColor: "#2ECC71",
                 opacity: 0.14,
               }}
             />
 
-            <div
-              style={{
-                width: 116,
-                height: 116,
-                borderRadius: 58,
-                backgroundColor: "white",
-                border: "3px solid #2ECC71",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <span style={{ fontSize: 52 }}>🦎</span>
-            </div>
+            <img src="/splash-badge.png" alt="Do You Geckoo" style={{ width: BADGE_SIZE, height: BADGE_SIZE }} />
 
-            <p className="font-heading" style={{ marginTop: 14, fontSize: 22, fontWeight: 800, color: "white", textAlign: "center" }}>
-              Do You Geckoo
-            </p>
-
-            <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
               {BULLETS.map((b, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
                   <span style={{ fontSize: 20, marginTop: 1 }}>{b.emoji}</span>
@@ -202,7 +204,17 @@ export function SplashLoader({ children }: { children: React.ReactNode }) {
             </p>
           </div>
 
-          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "0 24px 40px" }}>
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              padding: "0 24px 40px",
+              opacity: contentFading ? 0 : 1,
+              transition: `opacity ${FADE_MS}ms ease`,
+            }}
+          >
             <p style={{ textAlign: "center", marginBottom: 10, fontSize: 12, fontWeight: 800, color: "white", letterSpacing: 1 }}>
               CHARGEMENT...
             </p>
@@ -229,6 +241,23 @@ export function SplashLoader({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
+
+          {showRunner && (
+            <img
+              src="/splash-runner.png"
+              alt=""
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: 0,
+                width: RUNNER_WIDTH,
+                height: RUNNER_HEIGHT,
+                marginTop: -RUNNER_HEIGHT / 2,
+                transform: `translateX(${runnerMoved ? `calc(100vw + ${RUNNER_WIDTH}px)` : `-${RUNNER_WIDTH}px`})`,
+                transition: `transform ${RUNNER_ANIM_MS}ms cubic-bezier(0.45, 0, 0.55, 1)`,
+              }}
+            />
+          )}
         </div>
       )}
     </>
