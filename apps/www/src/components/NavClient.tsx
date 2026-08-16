@@ -71,19 +71,24 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
           ))}
         </nav>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 sm:justify-start">
-          {/* "Devenir Partenaire" — bouton dédié uniquement sur mobile/tablette
-              (lg:hidden) : à partir de lg, le lien équivalent est déjà présent
-              dans la nav horizontale (NAV_LINKS), pas besoin de le dupliquer. */}
-          <a
-            href="/#devenir-partenaire"
-            onClick={closeAll}
-            className="whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold text-nuit transition hover:opacity-90 sm:px-5 sm:py-2.5 sm:text-sm lg:hidden"
-            style={{ backgroundColor: PARTNER_YELLOW }}
-          >
-            Devenir Partenaire
-          </a>
+        {/* "Devenir Partenaire" — bouton dédié à GAUCHE, uniquement sur
+            mobile/tablette (lg:hidden). C'est un item flex séparé (pas
+            imbriqué dans le groupe de droite ci-dessous) : avec la nav
+            horizontale masquée sur mobile, ce bouton et le groupe de droite
+            (Se connecter + hamburger) sont les deux seuls enfants visibles
+            du conteneur "justify-between" parent, qui les répartit donc
+            naturellement chacun à une extrémité. À partir de lg, ce bouton
+            disparaît car le lien équivalent est déjà dans la nav horizontale. */}
+        <a
+          href="/#devenir-partenaire"
+          onClick={closeAll}
+          className="whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold text-nuit transition hover:opacity-90 sm:px-5 sm:py-2.5 sm:text-sm lg:hidden"
+          style={{ backgroundColor: PARTNER_YELLOW }}
+        >
+          Devenir Partenaire
+        </a>
 
+        <div className="flex items-center gap-2">
           {/* Portails (Se connecter) — toujours visible, même sur mobile */}
           <div className="relative">
             <button
@@ -106,17 +111,15 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
                 <div className="fixed inset-0 z-10" onClick={() => setPortalsOpen(false)} />
                 {/* Position "fixed" ancrée aux marges de l'écran (inset-x-4)
                     plutôt qu'au bouton, tant que la nav est en mode
-                    mobile/tablette — sinon le menu w-64 ancré à droite du
-                    bouton déborde hors écran côté gauche (le bouton étant
-                    lui-même près du bord gauche tant que les liens de nav
-                    horizontaux sont cachés). Le seuil DOIT correspondre à
+                    mobile/tablette — indépendant de la position exacte du
+                    bouton (groupe "Se connecter" + hamburger, à droite dès
+                    le mobile grâce au bouton "Devenir Partenaire" placé à
+                    gauche juste au-dessus). Le seuil DOIT correspondre à
                     celui où le header bascule réellement en layout desktop
-                    (nav à gauche / bouton à droite) — c'est lg, pas sm : le
-                    bouton reste collé à gauche jusqu'à lg (voir "hidden
-                    lg:flex" sur la nav et "lg:hidden" sur le hamburger plus
-                    bas). Utiliser sm: ici cassait l'affichage sur tablette
-                    (~640-1024px), où le menu débordait déjà à gauche alors
-                    que le bouton n'avait pas encore rejoint la droite. */}
+                    (nav à gauche / groupe à droite) — c'est lg, pas sm (voir
+                    "hidden lg:flex" sur la nav et "lg:hidden" sur le
+                    hamburger plus bas). Utiliser sm: ici cassait l'affichage
+                    sur tablette (~640-1024px). */}
                 <div className="fixed inset-x-4 top-16 z-20 overflow-hidden rounded-2xl border border-black/5 bg-white shadow-xl lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-2 lg:w-64">
                   {PORTAL_LINKS.map((link) => (
                     <a
