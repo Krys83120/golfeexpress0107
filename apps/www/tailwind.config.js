@@ -19,28 +19,24 @@ module.exports = {
         body: ["var(--font-inter)", "system-ui", "sans-serif"],
       },
       keyframes: {
-        // Curseur qui glisse depuis en haut à droite jusqu'au bouton, "clique"
-        // (petit scale-down), puis disparaît avant de recommencer — attire
-        // l'œil sur le bouton principal sans gêner le vrai clic (voir
-        // Hero.tsx : l'élément est pointer-events-none).
-        "cta-cursor": {
-          "0%, 8%": { opacity: "0", transform: "translate(38px, -34px) scale(1)" },
-          "22%": { opacity: "1", transform: "translate(38px, -34px) scale(1)" },
-          "40%": { opacity: "1", transform: "translate(0, 0) scale(1)" },
-          "46%": { opacity: "1", transform: "translate(0, 0) scale(0.82)" },
-          "54%": { opacity: "1", transform: "translate(0, 0) scale(1)" },
-          "82%": { opacity: "1", transform: "translate(0, 0) scale(1)" },
-          "94%, 100%": { opacity: "0", transform: "translate(38px, -34px) scale(1)" },
-        },
-        "cta-cursor-ripple": {
-          "0%, 44%": { opacity: "0", transform: "scale(0.3)" },
-          "48%": { opacity: "0.55", transform: "scale(0.3)" },
-          "68%, 100%": { opacity: "0", transform: "scale(2)" },
+        // Main qui arrive, "tape" (deux petits scale-down = deux tapotements),
+        // reste posée sur le bouton, puis repart avant de recommencer — la
+        // position de repos (translate(0,0)) est calibrée dans Hero.tsx pour
+        // que le bout du doigt (repère visuel des traits violets sur
+        // l'image) tombe VRAIMENT sur le bouton, pas à côté.
+        "cta-tap-hand": {
+          "0%, 6%": { opacity: "0", transform: "translate(10px, -8px) scale(0.7)" },
+          "18%": { opacity: "1", transform: "translate(0, 0) scale(1)" },
+          "24%": { transform: "translate(0, 0) scale(0.86)" },
+          "30%": { transform: "translate(0, 0) scale(1)" },
+          "34%": { transform: "translate(0, 0) scale(0.9)" },
+          "38%": { transform: "translate(0, 0) scale(1)" },
+          "80%": { opacity: "1", transform: "translate(0, 0) scale(1)" },
+          "94%, 100%": { opacity: "0", transform: "translate(10px, -8px) scale(0.7)" },
         },
       },
       animation: {
-        "cta-cursor": "cta-cursor 3.6s ease-in-out infinite",
-        "cta-cursor-ripple": "cta-cursor-ripple 3.6s ease-in-out infinite",
+        "cta-tap-hand": "cta-tap-hand 3.8s ease-in-out infinite",
       },
     },
   },

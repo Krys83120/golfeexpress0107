@@ -38,31 +38,24 @@ export function Hero() {
             className="relative w-full rounded-full bg-golfe-green px-8 py-4 text-sm font-bold text-nuit transition hover:bg-white sm:w-auto"
           >
             Commander sur Do You Geckoo
-            {/* Curseur animé en boucle qui "clique" sur le bouton, pour que
-                les visiteurs comprennent d'un coup d'œil où cliquer.
-                pointer-events-none + aria-hidden : purement décoratif, ne
-                gêne jamais le vrai clic ni les lecteurs d'écran. Caché sur
-                mobile (pas de souris) via `hidden sm:block`. */}
+            {/* Main qui "tape" sur le bouton en boucle, pour que les
+                visiteurs comprennent d'un coup d'œil où cliquer. Position
+                calibrée pour que le bout du doigt (repère : les traits
+                violets sur l'image) retombe VRAIMENT sur le bouton — pas à
+                côté comme l'ancien curseur. pointer-events-none +
+                aria-hidden : purement décoratif, ne gêne jamais le vrai
+                clic ni les lecteurs d'écran. Visible aussi sur mobile
+                (en plus petit) : le geste "tap" est justement le bon
+                langage visuel au doigt sur mobile. */}
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute -right-3 -top-3 hidden sm:block"
+              className="animate-cta-tap-hand pointer-events-none absolute bottom-[-14px] right-[-12px] h-[56px] w-[61px] sm:bottom-[-22px] sm:right-[-18px] sm:h-[85px] sm:w-[92px]"
             >
-              <span className="animate-cta-cursor-ripple absolute -left-3 -top-3 h-9 w-9 rounded-full bg-nuit/30" />
-              <svg
-                className="animate-cta-cursor relative drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)]"
-                width="26"
-                height="26"
-                viewBox="0 0 26 26"
-                fill="none"
-              >
-                <path
-                  d="M4 2L4 20.5L8.6 16.3L11.4 22.8L14.2 21.6L11.4 15.1L17.5 14.7L4 2Z"
-                  fill="white"
-                  stroke="#1A1A2E"
-                  strokeWidth="1.4"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <img
+                src="/tap-hint.png"
+                alt=""
+                className="h-full w-full drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]"
+              />
             </span>
           </a>
           <a
