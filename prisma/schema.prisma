@@ -301,6 +301,16 @@ model Pro {
   /// — permet de distinguer un abonnement résilié proprement d'un paiement
   /// en échec côté UI Pro, sans réinterroger Stripe à chaque affichage.
   subscriptionStatus       String?  @map("subscription_status")
+  /// Début de la période payée en cours (Stripe current_period_start) —
+  /// "vous êtes abonné(e) depuis le..." côté UI Pro. Remis à jour à chaque
+  /// renouvellement, contrairement à une date de première souscription qui
+  /// resterait figée.
+  subscriptionCurrentPeriodStart DateTime? @map("subscription_current_period_start")
+  /// true si le Pro a demandé la résiliation mais que le mois déjà payé
+  /// court encore — Stripe ne coupe l'accès qu'à la fin de la période
+  /// (subscriptionExpiry), jamais immédiatement. Permet d'afficher
+  /// "se termine le X" au lieu de "se renouvelle le X" côté UI Pro.
+  subscriptionCancelAtPeriodEnd  Boolean   @default(false) @map("subscription_cancel_at_period_end")
 
   createdAt         DateTime    @default(now()) @map("created_at")
 

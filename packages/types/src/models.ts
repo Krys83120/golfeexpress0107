@@ -90,6 +90,8 @@ export interface Pro {
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   subscriptionStatus?: string | null;
+  subscriptionCurrentPeriodStart?: string | null;
+  subscriptionCancelAtPeriodEnd?: boolean;
   createdAt: string;
   /** Voir prisma/schema.prisma Pro.isManuallyClosed pour le détail. */
   isManuallyClosed: boolean;
@@ -391,4 +393,24 @@ export interface PartnerPack {
 export interface AdminPartnerPack extends PartnerPack {
   stripeProductId: string | null;
   stripePriceId: string | null;
+}
+
+/**
+ * Facture Stripe d'un abonnement pack partenaire — lue à la volée depuis
+ * l'API Stripe (voir GET /api/pros/me/subscription/invoices), jamais
+ * stockée en base : Stripe reste la seule source de vérité pour la
+ * facturation.
+ */
+export interface SubscriptionInvoice {
+  id: string;
+  /** ISO — date d'émission de la facture. */
+  createdAt: string;
+  /** Montant TTC en euros. */
+  amount: number;
+  /** Statut Stripe de la facture (paid, open, void, uncollectible...). */
+  status: string;
+  /** Page Stripe hébergée pour consulter/imprimer la facture. */
+  hostedInvoiceUrl: string | null;
+  /** Lien direct vers le PDF de la facture. */
+  invoicePdfUrl: string | null;
 }

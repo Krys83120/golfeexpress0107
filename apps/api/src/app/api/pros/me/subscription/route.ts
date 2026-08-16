@@ -21,6 +21,8 @@ async function getHandler(req: NextRequest) {
       subscriptionType: true,
       subscriptionExpiry: true,
       subscriptionStatus: true,
+      subscriptionCurrentPeriodStart: true,
+      subscriptionCancelAtPeriodEnd: true,
       commissionRate: true,
       stripeCustomerId: true,
       stripeSubscriptionId: true,
@@ -37,6 +39,8 @@ async function getHandler(req: NextRequest) {
       tier: pro.subscriptionType,
       expiry: pro.subscriptionExpiry,
       status: pro.subscriptionStatus,
+      currentPeriodStart: pro.subscriptionCurrentPeriodStart,
+      cancelAtPeriodEnd: pro.subscriptionCancelAtPeriodEnd,
       commissionRate: Number(pro.commissionRate),
       // hasBillingAccount : true dès qu'un Customer Stripe existe, même si
       // le Pro est repassé en FREE depuis — sert côté UI à savoir si le

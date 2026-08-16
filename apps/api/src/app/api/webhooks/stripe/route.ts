@@ -3,6 +3,11 @@ import { OrderStatus, PaymentStatus, SubscriptionType } from "@golfeexpress/type
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendOrderConfirmedEmail, sendNewOrderToProEmail, sendOrderRefundedEmail } from "@/lib/emails/orderEmails";
+import {
+  sendSubscriptionConfirmedEmail,
+  sendSubscriptionCancelledEmail,
+  sendSubscriptionReactivatedEmail,
+} from "@/lib/emails/subscriptionEmails";
 import { findPack } from "@/lib/partnerPacks";
 
 /**
@@ -168,12 +173,16 @@ export async function POST(req: NextRequest) {
           if (proId && tier) {
             const subscription = await stripe.subscriptions.retrieve(session.subscription);
             const pack = await findPack(tier);
-            await prisma.pro.update({
+            const periodStart = new Date(subscription.current_period_start * 1000);
+            const periodEnd = new Date(subscription.current_period_end * 1000);
+            const updatedPro = await prisma.pro.update({
               where: { id: proId },
               data: {
                 subscriptionType: tier,
                 subscriptionStatus: subscription.status,
-                subscriptionExpiry: new Date(subscription.current_period_end * 1000),
+                subscriptionExpiry: periodEnd,
+                subscriptionCurrentPeriodStart: periodStart,
+                subscriptionCancelAtPeriodEnd: false,
                 stripeSubscriptionId: subscription.id,
                 // Reprend la commission définie sur le pack au moment de la
                 // souscription — si l'admin baisse encore la commission
@@ -182,6 +191,20 @@ export async function POST(req: NextRequest) {
                 ...(pack ? { commissionRate: pack.commissionRate } : {}),
               },
             });
+
+            // Email de "prise en compte" avec récapitulatif (pack, prix,
+            // commission, durée de validité) — distinct du reçu de paiement
+            // automatique envoyé par Stripe.
+            if (pack) {
+              sendSubscriptionConfirmedEmail(updatedPro.emailContact, {
+                businessName: updatedPro.businessName,
+                packName: pack.name,
+                priceMonthly: pack.priceMonthly,
+                commissionRate: pack.commissionRate,
+                periodStart: periodStart.toISOString(),
+                periodEnd: periodEnd.toISOString(),
+              }).catch((err) => console.error("[stripe webhook] Échec email confirmation abonnement:", err));
+            }
           }
         }
         break;
@@ -189,13 +212,18 @@ export async function POST(req: NextRequest) {
 
       case "customer.subscription.updated": {
         // Couvre à la fois les renouvellements normaux (juste une nouvelle
-        // date de fin de période) et les échecs de paiement en cascade
+        // date de fin de période), les échecs de paiement en cascade
         // (Stripe fait passer le statut par plusieurs valeurs avant
-        // "unpaid" en cas d'échecs répétés de la carte).
+        // "unpaid" en cas d'échecs répétés de la carte), ET les
+        // résiliations/réactivations (cancel_at_period_end qui bascule) —
+        // que ce soit via nos routes dédiées /subscription/cancel|reactivate
+        // ou directement depuis le Billing Portal Stripe.
         const subscription = event.data.object as {
           id: string;
           status: string;
+          current_period_start: number;
           current_period_end: number;
+          cancel_at_period_end: boolean;
           metadata: Record<string, string> | null;
         };
         const proId = subscription.metadata?.proId;
@@ -212,13 +240,45 @@ export async function POST(req: NextRequest) {
               },
             });
           } else {
-            await prisma.pro.update({
+            // On relit l'état AVANT modification pour détecter une
+            // transition de cancel_at_period_end (résiliation demandée /
+            // annulée) et savoir quel email envoyer — sans ça, impossible
+            // de distinguer "vient d'être résilié" d'un simple
+            // renouvellement normal qui touche aussi ce webhook.
+            const existingPro = await prisma.pro.findUnique({ where: { id: proId } });
+            const periodEnd = new Date(subscription.current_period_end * 1000);
+
+            const updatedPro = await prisma.pro.update({
               where: { id: proId },
               data: {
                 subscriptionStatus: subscription.status,
-                subscriptionExpiry: new Date(subscription.current_period_end * 1000),
+                subscriptionExpiry: periodEnd,
+                subscriptionCurrentPeriodStart: new Date(subscription.current_period_start * 1000),
+                subscriptionCancelAtPeriodEnd: subscription.cancel_at_period_end,
               },
             });
+
+            const justCancelled = existingPro && !existingPro.subscriptionCancelAtPeriodEnd && subscription.cancel_at_period_end;
+            const justReactivated = existingPro?.subscriptionCancelAtPeriodEnd && !subscription.cancel_at_period_end;
+
+            if (justCancelled || justReactivated) {
+              const pack = await findPack(updatedPro.subscriptionType);
+              if (pack) {
+                if (justCancelled) {
+                  sendSubscriptionCancelledEmail(updatedPro.emailContact, {
+                    businessName: updatedPro.businessName,
+                    packName: pack.name,
+                    effectiveDate: periodEnd.toISOString(),
+                  }).catch((err) => console.error("[stripe webhook] Échec email résiliation abonnement:", err));
+                } else {
+                  sendSubscriptionReactivatedEmail(updatedPro.emailContact, {
+                    businessName: updatedPro.businessName,
+                    packName: pack.name,
+                    nextRenewalDate: periodEnd.toISOString(),
+                  }).catch((err) => console.error("[stripe webhook] Échec email réactivation abonnement:", err));
+                }
+              }
+            }
           }
         }
         break;
@@ -238,6 +298,8 @@ export async function POST(req: NextRequest) {
               subscriptionType: SubscriptionType.FREE,
               subscriptionStatus: "canceled",
               subscriptionExpiry: null,
+              subscriptionCurrentPeriodStart: null,
+              subscriptionCancelAtPeriodEnd: false,
               stripeSubscriptionId: null,
               commissionRate: freePack?.commissionRate ?? 0.15,
             },

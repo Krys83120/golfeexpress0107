@@ -104,3 +104,9 @@ export function infoBox(html: string, color: "orange" | "red" | "green" = "orang
 export function formatEuros(amount: number): string {
   return `${amount.toFixed(2).replace(".", ",")} €`;
 }
+
+/** Formate une date (Date ou ISO string) en français long — ex: "16 août 2026". */
+export function formatDate(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
