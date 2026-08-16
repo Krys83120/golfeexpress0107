@@ -38,6 +38,11 @@ const BADGE_SCALE = 2.6;
 const H_MARGIN = 20;
 const RUNNER_ANIM_MS = 3500;
 const FADE_MS = 200;
+// Voir le commentaire sur le garde-fou anti-blocage plus bas dans ce
+// fichier. Ne s'applique qu'à l'export web (Vercel) — pas d'effet sur
+// mobile natif où `window` n'existe pas.
+const WATCHDOG_MS = 25000;
+const RELOAD_WATCHDOG_KEY = "dyg_splash_watchdog_reloaded_at";
 
 const STARS = [
   { top: "8%", left: "12%", size: 3, opacity: 0.6 },
@@ -108,12 +113,39 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
     return () => clearInterval(interval);
   }, []);
 
+  // Garde-fou : si `ready` ne devient jamais vrai (session bloquée, appel
+  // réseau qui ne répond jamais malgré le timeout de 15s côté apiClient...),
+  // la barre restait plafonnée à 92% indéfiniment et il fallait recharger la
+  // page à la main (uniquement pertinent sur l'export web — sur mobile natif
+  // `window` n'existe pas et ce bloc ne fait donc rien). Ici, on recharge
+  // automatiquement après WATCHDOG_MS, de façon transparente pour
+  // l'utilisateur. Un seul rechargement autorisé par minute glissante
+  // (sessionStorage) pour ne jamais entrer dans une boucle si le blocage est
+  // un vrai problème serveur plutôt qu'un aléa ponctuel.
+  useEffect(() => {
+    const watchdog = setTimeout(() => {
+      if (readyRef.current) return;
+      if (typeof window === "undefined" || typeof window.location?.reload !== "function") return;
+      const lastReload = Number(window.sessionStorage?.getItem(RELOAD_WATCHDOG_KEY) || 0);
+      const now = Date.now();
+      if (now - lastReload > 60000) {
+        window.sessionStorage?.setItem(RELOAD_WATCHDOG_KEY, String(now));
+        window.location.reload();
+      }
+    }, WATCHDOG_MS);
+    return () => clearTimeout(watchdog);
+  }, []);
+
   // Une fois à 100% : la mascotte traverse directement l'écran de
   // chargement encore visible (badge, texte, barre restent affichés) —
   // plutôt que de faire disparaître ce contenu au préalable, ce qui donnait
   // l'impression d'atterrir sur un nouvel écran vide avant l'animation.
   useEffect(() => {
     if (progress < 100) return;
+    // Chargement réussi normalement : on relâche le compteur du garde-fou
+    // pour qu'un futur blocage (plus tard dans la session) puisse à nouveau
+    // déclencher un rechargement automatique si besoin.
+    if (typeof window !== "undefined") window.sessionStorage?.removeItem(RELOAD_WATCHDOG_KEY);
     setShowRunner(true);
     Animated.timing(runnerX, {
       toValue: screenWidth + runnerWidth,
