@@ -1,11 +1,27 @@
-export function Footer() {
+import { fetchWwwLogoUrl } from "@/lib/brandingApi";
+
+/**
+ * Composant serveur volontairement (comme Nav.tsx / JoinUs.tsx) — récupère
+ * le logo configurable AVANT le rendu, pour ne jamais afficher l'emoji 🦎
+ * quand un logo est réglé depuis Admin > Branding. Ce fichier avait été
+ * oublié lors de la mise en place du logo dynamique dans Nav.tsx : le
+ * footer gardait l'emoji codé en dur.
+ */
+export async function Footer() {
+  const logoUrl = await fetchWwwLogoUrl();
+
   return (
     <footer className="bg-nuit py-12 text-white/60 sm:py-16">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="grid gap-10 sm:grid-cols-4">
           <div className="sm:col-span-2">
             <div className="flex items-center gap-2">
-              <span className="text-6xl">🦎</span>
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- logo dynamique (URL Supabase Storage), pas un asset local optimisable par next/image
+                <img src={logoUrl} alt="Do You Geckoo" className="h-14 w-14 object-contain" />
+              ) : (
+                <span className="text-6xl">🦎</span>
+              )}
               <span className="notranslate font-heading text-lg font-extrabold text-white" translate="no">Do You Geckoo</span>
             </div>
             <p className="mt-4 max-w-sm text-sm">
