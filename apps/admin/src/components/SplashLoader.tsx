@@ -13,7 +13,7 @@ const CAP = 92;
 // Taille x2.6 (demande explicite), fluide selon la largeur de fenêtre
 // (clamp) pour rester cohérent sur mobile comme sur grand écran desktop.
 const BADGE_CSS_SIZE = "clamp(340px, 42vw, 620px)";
-const RUNNER_ANIM_MS = 4000;
+const RUNNER_ANIM_MS = 3500;
 const FADE_MS = 200;
 
 const STARS = [
@@ -73,19 +73,18 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
     return () => clearInterval(interval);
   }, []);
 
+  // Une fois à 100% : la mascotte traverse directement l'écran de
+  // chargement encore visible (badge, texte, barre restent affichés) —
+  // plutôt que de faire disparaître ce contenu au préalable, ce qui donnait
+  // l'impression d'atterrir sur un nouvel écran vide avant l'animation.
   useEffect(() => {
     if (progress < 100) return;
-    const fadeTimeout = setTimeout(() => {
-      setShowRunner(true);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setRunnerMoved(true));
-      });
-      const runTimeout = setTimeout(onFinished, RUNNER_ANIM_MS);
-      return () => clearTimeout(runTimeout);
-    }, FADE_MS);
-    setContentFading(true);
-    return () => clearTimeout(fadeTimeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setShowRunner(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setRunnerMoved(true));
+    });
+    const runTimeout = setTimeout(onFinished, RUNNER_ANIM_MS);
+    return () => clearTimeout(runTimeout);
   }, [progress]);
 
   return (

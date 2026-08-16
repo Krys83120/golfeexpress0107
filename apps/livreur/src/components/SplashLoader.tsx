@@ -18,7 +18,7 @@ const CAP = 92;
 const BASE_BADGE_SIZE = 220;
 const BADGE_SCALE = 2.6;
 const H_MARGIN = 20;
-const RUNNER_ANIM_MS = 4000;
+const RUNNER_ANIM_MS = 3500;
 const FADE_MS = 200;
 
 const STARS = [
@@ -83,22 +83,20 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
     return () => clearInterval(interval);
   }, []);
 
+  // Une fois à 100% : la mascotte traverse directement l'écran de
+  // chargement encore visible (badge, texte, barre restent affichés) —
+  // plutôt que de faire disparaître ce contenu au préalable, ce qui donnait
+  // l'impression d'atterrir sur un nouvel écran vide avant l'animation.
   useEffect(() => {
     if (progress < 100) return;
-    Animated.timing(contentOpacity, {
-      toValue: 0,
-      duration: FADE_MS,
+    setShowRunner(true);
+    Animated.timing(runnerX, {
+      toValue: screenWidth + runnerWidth,
+      duration: RUNNER_ANIM_MS,
+      easing: Easing.inOut(Easing.quad),
       useNativeDriver: true,
     }).start(() => {
-      setShowRunner(true);
-      Animated.timing(runnerX, {
-        toValue: screenWidth + runnerWidth,
-        duration: RUNNER_ANIM_MS,
-        easing: Easing.inOut(Easing.quad),
-        useNativeDriver: true,
-      }).start(() => {
-        onFinished();
-      });
+      onFinished();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress]);
