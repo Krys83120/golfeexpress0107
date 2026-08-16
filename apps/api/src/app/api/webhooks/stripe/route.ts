@@ -262,7 +262,11 @@ export async function POST(req: NextRequest) {
             const justReactivated = existingPro?.subscriptionCancelAtPeriodEnd && !subscription.cancel_at_period_end;
 
             if (justCancelled || justReactivated) {
-              const pack = await findPack(updatedPro.subscriptionType);
+              // Prisma type son propre enum séparément de celui de
+              // @golfeexpress/types (mêmes valeurs, types distincts pour
+              // TypeScript) — même correctif que `user.role as UserRole`
+              // dans middleware/auth.ts.
+              const pack = await findPack(updatedPro.subscriptionType as SubscriptionType);
               if (pack) {
                 if (justCancelled) {
                   sendSubscriptionCancelledEmail(updatedPro.emailContact, {
