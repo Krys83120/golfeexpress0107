@@ -17,10 +17,10 @@ import React, { useEffect, useRef, useState } from "react";
 
 const MIN_DURATION_MS = 5000;
 const CAP = 92;
-const BADGE_SIZE = 220;
-const RUNNER_WIDTH = BADGE_SIZE;
-const RUNNER_HEIGHT = Math.round(RUNNER_WIDTH * (758 / 900));
-const RUNNER_ANIM_MS = 800;
+// Taille x2.6 (demande explicite), fluide selon la largeur de fenêtre
+// (clamp) pour rester cohérent sur mobile comme sur grand écran desktop.
+const BADGE_CSS_SIZE = "clamp(340px, 42vw, 620px)";
+const RUNNER_ANIM_MS = 2000;
 const FADE_MS = 200;
 
 const STARS = [
@@ -132,15 +132,15 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
         <div
           style={{
             position: "absolute",
-            width: BADGE_SIZE + 60,
-            height: BADGE_SIZE + 60,
-            borderRadius: (BADGE_SIZE + 60) / 2,
+            width: `calc(${BADGE_CSS_SIZE} + 60px)`,
+            height: `calc(${BADGE_CSS_SIZE} + 60px)`,
+            borderRadius: "50%",
             backgroundColor: "#2ECC71",
             opacity: 0.14,
           }}
         />
 
-        <img src="/splash-badge.png" alt="Do You Geckoo" style={{ width: BADGE_SIZE, height: BADGE_SIZE }} />
+        <img src="/splash-badge.png" alt="Do You Geckoo" style={{ width: BADGE_CSS_SIZE, height: "auto" }} />
 
         <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
           {BULLETS.map((b, i) => (
@@ -220,10 +220,9 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
             position: "absolute",
             top: "50%",
             left: 0,
-            width: RUNNER_WIDTH,
-            height: RUNNER_HEIGHT,
-            marginTop: -RUNNER_HEIGHT / 2,
-            transform: `translateX(${runnerMoved ? `calc(100vw + ${RUNNER_WIDTH}px)` : `-${RUNNER_WIDTH}px`})`,
+            width: BADGE_CSS_SIZE,
+            height: "auto",
+            transform: `translate(${runnerMoved ? `calc(100vw + ${BADGE_CSS_SIZE})` : `calc(-1 * ${BADGE_CSS_SIZE})`}, -50%)`,
             transition: `transform ${RUNNER_ANIM_MS}ms cubic-bezier(0.45, 0, 0.55, 1)`,
           }}
         />
