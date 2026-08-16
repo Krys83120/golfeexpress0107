@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { SplashLoader } from "@/components/SplashLoader";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { MenuPage } from "@/pages/MenuPage";
@@ -71,6 +72,10 @@ export default function App() {
     return new URLSearchParams(window.location.search).get("reset_token");
   });
 
+  // Écran de chargement animé affiché tant que `showSplash` est vrai — voir
+  // apps/client/App.tsx pour le détail du raisonnement (identique ici).
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     restoreSession();
   }, []);
@@ -87,11 +92,12 @@ export default function App() {
     );
   }
 
-  if (status === "idle" || status === "loading") {
+  if (showSplash) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gris-light/30">
-        <p className="text-sm text-gris">Chargement...</p>
-      </div>
+      <SplashLoader
+        ready={status !== "idle" && status !== "loading"}
+        onFinished={() => setShowSplash(false)}
+      />
     );
   }
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Sidebar } from "./components/Sidebar";
+import { SplashLoader } from "./components/SplashLoader";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ValidationsPage } from "./pages/ValidationsPage";
 import { UsersPage } from "./pages/UsersPage";
@@ -54,15 +55,20 @@ export default function App() {
   const status = useAuthStore((s) => s.status);
   const restoreSession = useAuthStore((s) => s.restoreSession);
 
+  // Écran de chargement animé affiché tant que `showSplash` est vrai — voir
+  // apps/client/App.tsx pour le détail du raisonnement (identique ici).
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     restoreSession();
   }, []);
 
-  if (status === "idle" || status === "loading") {
+  if (showSplash) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gris-light/30">
-        <p className="text-sm text-gris">Chargement...</p>
-      </div>
+      <SplashLoader
+        ready={status !== "idle" && status !== "loading"}
+        onFinished={() => setShowSplash(false)}
+      />
     );
   }
 
