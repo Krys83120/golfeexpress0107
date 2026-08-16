@@ -86,6 +86,10 @@ export interface Pro {
   stripeChargesEnabled: boolean;
   stripePayoutsEnabled: boolean;
   stripeOnboardingComplete: boolean;
+  /** Voir prisma/schema.prisma Pro.stripeCustomerId — abonnement au pack partenaire (distinct de stripeAccountId, qui reçoit les paiements des commandes). */
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string | null;
   createdAt: string;
   /** Voir prisma/schema.prisma Pro.isManuallyClosed pour le détail. */
   isManuallyClosed: boolean;
@@ -361,4 +365,30 @@ export interface Review {
   isVisible: boolean;
   createdAt: string;
   client?: Client;
+}
+
+/**
+ * Pack partenaire (abonnement Pro) — configuration stockée en base sous
+ * GlobalSetting["partner_packs"] (voir apps/api/src/lib/partnerPacks.ts),
+ * pas un modèle Prisma dédié : ça évite une migration à chaque ajustement
+ * de prix/avantages, l'admin la modifie directement depuis apps/admin.
+ */
+export interface PartnerPack {
+  tier: SubscriptionType;
+  /** Nom affiché (ex: "Premium") — modifiable par l'admin, distinct de `tier` qui reste la clé technique stable. */
+  name: string;
+  /** Prix mensuel en euros TTC, 0 pour le pack FREE. */
+  priceMonthly: number;
+  /** Commission plateforme appliquée aux Pro sur ce pack (0.15 = 15%) — reprise sur Pro.commissionRate à la souscription. */
+  commissionRate: number;
+  /** Liste de puces avantages, affichées telles quelles côté Pro et sur le site vitrine. */
+  features: string[];
+  /** Si false, le pack n'est plus proposé à la souscription (les Pro déjà dessus le conservent). */
+  isActive: boolean;
+}
+
+/** Version admin de PartnerPack — inclut les identifiants Stripe internes, jamais exposés publiquement. */
+export interface AdminPartnerPack extends PartnerPack {
+  stripeProductId: string | null;
+  stripePriceId: string | null;
 }

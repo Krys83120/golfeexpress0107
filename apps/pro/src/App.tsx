@@ -5,6 +5,7 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { MenuPage } from "@/pages/MenuPage";
 import { FinancesPage } from "@/pages/FinancesPage";
+import { SubscriptionPage } from "@/pages/SubscriptionPage";
 import { ReviewsPage } from "@/pages/ReviewsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { NotificationsPage } from "@/pages/NotificationsPage";
@@ -40,6 +41,8 @@ function MainApp() {
         return <MenuPage />;
       case "finances":
         return <FinancesPage />;
+      case "subscription":
+        return <SubscriptionPage />;
       case "reviews":
         return <ReviewsPage />;
       case "notifications":

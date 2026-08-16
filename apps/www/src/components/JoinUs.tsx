@@ -1,4 +1,20 @@
-export function JoinUs() {
+import { fetchPublicPartnerPacks } from "@/lib/publicApi";
+
+const TIER_ORDER = ["FREE", "PREMIUM", "PREMIUM_PLUS"];
+
+/**
+ * Composant serveur volontairement (comme Nav.tsx) — récupère les packs
+ * partenaires réels côté serveur avant le premier rendu, pour que le site
+ * vitrine n'affiche jamais un prix/avantage périmé ou codé en dur. Les prix
+ * viennent de la même source que l'écran d'abonnement apps/pro
+ * (GET /api/partner-packs, configurable depuis Admin > Packs Partenaires).
+ */
+export async function JoinUs() {
+  const rawPacks = await fetchPublicPartnerPacks();
+  const packs = TIER_ORDER.map((tier) => rawPacks.find((p) => p.tier === tier)).filter(
+    (p): p is NonNullable<typeof p> => Boolean(p)
+  );
+
   return (
     <section className="bg-white py-16 sm:py-24">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 sm:grid-cols-2 sm:px-6">
@@ -9,7 +25,7 @@ export function JoinUs() {
             visibilité auprès des habitants et vacanciers du Golfe.
           </p>
           <ul className="mt-6 space-y-2 text-sm text-white/90">
-            <li>✓ Commission dès 10%, sans engagement</li>
+            <li>✓ Commission dès 7%, sans engagement</li>
             <li>✓ Tableau de bord commandes en temps réel</li>
             <li>✓ Impression d'étiquette et notifications sonores</li>
           </ul>
@@ -44,6 +60,46 @@ export function JoinUs() {
           </p>
         </div>
       </div>
+
+      {packs.length > 0 && (
+        <div className="mx-auto mt-16 max-w-6xl px-4 sm:px-6">
+          <h3 className="text-center font-heading text-xl font-extrabold text-nuit sm:text-2xl">
+            Nos packs partenaires
+          </h3>
+          <p className="mx-auto mt-2 max-w-xl text-center text-sm text-gris">
+            Un pack gratuit sans engagement, deux packs payants avec commission réduite et visibilité renforcée.
+            Souscription et gestion en ligne, directement depuis votre espace Pro.
+          </p>
+
+          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {packs.map((pack) => (
+              <div
+                key={pack.tier}
+                className="rounded-3xl border border-gris-light p-6 sm:p-8"
+                style={pack.tier === "PREMIUM_PLUS" ? { borderColor: "#2ECC71", borderWidth: 2 } : undefined}
+              >
+                <h4 className="font-heading text-lg font-bold text-nuit">{pack.name}</h4>
+                <p className="mt-2">
+                  <span className="font-heading text-3xl font-extrabold text-nuit">
+                    {pack.priceMonthly > 0 ? `${pack.priceMonthly}€` : "Gratuit"}
+                  </span>
+                  {pack.priceMonthly > 0 && <span className="text-sm text-gris"> / mois</span>}
+                </p>
+                <ul className="mt-5 space-y-2 text-sm text-nuit">
+                  {pack.features.map((feature) => (
+                    <li key={feature}>✓ {feature}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-6 text-center text-xs text-gris">
+            Les prix affichés sont TTC. Vous pouvez changer de pack ou résilier à tout moment depuis votre espace Pro
+            — sans engagement.
+          </p>
+        </div>
+      )}
     </section>
   );
 }

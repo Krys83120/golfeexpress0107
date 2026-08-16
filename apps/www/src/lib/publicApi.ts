@@ -107,6 +107,32 @@ export async function fetchPublicProProducts(proId: string): Promise<PublicProdu
   }
 }
 
+export interface PublicPartnerPack {
+  tier: "FREE" | "PREMIUM" | "PREMIUM_PLUS";
+  name: string;
+  priceMonthly: number;
+  commissionRate: number;
+  features: string[];
+  isActive: boolean;
+}
+
+/**
+ * Packs partenaires affichés sur la section "Devenir partenaire" (voir
+ * JoinUs.tsx) — même source que l'écran d'abonnement côté apps/pro
+ * (GET /api/partner-packs), pour que le site vitrine ne mente jamais sur
+ * les prix/avantages réellement proposés.
+ */
+export async function fetchPublicPartnerPacks(): Promise<PublicPartnerPack[]> {
+  try {
+    const res = await fetchWithTimeout(`${API_URL}/api/partner-packs`, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.packs ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /** Distance à vol d'oiseau en km (formule haversine) — suffisante pour trier/afficher une estimation. */
 export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;

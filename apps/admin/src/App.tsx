@@ -7,6 +7,7 @@ import { UsersPage } from "./pages/UsersPage";
 import { ProsPage } from "./pages/ProsPage";
 import { RidersPage } from "./pages/RidersPage";
 import { AdminFinancesPage } from "./pages/AdminFinancesPage";
+import { PartnerPacksPage } from "./pages/PartnerPacksPage";
 import { BrandingPage } from "./pages/BrandingPage";
 import { SeoPage } from "./pages/SeoPage";
 import { AdminSettingsPage } from "./pages/AdminSettingsPage";
@@ -32,6 +33,8 @@ function MainApp() {
         return <RidersPage />;
       case "finances":
         return <AdminFinancesPage />;
+      case "partner-packs":
+        return <PartnerPacksPage />;
       case "branding":
         return <BrandingPage />;
       case "seo":

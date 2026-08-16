@@ -288,6 +288,20 @@ model Pro {
   stripePayoutsEnabled     Boolean  @default(false) @map("stripe_payouts_enabled")
   stripeOnboardingComplete Boolean  @default(false) @map("stripe_onboarding_complete")
 
+  /// Stripe côté "Votre compte" (scope distinct de stripeAccountId ci-dessus,
+  /// qui est un compte Connect Express pour RECEVOIR l'argent des commandes)
+  /// — nécessaire ici pour FAIRE PAYER le Pro lui-même via un abonnement
+  /// récurrent au pack partenaire choisi (voir GlobalSetting "partner_packs"
+  /// et apps/api/src/lib/partnerPacks.ts).
+  stripeCustomerId         String?  @unique @map("stripe_customer_id")
+  /// Abonnement Stripe actif pour le pack payant en cours — null si FREE ou
+  /// si l'abonnement a été résilié/n'a jamais été souscrit.
+  stripeSubscriptionId     String?  @unique @map("stripe_subscription_id")
+  /// Statut brut renvoyé par Stripe (active, past_due, canceled, unpaid...)
+  /// — permet de distinguer un abonnement résilié proprement d'un paiement
+  /// en échec côté UI Pro, sans réinterroger Stripe à chaque affichage.
+  subscriptionStatus       String?  @map("subscription_status")
+
   createdAt         DateTime    @default(now()) @map("created_at")
 
   /// Fermeture manuelle ("En vacances" / "Fermé exceptionnellement"),

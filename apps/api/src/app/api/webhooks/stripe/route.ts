@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OrderStatus, PaymentStatus } from "@golfeexpress/types";
+import { OrderStatus, PaymentStatus, SubscriptionType } from "@golfeexpress/types";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendOrderConfirmedEmail, sendNewOrderToProEmail, sendOrderRefundedEmail } from "@/lib/emails/orderEmails";
+import { findPack } from "@/lib/partnerPacks";
 
 /**
  * POST /api/webhooks/stripe
@@ -23,8 +24,14 @@ import { sendOrderConfirmedEmail, sendNewOrderToProEmail, sendOrderRefundedEmail
  * Configuration requise côté Stripe Dashboard > Webhooks :
  *   URL: https://<votre-domaine>/api/webhooks/stripe
  *   Events à écouter: payment_intent.succeeded, payment_intent.payment_failed,
- *     charge.refunded
+ *     charge.refunded, checkout.session.completed, customer.subscription.updated,
+ *     customer.subscription.deleted
  *   Périmètre de destination : "Votre compte" (pas "Comptes connectés")
+ *
+ * Les 3 derniers events (checkout.session.completed, customer.subscription.*)
+ * pilotent l'abonnement aux packs partenaires (voir /api/pros/me/subscription/*
+ * et lib/partnerPacks.ts) — même endpoint/secret que les paiements de
+ * commandes puisqu'ils appartiennent au même périmètre "Votre compte".
  *
  * NOTE: l'event account.updated (statut onboarding Stripe Connect des
  * Pro/Rider) est géré par une route SÉPARÉE : webhooks/stripe-connect. Ce
@@ -139,6 +146,102 @@ export async function POST(req: NextRequest) {
               }
             }
           }
+        }
+        break;
+      }
+
+      case "checkout.session.completed": {
+        // Déclenché à la toute fin d'une souscription réussie à un pack
+        // partenaire payant (voir /api/pros/me/subscription/checkout) —
+        // c'est LE SEUL endroit où on fait effectivement passer le Pro sur
+        // son nouveau pack, jamais côté route checkout elle-même (on ne
+        // fait confiance qu'à un event Stripe signé, pas à un simple retour
+        // navigateur qui pourrait être trafiqué ou jamais atteint).
+        const session = event.data.object as {
+          mode: string;
+          subscription: string | null;
+          metadata: Record<string, string> | null;
+        };
+        if (session.mode === "subscription" && session.subscription) {
+          const proId = session.metadata?.proId;
+          const tier = session.metadata?.tier as SubscriptionType | undefined;
+          if (proId && tier) {
+            const subscription = await stripe.subscriptions.retrieve(session.subscription);
+            const pack = await findPack(tier);
+            await prisma.pro.update({
+              where: { id: proId },
+              data: {
+                subscriptionType: tier,
+                subscriptionStatus: subscription.status,
+                subscriptionExpiry: new Date(subscription.current_period_end * 1000),
+                stripeSubscriptionId: subscription.id,
+                // Reprend la commission définie sur le pack au moment de la
+                // souscription — si l'admin baisse encore la commission
+                // plus tard, ça ne s'applique qu'aux nouvelles
+                // souscriptions/renouvellements, jamais rétroactivement.
+                ...(pack ? { commissionRate: pack.commissionRate } : {}),
+              },
+            });
+          }
+        }
+        break;
+      }
+
+      case "customer.subscription.updated": {
+        // Couvre à la fois les renouvellements normaux (juste une nouvelle
+        // date de fin de période) et les échecs de paiement en cascade
+        // (Stripe fait passer le statut par plusieurs valeurs avant
+        // "unpaid" en cas d'échecs répétés de la carte).
+        const subscription = event.data.object as {
+          id: string;
+          status: string;
+          current_period_end: number;
+          metadata: Record<string, string> | null;
+        };
+        const proId = subscription.metadata?.proId;
+        if (proId) {
+          const TERMINAL_STATUSES = ["canceled", "unpaid", "incomplete_expired"];
+          if (TERMINAL_STATUSES.includes(subscription.status)) {
+            const freePack = await findPack(SubscriptionType.FREE);
+            await prisma.pro.update({
+              where: { id: proId },
+              data: {
+                subscriptionType: SubscriptionType.FREE,
+                subscriptionStatus: subscription.status,
+                commissionRate: freePack?.commissionRate ?? 0.15,
+              },
+            });
+          } else {
+            await prisma.pro.update({
+              where: { id: proId },
+              data: {
+                subscriptionStatus: subscription.status,
+                subscriptionExpiry: new Date(subscription.current_period_end * 1000),
+              },
+            });
+          }
+        }
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        // Résiliation confirmée (fin de période après annulation, ou
+        // résiliation immédiate depuis le Billing Portal) — retour complet
+        // au pack FREE et à sa commission par défaut.
+        const subscription = event.data.object as { id: string; metadata: Record<string, string> | null };
+        const proId = subscription.metadata?.proId;
+        if (proId) {
+          const freePack = await findPack(SubscriptionType.FREE);
+          await prisma.pro.update({
+            where: { id: proId },
+            data: {
+              subscriptionType: SubscriptionType.FREE,
+              subscriptionStatus: "canceled",
+              subscriptionExpiry: null,
+              stripeSubscriptionId: null,
+              commissionRate: freePack?.commissionRate ?? 0.15,
+            },
+          });
         }
         break;
       }

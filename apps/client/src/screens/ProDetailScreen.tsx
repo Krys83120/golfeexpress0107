@@ -152,7 +152,24 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
         </View>
 
         <View className="mx-5 mt-4">
-          <Text className="font-heading text-xl font-bold text-nuit">{pro.businessName}</Text>
+          <View className="flex-row flex-wrap items-center gap-2">
+            <Text className="font-heading text-xl font-bold text-nuit">{pro.businessName}</Text>
+            {/* Badge pack partenaire — visible uniquement pour les packs payants
+                (voir apps/api/src/lib/partnerPacks.ts pour la définition des
+                packs), jamais pour FREE qui n'a pas de mise en avant spécifique. */}
+            {pro.subscriptionType === "PREMIUM" && (
+              <View className="flex-row items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5">
+                <Text style={{ fontSize: 10 }}>⭐</Text>
+                <Text className="text-[10px] font-bold text-amber-700">Premium</Text>
+              </View>
+            )}
+            {pro.subscriptionType === "PREMIUM_PLUS" && (
+              <View className="flex-row items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5">
+                <Text style={{ fontSize: 10 }}>👑</Text>
+                <Text className="text-[10px] font-bold text-violet-700">Premium+</Text>
+              </View>
+            )}
+          </View>
           <View className="mt-1 flex-row flex-wrap items-center gap-3">
             <View className="flex-row items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5">
               <Text style={{ fontSize: 10 }}>⭐</Text>
