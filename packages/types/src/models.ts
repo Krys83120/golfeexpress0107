@@ -279,6 +279,7 @@ export interface Order {
   pickedUpAt?: string | null;
   deliveredAt?: string | null;
   estimatedDelivery?: string | null;
+  latePenaltyApplied: boolean;
 
   clientNote?: string | null;
   deliveryPhoto?: string | null;
@@ -360,7 +361,12 @@ export interface Review {
   proId?: string | null;
   riderId?: string | null;
   orderId: string;
+  /** Note du commercant (1-5). */
   rating: number;
+  /** Notes complementaires -- voir prisma/schema.prisma model Review. */
+  productRating?: number | null;
+  riderRating?: number | null;
+  platformRating?: number | null;
   comment?: string | null;
   proReply?: string | null;
   proRepliedAt?: string | null;

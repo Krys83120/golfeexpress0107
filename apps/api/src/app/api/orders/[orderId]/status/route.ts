@@ -29,6 +29,17 @@ import { sendTransferFailedAlert } from "@/lib/emails/adminEmails";
  * (postgres_changes sur la table Order) notifie automatiquement les clients
  * abonnés dès que cette route met à jour la ligne.
  */
+
+// Fenêtre de livraison cible une fois la commande récupérée par le livreur
+// (déclenche le compte à rebours affiché côté app Livreur — voir
+// CurrentDeliveryCard.tsx) et seuils de pénalité en cas de retard. Comme
+// SERVICE_FEE dans orders/route.ts : codé en dur pour ce premier jet, à
+// terme remplacer par une lecture de GlobalSetting pour rester réglable
+// depuis l'admin sans redéploiement.
+const DELIVERY_WINDOW_MINUTES = 30;
+const LATE_GRACE_MINUTES = 10;
+const LATE_PENALTY_AMOUNT = 2;
+
 async function patchHandler(req: NextRequest, ctx: { params: { orderId: string } }) {
   const auth = await requireAuth(req);
 
@@ -38,7 +49,7 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
     throw new ApiError(400, parsed.error.issues.map((i) => i.message).join(" "));
   }
 
-  const { status: nextStatus, note, estimatedPrepMinutes } = parsed.data;
+  const { status: nextStatus, note, estimatedPrepMinutes, deliveryPhoto, deliveryCode } = parsed.data;
 
   const order = await prisma.order.findUnique({ where: { id: ctx.params.orderId } });
   if (!order) {
@@ -100,6 +111,15 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
   // conditionne comment on comptabilise leur gain (voir plus bas).
   let proReadyForPayout = false;
   let riderReadyForPayout = false;
+  // Retard de livraison — comparé à estimatedDelivery (posé au passage
+  // PICKED_UP, voir plus bas) avec une marge de grâce avant pénalité.
+  // latePenaltyApplied protège contre un double décompte si cette route
+  // était rappelée par erreur sur une commande déjà livrée.
+  const isLateDelivery =
+    nextStatus === OrderStatus.DELIVERED &&
+    order.estimatedDelivery !== null &&
+    !order.latePenaltyApplied &&
+    Date.now() > new Date(order.estimatedDelivery).getTime() + LATE_GRACE_MINUTES * 60_000;
   if (nextStatus === OrderStatus.DELIVERED) {
     const pro = await prisma.pro.findUnique({
       where: { id: order.proId },
@@ -135,6 +155,22 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
         ...(nextStatus === OrderStatus.PREPARING
           ? { preparingStartedAt: new Date(), estimatedPrepMinutes }
           : {}),
+        // Démarre le compte à rebours de livraison dès la récupération
+        // (essentiel pour la chaîne du froid/chaud) — affiché en direct
+        // côté app Livreur (CurrentDeliveryCard.tsx) et comparé à
+        // deliveredAt plus haut (isLateDelivery) pour détecter un retard.
+        ...(nextStatus === OrderStatus.PICKED_UP
+          ? { estimatedDelivery: new Date(Date.now() + DELIVERY_WINDOW_MINUTES * 60_000) }
+          : {}),
+        // Preuve de remise, fournie par le Rider en marquant la commande
+        // livrée — les deux restent optionnelles (voir updateOrderStatusSchema).
+        ...(nextStatus === OrderStatus.DELIVERED
+          ? {
+              deliveryPhoto: deliveryPhoto ?? undefined,
+              deliveryCode: deliveryCode ?? undefined,
+              ...(isLateDelivery ? { latePenaltyApplied: true } : {}),
+            }
+          : {}),
         statusHistory: {
           create: { status: nextStatus, changedBy: auth.userId, note },
         },
@@ -169,6 +205,29 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
             totalDeliveries: { increment: 1 },
           },
         });
+
+        // Pénalité de retard — chaîne du froid/chaud (voir demande
+        // produit). Volontairement une ligne de solde séparée, jamais une
+        // réduction du virement Stripe déjà calculé ci-dessus : reste
+        // simple et sûr même si riderReadyForPayout est vrai (le virement
+        // automatique part alors pour le montant plein) — la pénalité vient
+        // en déduction du PROCHAIN solde/retrait plutôt que de risquer un
+        // virement Stripe à montant négatif ou partiel.
+        if (isLateDelivery) {
+          await tx.earning.create({
+            data: {
+              riderId: result.riderId,
+              orderId: result.id,
+              amount: -LATE_PENALTY_AMOUNT,
+              type: "PENALTY",
+              status: "AVAILABLE",
+            },
+          });
+          await tx.rider.update({
+            where: { id: result.riderId },
+            data: { balance: { decrement: LATE_PENALTY_AMOUNT } },
+          });
+        }
       }
 
       // 1 point de fidélité par euro dépensé (arrondi à l'entier inférieur) —
@@ -278,7 +337,7 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
           console.error("[order status] Échec email en route:", err)
         );
       } else if (nextStatus === OrderStatus.DELIVERED) {
-        sendOrderDeliveredEmail(client.user.email, emailData).catch((err) =>
+        sendOrderDeliveredEmail(client.user.email, { ...emailData, orderId: updated.id }).catch((err) =>
           console.error("[order status] Échec email livrée:", err)
         );
       } else if (nextStatus === OrderStatus.CANCELLED) {

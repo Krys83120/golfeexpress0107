@@ -95,3 +95,37 @@ export async function uploadKycDocument(
   const { data } = supabase.storage.from("kyc-documents").getPublicUrl(path);
   return data.publicUrl;
 }
+
+/**
+ * Upload la photo prouvant la remise d'une commande au client — bucket
+ * dédié "delivery-proofs" (à créer côté Supabase Storage, voir README),
+ * séparé de "avatars"/"kyc-documents" pour ne jamais mélanger ces preuves
+ * avec des photos de profil ou des documents d'identité. Chemin
+ * "{orderId}/proof.ext" : une seule preuve conservée par commande.
+ */
+export async function uploadDeliveryProof(orderId: string, localUri: string): Promise<string> {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+
+  if (blob.size > MAX_FILE_SIZE_BYTES) {
+    throw new UploadError("Photo trop lourde (2 Mo maximum).");
+  }
+
+  const ext = extensionFromUri(localUri);
+  const contentType = blob.type || mimeTypeForExtension(ext);
+
+  const supabase = getSupabaseClient();
+  const path = `${orderId}/proof.${ext}`;
+
+  const { error } = await supabase.storage.from("delivery-proofs").upload(path, blob, {
+    upsert: true,
+    contentType,
+  });
+
+  if (error) {
+    throw new UploadError(`Échec de l'upload : ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("delivery-proofs").getPublicUrl(path);
+  return data.publicUrl;
+}

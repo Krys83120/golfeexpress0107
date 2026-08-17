@@ -11,6 +11,8 @@ interface OrderEmailData {
   total: number;
   proBusinessName: string;
   items?: OrderEmailItem[];
+  /** Utilisé pour deep-linker vers l'écran de notation (voir sendOrderDeliveredEmail) — optionnel pour ne pas casser les appels existants qui n'en ont pas besoin. */
+  orderId?: string;
 }
 
 const TRACKING_URL = `${PORTAL_URLS.client}?tab=orders`;
@@ -89,9 +91,13 @@ export async function sendOrderDeliveredEmail(email: string, order: OrderEmailDa
         : ""
     }
     <p style="font-size:13px;color:#6B7280;margin-top:20px;">
-      Une seconde d'attention pour ${order.proBusinessName} et votre livreur ? Laissez un avis depuis l'app.
+      Votre avis compte : notez le produit, ${order.proBusinessName}, votre livreur, et Do You Geckoo en
+      quelques secondes — et partagez l'app si vous avez aimé l'expérience.
     </p>
-    ${button("Laisser un avis", TRACKING_URL)}
+    ${button(
+      "Laisser un avis",
+      order.orderId ? `${PORTAL_URLS.client}?screen=review&orderId=${order.orderId}` : TRACKING_URL
+    )}
   `);
   await sendEmail(email, `Commande ${order.orderNumber} livrée — récapitulatif`, html);
 }

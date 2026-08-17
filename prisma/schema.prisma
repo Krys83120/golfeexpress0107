@@ -101,6 +101,7 @@ enum EarningType {
   TIP
   BONUS
   INCENTIVE
+  PENALTY
 }
 
 enum EarningStatus {
@@ -410,6 +411,7 @@ model Rider {
   orders          Order[]
   earnings        Earning[]
   withdrawals     Withdrawal[]
+  reviews         Review[]
 }
 
 // ==================== ADRESSES ====================
@@ -528,7 +530,12 @@ model Order {
   pickedUpAt      DateTime?   @map("picked_up_at")
   deliveredAt     DateTime?   @map("delivered_at")
   estimatedDelivery DateTime? @map("estimated_delivery")
-  
+  /// true des qu'une penalite de retard a ete appliquee pour cette
+  /// commande (voir orders/[orderId]/status/route.ts, transition
+  /// DELIVERED) -- evite d'appliquer la penalite deux fois si cette route
+  /// etait rappelee par erreur sur une commande deja livree.
+  latePenaltyApplied Boolean  @default(false) @map("late_penalty_applied")
+
   clientNote      String?     @map("client_note")
   deliveryPhoto   String?     @map("delivery_photo")
   deliveryCode    String?     @map("delivery_code")
@@ -543,6 +550,11 @@ model Order {
   items           OrderItem[]
   statusHistory   OrderStatusHistory[]
   trackingEvents  TrackingEvent[]
+  /// Nomme "reviewRecord" (pas "review") pour ne pas entrer en collision
+  /// avec le champ historique Order.review (simple texte libre, conserve
+  /// tel quel) -- reviewRecord est le nouvel avis structure a 4 notes
+  /// (produit/pro/livreur/plateforme), voir model Review.
+  reviewRecord    Review?
 }
 
 model OrderItem {
@@ -671,14 +683,25 @@ model Review {
   clientId    String   @map("client_id")
   proId       String?  @map("pro_id")
   riderId     String?  @map("rider_id")
-  orderId     String   @map("order_id")
+  orderId     String   @unique @map("order_id")
+  /// Note du COMMERCANT (1-5) -- nom de champ historique conserve tel quel
+  /// pour ne pas casser ReviewsPage.tsx (cote Pro) qui l'affiche deja.
   rating      Int
+  /// Notes complementaires ajoutees pour permettre au client de noter
+  /// separement chaque aspect de la commande (voir POST
+  /// /api/orders/[orderId]/review) -- toutes optionnelles pour rester
+  /// compatibles avec d'eventuels avis anterieurs a cet ajout.
+  productRating  Int?  @map("product_rating")
+  riderRating    Int?  @map("rider_rating")
+  platformRating Int?  @map("platform_rating")
   comment     String?
   proReply    String?  @map("pro_reply")
   proRepliedAt DateTime? @map("pro_replied_at")
   isVisible   Boolean  @default(true) @map("is_visible")
   createdAt   DateTime @default(now()) @map("created_at")
-  
+
   client      Client   @relation(fields: [clientId], references: [id])
   pro         Pro?     @relation(fields: [proId], references: [id])
+  rider       Rider?   @relation(fields: [riderId], references: [id])
+  order       Order    @relation(fields: [orderId], references: [id])
 }

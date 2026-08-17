@@ -22,9 +22,10 @@ const ACTIVE_STATUSES: OrderStatus[] = [
 interface OrdersScreenProps {
   onOpenTracking: (order: Order) => void;
   onReorder: (order: Order) => void;
+  onOpenReview: (order: Order) => void;
 }
 
-export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
+export function OrdersScreen({ onOpenTracking, onReorder, onOpenReview }: OrdersScreenProps) {
   const [filter, setFilter] = useState<Filter>("all");
   const [orders, setOrders] = useState<Order[]>([]);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
@@ -131,6 +132,7 @@ export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
           ) : (
             filtered.map((order) => {
               const isActive = ACTIVE_STATUSES.includes(order.status);
+              const isDelivered = order.status === OrderStatus.DELIVERED;
               const visual = order.pro ? getCategoryVisual(order.pro.category) : null;
               const itemsSummary = order.items?.map((i) => `${i.quantity}x ${i.productName}`).join(", ") ?? "";
 
@@ -182,13 +184,24 @@ export function OrdersScreen({ onOpenTracking, onReorder }: OrdersScreenProps) {
                         <Text className="text-xs font-bold text-white">Suivre</Text>
                       </Pressable>
                     ) : (
-                      <Pressable
-                        onPress={() => onReorder(order)}
-                        className="flex-row items-center gap-1.5 rounded-sm border-2 border-gris-light px-3.5 py-2"
-                      >
-                        <Text style={{ fontSize: 12 }}>🔄</Text>
-                        <Text className="text-xs font-semibold text-nuit">Recommander</Text>
-                      </Pressable>
+                      <View className="flex-row items-center gap-2">
+                        {isDelivered && (
+                          <Pressable
+                            onPress={() => onOpenReview(order)}
+                            className="flex-row items-center gap-1.5 rounded-sm bg-corail px-3.5 py-2"
+                          >
+                            <Text style={{ fontSize: 12 }}>⭐</Text>
+                            <Text className="text-xs font-bold text-white">Avis</Text>
+                          </Pressable>
+                        )}
+                        <Pressable
+                          onPress={() => onReorder(order)}
+                          className="flex-row items-center gap-1.5 rounded-sm border-2 border-gris-light px-3.5 py-2"
+                        >
+                          <Text style={{ fontSize: 12 }}>🔄</Text>
+                          <Text className="text-xs font-semibold text-nuit">Recommander</Text>
+                        </Pressable>
+                      </View>
                     )}
                   </View>
 

@@ -87,6 +87,7 @@ export enum EarningType {
   TIP = "TIP",
   BONUS = "BONUS",
   INCENTIVE = "INCENTIVE",
+  PENALTY = "PENALTY",
 }
 
 export enum EarningStatus {

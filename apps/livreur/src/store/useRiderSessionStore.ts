@@ -25,7 +25,7 @@ interface RiderSessionState {
   loadAvailableOrders: () => Promise<void>;
   loadActiveDelivery: () => Promise<void>;
   handleAcceptOrder: (orderId: string) => Promise<void>;
-  advanceDeliveryStep: () => Promise<void>;
+  advanceDeliveryStep: (proof?: { deliveryPhoto?: string; deliveryCode?: string }) => Promise<void>;
 
   todayEarnings: number;
   todayDeliveries: number;
@@ -91,7 +91,7 @@ export const useRiderSessionStore = create<RiderSessionState>((set, get) => ({
     }));
   },
 
-  advanceDeliveryStep: async () => {
+  advanceDeliveryStep: async (proof) => {
     const current = get().activeDelivery;
     if (!current) return;
 
@@ -99,7 +99,7 @@ export const useRiderSessionStore = create<RiderSessionState>((set, get) => ({
     const nextStatus = DELIVERY_FLOW[currentIndex + 1];
     if (!nextStatus) return;
 
-    const updated = await updateOrderStatus(current.id, nextStatus);
+    const updated = await updateOrderStatus(current.id, nextStatus, proof);
 
     if (nextStatus === OrderStatus.DELIVERED) {
       set((state) => ({

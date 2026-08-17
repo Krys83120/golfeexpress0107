@@ -30,6 +30,11 @@ export const updateOrderStatusSchema = z.object({
   // Fourni par le Pro en passant une commande en PREPARING — sert à
   // calculer quand lancer la recherche de livreur (voir riderSearchWindow.ts).
   estimatedPrepMinutes: z.number().int().positive().max(180).optional(),
+  // Fournis par le Rider en passant une commande en DELIVERED — preuve de
+  // remise (voir orders/[orderId]/status/route.ts). Optionnels : certains
+  // livreurs/commandes n'ont ni photo ni code à fournir.
+  deliveryPhoto: z.string().url().optional(),
+  deliveryCode: z.string().max(20).optional(),
 });
 
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;

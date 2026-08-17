@@ -18,8 +18,10 @@ import { MapScreen } from "@/screens/MapScreen";
 import { OrdersScreen } from "@/screens/OrdersScreen";
 import { FidelityScreen } from "@/screens/FidelityScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
+import { ReviewScreen } from "@/screens/ReviewScreen";
 import type { ProWithUi } from "@/services/prosApi";
 import { fetchPros } from "@/services/prosApi";
+import { fetchMyOrders } from "@/services/ordersApi";
 import { useCartStore } from "@/store/useCartStore";
 
 type Tab = "home" | "orders" | "fidelity" | "profile";
@@ -46,6 +48,7 @@ function MainApp() {
   const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
   const [addressPickerOpen, setAddressPickerOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
 
   const logout = useAuthStore((s) => s.logout);
   const clearCart = useCartStore((s) => s.clear);
@@ -76,6 +79,28 @@ function MainApp() {
           setSelectedPro(match);
           setDeepLinkProductId(productId);
         }
+      })
+      .catch(() => {
+        /* lien invalide/expiré : on laisse simplement l'utilisateur sur l'accueil */
+      });
+  }, []);
+
+  // Deep-link depuis le mail "Commande livrée" : ?screen=review&orderId=<id>
+  // ouvre directement l'écran de notation de cette commande, sans passer
+  // par l'onglet Commandes (voir sendOrderDeliveredEmail côté API).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("screen") !== "review") return;
+    const orderId = params.get("orderId");
+    if (!orderId) return;
+
+    window.history.replaceState({}, "", window.location.pathname);
+
+    fetchMyOrders()
+      .then((orders) => {
+        const match = orders.find((o) => o.id === orderId);
+        if (match) setReviewOrder(match);
       })
       .catch(() => {
         /* lien invalide/expiré : on laisse simplement l'utilisateur sur l'accueil */
@@ -120,6 +145,7 @@ function MainApp() {
           <OrdersScreen
             onOpenTracking={setTrackingOrder}
             onReorder={handleReorder}
+            onOpenReview={setReviewOrder}
           />
         );
       case "fidelity":
@@ -236,6 +262,11 @@ function MainApp() {
       {/* MODAL: Suivi de commande */}
       <Modal visible={!!trackingOrder} animationType="slide" onRequestClose={() => setTrackingOrder(null)}>
         {trackingOrder && <TrackingScreen order={trackingOrder} onClose={() => setTrackingOrder(null)} />}
+      </Modal>
+
+      {/* MODAL: Notation post-livraison */}
+      <Modal visible={!!reviewOrder} animationType="slide" onRequestClose={() => setReviewOrder(null)}>
+        {reviewOrder && <ReviewScreen order={reviewOrder} onClose={() => setReviewOrder(null)} />}
       </Modal>
 
       {/* MODAL: Sélection d'adresse */}

@@ -14,10 +14,14 @@ export async function acceptOrder(orderId: string): Promise<Order> {
 }
 
 /** PATCH /api/orders/[orderId]/status */
-export async function updateOrderStatus(orderId: string, status: string, note?: string): Promise<Order> {
+export async function updateOrderStatus(
+  orderId: string,
+  status: string,
+  extra?: { note?: string; deliveryPhoto?: string; deliveryCode?: string }
+): Promise<Order> {
   const data = await apiFetch<{ order: Order }>(`/api/orders/${orderId}/status`, {
     method: "PATCH",
-    body: { status, note },
+    body: { status, ...extra },
   });
   return data.order;
 }
