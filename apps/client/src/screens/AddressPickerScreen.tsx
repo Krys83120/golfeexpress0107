@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, Modal, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, Modal, Alert, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { useAddressStore } from "@/store/useAddressStore";
 import { AddAddressForm } from "@/components/AddAddressForm";
+import { ApiRequestError } from "@/services/apiClient";
 import type { Address } from "@golfeexpress/types";
 
 interface AddressPickerScreenProps {
@@ -50,13 +51,22 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
   async function handleUseCurrentLocation() {
     setLocating(true);
     try {
-      const { status: permissionStatus } = await Location.requestForegroundPermissionsAsync();
-      if (permissionStatus !== "granted") {
-        Alert.alert(
-          "Localisation refusée",
-          "Autorisez l'accès à votre position dans les réglages pour utiliser cette fonctionnalité."
-        );
-        return;
+      // Sur web (notamment Safari iOS), la vérification de permission
+      // séparée d'expo-location n'est pas fiable (l'API Permissions n'est
+      // pas bien supportée) et peut refuser à tort. On saute donc cette
+      // étape sur web : getCurrentPositionAsync déclenche directement le
+      // prompt natif du navigateur, qui gère la permission lui-même. Sur
+      // natif (iOS/Android), on garde la vérification explicite pour
+      // afficher un message clair si refusée.
+      if (Platform.OS !== "web") {
+        const { status: permissionStatus } = await Location.requestForegroundPermissionsAsync();
+        if (permissionStatus !== "granted") {
+          Alert.alert(
+            "Localisation refusée",
+            "Autorisez l'accès à votre position dans les réglages pour utiliser cette fonctionnalité."
+          );
+          return;
+        }
       }
 
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -88,6 +98,10 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
       const newlyAdded = useAddressStore.getState().addresses.at(-1);
       if (newlyAdded) handleSelect(newlyAdded);
     } catch (err) {
+      // Log conservé pour diagnostiquer plus précisément une prochaine fois
+      // si le message générique ci-dessous ne suffit pas (refus navigateur
+      // vs service de géocodage en échec vs GPS matériel indisponible).
+      console.error("[AddressPicker] Erreur géolocalisation:", err);
       Alert.alert("Erreur", "Impossible de récupérer votre position. Vérifiez que le GPS est activé.");
     } finally {
       setLocating(false);
@@ -98,8 +112,14 @@ export function AddressPickerScreen({ onClose, onSelected }: AddressPickerScreen
     setDeletingId(addressId);
     try {
       await removeAddress(addressId);
-    } catch {
-      // Échec silencieux acceptable ici — l'adresse reste simplement affichée, le Client peut réessayer.
+    } catch (err) {
+      // On affiche désormais l'erreur réelle (ex: "adresse utilisée par une
+      // commande passée") au lieu de l'avaler en silence -- avant ce
+      // correctif, l'adresse restait affichée après un clic sur la corbeille
+      // sans aucune explication.
+      const message =
+        err instanceof ApiRequestError ? err.message : "Impossible de supprimer cette adresse pour le moment.";
+      Alert.alert("Suppression impossible", message);
     } finally {
       setDeletingId(null);
     }

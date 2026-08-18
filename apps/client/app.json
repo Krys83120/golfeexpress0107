@@ -14,7 +14,10 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "fr.golfeexpress.client"
+      "bundleIdentifier": "fr.golfeexpress.client",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Do You Geckoo utilise votre position pour vous proposer les commerçants les plus proches et faciliter la sélection de votre adresse de livraison."
+      }
     },
     "android": {
       "package": "fr.golfeexpress.client"
