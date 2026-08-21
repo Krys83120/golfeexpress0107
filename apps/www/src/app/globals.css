@@ -6,6 +6,19 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Défilement en boucle du carrousel "Nos commerçants partenaires"
+   (ProsCarouselClient.tsx) — translate de 0 à -50% : la liste rendue est
+   dupliquée en deux moitiés identiques, donc à -50% la seconde moitié prend
+   exactement la place de la première, sans saut visible. */
+@keyframes pros-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

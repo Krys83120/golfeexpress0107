@@ -1,30 +1,39 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { VEHICLE_LABELS } from "@/services/vehicleLabels";
 import { useAuthStore } from "@/store/useAuthStore";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { uploadAvatar, withCacheBust } from "@/services/uploadsApi";
 import { updateMyUserProfile } from "@/services/userApi";
+import { deleteMyAccount } from "@/services/accountApi";
+import { ApiRequestError } from "@/services/apiClient";
 import { RiderKycScreen } from "@/screens/RiderKycScreen";
 
 interface MenuRow {
   emoji: string;
   label: string;
   opensKyc?: boolean;
+  /** Ouvre ce lien externe (CGU, support...) au lieu du dossier KYC. */
+  url?: string;
 }
 
 const ACCOUNT_ROWS: MenuRow[] = [
   { emoji: "👤", label: "Informations personnelles", opensKyc: true },
   { emoji: "🛵", label: "Mon véhicule", opensKyc: true },
-  { emoji: "💳", label: "Coordonnées bancaires", opensKyc: true },
   { emoji: "📄", label: "Mes documents (KYC)", opensKyc: true },
 ];
 
+// "Coordonnées bancaires" retiré de cette liste (25/08/2026) : la carte
+// dédiée juste au-dessus (infoCard "Gérées via Stripe — voir l'onglet
+// Gains") fait doublon avec cette entrée du menu, qui pointait d'ailleurs
+// vers le même écran KYC alors que les coordonnées bancaires ne s'y gèrent
+// pas (c'est Stripe Connect, onglet Gains).
 const SUPPORT_ROWS: MenuRow[] = [
-  { emoji: "❓", label: "Centre d'aide" },
+  { emoji: "❓", label: "Centre d'aide", url: "https://www.doyougeckoo.fr/#faq" },
   { emoji: "💬", label: "Contacter le support" },
-  { emoji: "📜", label: "Conditions générales" },
+  { emoji: "📜", label: "Conditions générales", url: "https://www.doyougeckoo.fr/conditions-generales" },
+  { emoji: "🛡️", label: "Confidentialité", url: "https://www.doyougeckoo.fr/confidentialite" },
 ];
 
 interface RiderProfileScreenProps {
@@ -36,6 +45,7 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
   const profile = useAuthStore((s) => s.profile);
   const setUser = useAuthStore((s) => s.setUser);
   const [showKyc, setShowKyc] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const firstName = user?.firstName ?? "Livreur";
   const lastName = user?.lastName ?? "";
@@ -47,6 +57,33 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
     const url = await uploadAvatar(user.id, localUri);
     const updated = await updateMyUserProfile({ avatar: withCacheBust(url) });
     setUser(updated);
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      "Supprimer votre compte ?",
+      "Cette action est irréversible. Votre profil livreur sera supprimé et vous serez déconnecté ; vos courses déjà effectuées sont conservées de façon anonymisée pour nos obligations comptables. Impossible si une course est actuellement en cours.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingAccount(true);
+            try {
+              await deleteMyAccount();
+              await onLogout();
+            } catch (err) {
+              setDeletingAccount(false);
+              Alert.alert(
+                "Suppression impossible",
+                err instanceof ApiRequestError ? err.message : "Réessayez dans un instant."
+              );
+            }
+          },
+        },
+      ]
+    );
   }
 
   if (showKyc) {
@@ -98,6 +135,12 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
             <Text style={styles.logoutText}>Se déconnecter</Text>
           </Pressable>
 
+          <Pressable onPress={handleDeleteAccount} disabled={deletingAccount} style={{ marginTop: 16, alignItems: "center", paddingVertical: 8 }}>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: "#6B7280", textDecorationLine: "underline" }}>
+              {deletingAccount ? "Suppression en cours..." : "Supprimer mon compte"}
+            </Text>
+          </Pressable>
+
           <Text style={styles.version}>Do You Geckoo Livreur v0.1.0 🦎</Text>
         </View>
       </ScrollView>
@@ -113,7 +156,7 @@ function MenuSection({ title, rows, onOpenKyc }: { title: string; rows: MenuRow[
         {rows.map((row, index) => (
           <Pressable
             key={row.label}
-            onPress={row.opensKyc ? onOpenKyc : undefined}
+            onPress={row.opensKyc ? onOpenKyc : row.url ? () => Linking.openURL(row.url as string) : undefined}
             style={[styles.menuRow, { borderTopWidth: index === 0 ? 0 : 1, borderTopColor: "#E5E7EB" }]}
           >
             <Text style={{ fontSize: 16 }}>{row.emoji}</Text>

@@ -60,6 +60,41 @@ export function withCacheBust(url: string): string {
 }
 
 /**
+ * Upload la photo de profil PUBLIQUE du livreur (Rider.profilePhotoUrl) —
+ * affichée au client pendant le suivi de commande (écran TrackingScreen).
+ * Chemin "{userId}/rider-profile.ext" dans le bucket "avatars" (public) :
+ * DISTINCT du chemin "{userId}/avatar.ext" utilisé par uploadAvatar()
+ * ci-dessus, qui écrit dans le champ générique User.avatar — les deux
+ * champs sont indépendants (voir RiderKycScreen vs RiderProfileScreen).
+ */
+export async function uploadRiderProfilePhoto(userId: string, localUri: string): Promise<string> {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+
+  if (blob.size > MAX_FILE_SIZE_BYTES) {
+    throw new UploadError("Image trop lourde (2 Mo maximum).");
+  }
+
+  const ext = extensionFromUri(localUri);
+  const contentType = blob.type || mimeTypeForExtension(ext);
+
+  const supabase = getSupabaseClient();
+  const path = `${userId}/rider-profile.${ext}`;
+
+  const { error } = await supabase.storage.from("avatars").upload(path, blob, {
+    upsert: true,
+    contentType,
+  });
+
+  if (error) {
+    throw new UploadError(`Échec de l'upload : ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/**
  * Upload un document KYC (recto/verso pièce d'identité, selfie de
  * vérification). Bucket dédié "kyc-documents" — SÉPARÉ du bucket
  * "avatars" (public) car ces documents ne doivent jamais être exposés
@@ -127,5 +162,38 @@ export async function uploadDeliveryProof(orderId: string, localUri: string): Pr
   }
 
   const { data } = supabase.storage.from("delivery-proofs").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/**
+ * Upload une photo jointe à un signalement de problème (voir
+ * ReportIssueScreen.tsx et POST /api/reports). Bucket dédié
+ * "report-photos" (À CRÉER manuellement dans Supabase Storage, voir
+ * README) — même bucket que côté Client, chemin "{orderId}/{timestamp}.ext"
+ * pour supporter plusieurs signalements sur une même commande.
+ */
+export async function uploadReportPhoto(orderId: string, localUri: string): Promise<string> {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+
+  if (blob.size > MAX_FILE_SIZE_BYTES) {
+    throw new UploadError("Photo trop lourde (2 Mo maximum).");
+  }
+
+  const ext = extensionFromUri(localUri);
+  const contentType = blob.type || mimeTypeForExtension(ext);
+
+  const supabase = getSupabaseClient();
+  const path = `${orderId}/${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage.from("report-photos").upload(path, blob, {
+    contentType,
+  });
+
+  if (error) {
+    throw new UploadError(`Échec de l'upload : ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("report-photos").getPublicUrl(path);
   return data.publicUrl;
 }

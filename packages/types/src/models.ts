@@ -13,6 +13,8 @@ import {
   WithdrawalStatus,
   NotificationType,
   ManualClosureReason,
+  OrderReportCategory,
+  OrderReportStatus,
 } from "./enums";
 
 /**
@@ -217,6 +219,9 @@ export interface Product {
   category: string;
   isAvailable: boolean;
   isFeatured: boolean;
+  /** Moyenne des avis clients sur ce produit précis (voir ProductReview) -- affichée sur sa fiche produit. Calculés côté serveur, jamais fournis à la création (voir ProductFormModal côté Pro). */
+  rating?: number | null;
+  ratingCount?: number;
   options?: ProductOption[];
 }
 
@@ -297,6 +302,48 @@ export interface Order {
   trackingEvents?: TrackingEvent[];
 }
 
+export interface OrderReport {
+  id: string;
+  orderId: string;
+  userId: string;
+  reporterRole: UserRole;
+  category: OrderReportCategory;
+  message: string;
+  photoUrl?: string | null;
+  status: OrderReportStatus;
+  adminReply?: string | null;
+  repliedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+
+  order?: Order;
+  user?: User;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  type: string;
+  subject: string;
+  message: string;
+  status: OrderReportStatus;
+  adminReply?: string | null;
+  repliedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Voir ServiceCity côté Prisma — interrupteur global d'ouverture par commune. */
+export interface ServiceCity {
+  id: string;
+  name: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Earning {
   id: string;
   riderId: string;
@@ -355,24 +402,44 @@ export interface OpeningHours {
   isClosed: boolean;
 }
 
+/**
+ * Avis client sur commercant / livreur / plateforme -- chaque cible a sa
+ * PROPRE note et son PROPRE commentaire, totalement indépendants (le client
+ * choisit librement ce qu'il note). Voir prisma/schema.prisma model Review
+ * pour le détail, et ProductReview ci-dessous pour les avis sur les
+ * produits achetés (gérés séparément).
+ */
 export interface Review {
   id: string;
   clientId: string;
   proId?: string | null;
   riderId?: string | null;
   orderId: string;
-  /** Note du commercant (1-5). */
-  rating: number;
-  /** Notes complementaires -- voir prisma/schema.prisma model Review. */
-  productRating?: number | null;
-  riderRating?: number | null;
-  platformRating?: number | null;
-  comment?: string | null;
+  proRating?: number | null;
+  proComment?: string | null;
   proReply?: string | null;
   proRepliedAt?: string | null;
+  riderRating?: number | null;
+  riderComment?: string | null;
+  platformRating?: number | null;
+  platformComment?: string | null;
   isVisible: boolean;
   createdAt: string;
   client?: Client;
+}
+
+/** Avis sur un produit précis acheté -- voir prisma/schema.prisma model ProductReview. */
+export interface ProductReview {
+  id: string;
+  clientId: string;
+  orderId: string;
+  productId: string;
+  rating: number;
+  comment?: string | null;
+  isVisible: boolean;
+  createdAt: string;
+  client?: Client;
+  product?: Product;
 }
 
 /**

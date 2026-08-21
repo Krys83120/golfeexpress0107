@@ -49,7 +49,16 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
     throw new ApiError(400, parsed.error.issues.map((i) => i.message).join(" "));
   }
 
-  const { status: nextStatus, note, estimatedPrepMinutes, deliveryPhoto, deliveryCode } = parsed.data;
+  const {
+    status: nextStatus,
+    note,
+    estimatedPrepMinutes,
+    deliveryPhoto,
+    // Renommé : ce n'est que la valeur SAISIE par le livreur, pas le code
+    // de référence (order.deliveryCode, généré à la création de la
+    // commande) — voir plus bas, on ne l'écrase jamais avec cette saisie.
+    deliveryCode: enteredDeliveryCode,
+  } = parsed.data;
 
   const order = await prisma.order.findUnique({ where: { id: ctx.params.orderId } });
   if (!order) {
@@ -104,6 +113,28 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
   // officiellement marquée prête.
   if (nextStatus === OrderStatus.PREPARING && !estimatedPrepMinutes) {
     throw new ApiError(400, "Merci d'indiquer un temps de préparation estimé.");
+  }
+
+  // Le code de remise est désormais OBLIGATOIRE pour marquer une commande
+  // livrée — sans ça, un livreur pouvait valider une livraison sans jamais
+  // avoir remis la commande au client. Exception volontaire : les
+  // commandes créées avant ce correctif (ou tout cas où, pour une raison
+  // quelconque, order.deliveryCode est resté vide) n'ont pas de code de
+  // référence à comparer — on ne peut pas exiger un code qui n'existe pas,
+  // donc on ne bloque que si un vrai code a été généré pour cette commande.
+  if (nextStatus === OrderStatus.DELIVERED && order.deliveryCode) {
+    if (!enteredDeliveryCode) {
+      throw new ApiError(
+        400,
+        "Merci de saisir le code de remise communiqué par le client pour valider la livraison."
+      );
+    }
+    if (enteredDeliveryCode !== order.deliveryCode) {
+      throw new ApiError(
+        400,
+        "Le code saisi ne correspond pas au code du client. Vérifiez-le avec le client avant de valider la livraison."
+      );
+    }
   }
 
   // Si la commande passe DELIVERED, on regarde AVANT la transaction si le
@@ -163,11 +194,19 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
           ? { estimatedDelivery: new Date(Date.now() + DELIVERY_WINDOW_MINUTES * 60_000) }
           : {}),
         // Preuve de remise, fournie par le Rider en marquant la commande
-        // livrée — les deux restent optionnelles (voir updateOrderStatusSchema).
+        // livrée. La photo reste facultative (voir updateOrderStatusSchema).
+        // Le code, lui, a déjà été vérifié plus haut (avant le début de
+        // cette transaction) contre order.deliveryCode et bloque la requête
+        // s'il est absent ou incorrect — donc s'exécuter jusqu'ici signifie
+        // qu'il est soit correct, soit non applicable (commande sans code
+        // de référence). order.deliveryCode N'EST JAMAIS écrasé ici : c'est
+        // la valeur de référence, générée une fois pour toutes à la
+        // création de la commande et communiquée au client (email +
+        // TrackingScreen) — ce que tape le livreur n'est qu'une saisie à
+        // vérifier, jamais une nouvelle valeur à stocker.
         ...(nextStatus === OrderStatus.DELIVERED
           ? {
               deliveryPhoto: deliveryPhoto ?? undefined,
-              deliveryCode: deliveryCode ?? undefined,
               ...(isLateDelivery ? { latePenaltyApplied: true } : {}),
             }
           : {}),
@@ -175,7 +214,21 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
           create: { status: nextStatus, changedBy: auth.userId, note },
         },
       },
-      include: { items: true, statusHistory: { orderBy: { changedAt: "asc" } } },
+      include: {
+        items: true,
+        statusHistory: { orderBy: { changedAt: "asc" } },
+        // Sans ça, la réponse de cette route (utilisée directement comme
+        // nouvel état "commande en cours" côté app Livreur — voir
+        // useRiderSessionStore.advanceDeliveryStep) perdait le client, le
+        // pro et les adresses à CHAQUE changement de statut : le bouton
+        // "Appeler le client" disparaissait dès que le livreur avançait
+        // d'une étape (le numéro de téléphone provenait de client.user.phone,
+        // devenu undefined), et l'itinéraire/le nom du commerçant avec.
+        client: { select: { id: true, user: { select: { firstName: true, lastName: true, phone: true } } } },
+        pro: { select: { id: true, businessName: true, logo: true, category: true } },
+        fromAddress: true,
+        toAddress: true,
+      },
     });
 
     if (nextStatus === OrderStatus.DELIVERED) {
@@ -325,6 +378,7 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
       total: Number(updated.total),
       proBusinessName: pro?.businessName ?? "",
       items: updated.items.map((i) => ({ productName: i.productName, quantity: i.quantity, totalPrice: Number(i.totalPrice) })),
+      deliveryCode: updated.deliveryCode,
     };
 
     if (client) {

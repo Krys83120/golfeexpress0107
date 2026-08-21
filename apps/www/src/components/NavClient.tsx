@@ -1,19 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-
-const PORTAL_LINKS = [
-  { label: "Espace Client", href: "https://commander.doyougeckoo.fr", hint: "Commander" },
-  { label: "Espace Commerçant", href: "https://pro.doyougeckoo.fr", hint: "Gérer ma boutique" },
-  { label: "Espace Livreur", href: "https://livreur.doyougeckoo.fr", hint: "Livrer" },
-  { label: "Espace Admin", href: "https://admin.doyougeckoo.fr", hint: "Équipe Do You Geckoo" },
-];
+import Link from "next/link";
 
 const NAV_LINKS = [
-  { label: "Comment ça marche", href: "/#comment-ca-marche" },
+  { label: "Comment ça marche", href: "/comment-ca-marche" },
   { label: "Nos commerçants", href: "/commercants" },
-  { label: "Devenir livreur", href: "/#devenir-livreur" },
-  { label: "Devenir partenaire", href: "/#devenir-partenaire" },
+  { label: "Devenir livreur", href: "/devenir-partenaire#livreurs" },
+  { label: "Devenir partenaire", href: "/devenir-partenaire" },
 ];
 
 // Jaune exact du logo/mascotte Do You Geckoo (échantillonné sur
@@ -22,11 +16,9 @@ const NAV_LINKS = [
 const PARTNER_YELLOW = "#FEB903";
 
 export function NavClient({ logoUrl }: { logoUrl: string | null }) {
-  const [portalsOpen, setPortalsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   function closeAll() {
-    setPortalsOpen(false);
     setMobileMenuOpen(false);
   }
 
@@ -38,7 +30,7 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
           occuperait une part énorme de l'écran en permanence au scroll. */}
       <div className="border-b border-white/10 bg-nuit">
         <div className="mx-auto flex max-w-7xl justify-center px-4 py-3 sm:px-6">
-          <a href="/" onClick={closeAll} aria-label="Do You Geckoo — accueil">
+          <Link href="/" onClick={closeAll} aria-label="Do You Geckoo — accueil">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- logo dynamique (URL Supabase Storage), pas un asset local optimisable par next/image
               // Le logo contient déjà le nom "Do You Geckoo" intégré
@@ -48,7 +40,7 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
               <img
                 src={logoUrl}
                 alt="Do You Geckoo"
-                className="h-auto w-full max-w-[480px] object-contain sm:h-[880px] sm:w-[880px] sm:max-w-none"
+                className="h-auto w-full max-w-[720px] object-contain sm:max-w-[780px]"
               />
             ) : (
               <div className="flex items-center gap-2">
@@ -56,18 +48,18 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
                 <span className="notranslate font-heading text-base font-extrabold text-white sm:text-lg" translate="no">Do You Geckoo</span>
               </div>
             )}
-          </a>
+          </Link>
         </div>
       </div>
 
       {/* Barre de navigation fine — reste collée en haut au défilement. */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-nuit/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-        <nav className="hidden items-center gap-8 lg:flex">
+        <div className="relative mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+        <nav className="hidden items-center gap-8 lg:absolute lg:left-1/2 lg:flex lg:-translate-x-1/2">
           {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="text-sm font-medium text-white/80 transition hover:text-white">
+            <Link key={link.href} href={link.href} className="text-sm font-medium text-white/80 transition hover:text-white">
               {link.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
@@ -75,74 +67,23 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
             mobile/tablette (lg:hidden). C'est un item flex séparé (pas
             imbriqué dans le groupe de droite ci-dessous) : avec la nav
             horizontale masquée sur mobile, ce bouton et le groupe de droite
-            (Se connecter + hamburger) sont les deux seuls enfants visibles
-            du conteneur "justify-between" parent, qui les répartit donc
-            naturellement chacun à une extrémité. À partir de lg, ce bouton
-            disparaît car le lien équivalent est déjà dans la nav horizontale. */}
-        <a
-          href="/#devenir-partenaire"
+            (hamburger) sont les deux seuls enfants visibles du conteneur
+            "justify-between" parent, qui les répartit donc naturellement
+            chacun à une extrémité. À partir de lg, ce bouton disparaît car
+            le lien équivalent est déjà dans la nav horizontale. */}
+        <Link
+          href="/devenir-partenaire"
           onClick={closeAll}
           className="whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold text-nuit transition hover:opacity-90 sm:px-5 sm:py-2.5 sm:text-sm lg:hidden"
           style={{ backgroundColor: PARTNER_YELLOW }}
         >
           Devenir Partenaire
-        </a>
+        </Link>
 
         <div className="flex items-center gap-2">
-          {/* Portails (Se connecter) — toujours visible, même sur mobile */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setPortalsOpen((v) => !v);
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-golfe-green px-4 py-2 text-xs font-bold text-nuit transition hover:bg-golfe-green-dark hover:text-white sm:px-5 sm:py-2.5 sm:text-sm"
-              aria-expanded={portalsOpen}
-              aria-haspopup="true"
-            >
-              Se connecter
-              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className={`transition ${portalsOpen ? "rotate-180" : ""}`}>
-                <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </button>
-
-            {portalsOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setPortalsOpen(false)} />
-                {/* Position "fixed" ancrée aux marges de l'écran (inset-x-4)
-                    plutôt qu'au bouton, tant que la nav est en mode
-                    mobile/tablette — indépendant de la position exacte du
-                    bouton (groupe "Se connecter" + hamburger, à droite dès
-                    le mobile grâce au bouton "Devenir Partenaire" placé à
-                    gauche juste au-dessus). Le seuil DOIT correspondre à
-                    celui où le header bascule réellement en layout desktop
-                    (nav à gauche / groupe à droite) — c'est lg, pas sm (voir
-                    "hidden lg:flex" sur la nav et "lg:hidden" sur le
-                    hamburger plus bas). Utiliser sm: ici cassait l'affichage
-                    sur tablette (~640-1024px). */}
-                <div className="fixed inset-x-4 top-16 z-20 overflow-hidden rounded-2xl border border-black/5 bg-white shadow-xl lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-2 lg:w-64">
-                  {PORTAL_LINKS.map((link) => (
-                    <a
-                      key={link.label}
-                      href={link.href}
-                      className="block border-b border-gris-light px-5 py-3.5 last:border-0 hover:bg-sable"
-                      onClick={closeAll}
-                    >
-                      <p className="text-sm font-bold text-nuit">{link.label}</p>
-                      <p className="text-xs text-gris">{link.hint}</p>
-                    </a>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
           {/* Bouton hamburger — visible uniquement en dessous du breakpoint lg où la nav horizontale disparaît */}
           <button
-            onClick={() => {
-              setMobileMenuOpen((v) => !v);
-              setPortalsOpen(false);
-            }}
+            onClick={() => setMobileMenuOpen((v) => !v)}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white lg:hidden"
             aria-expanded={mobileMenuOpen}
             aria-label="Menu"
@@ -164,14 +105,14 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
       {mobileMenuOpen && (
         <nav className="border-t border-white/10 bg-nuit px-4 py-3 lg:hidden">
           {NAV_LINKS.map((link) => (
-            <a
+            <Link
               key={link.href}
               href={link.href}
               onClick={closeAll}
               className="block rounded-lg px-3 py-3 text-sm font-medium text-white/85 hover:bg-white/5"
             >
               {link.label}
-            </a>
+            </Link>
           ))}
         </nav>
       )}

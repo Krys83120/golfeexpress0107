@@ -53,9 +53,9 @@ export function ReviewsPage() {
     }
   }
 
-  const average = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+  const average = reviews.length > 0 ? reviews.reduce((sum, r) => sum + (r.proRating ?? 0), 0) / reviews.length : 0;
   const distribution: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  for (const r of reviews) distribution[r.rating] = (distribution[r.rating] ?? 0) + 1;
+  for (const r of reviews) if (r.proRating) distribution[r.proRating] = (distribution[r.proRating] ?? 0) + 1;
 
   return (
     <div className="flex-1 p-8">
@@ -124,10 +124,10 @@ export function ReviewsPage() {
                           </p>
                         </div>
                       </div>
-                      <Stars rating={review.rating} />
+                      <Stars rating={review.proRating ?? 0} />
                     </div>
 
-                    {review.comment && <p className="mb-3 text-sm text-nuit">{review.comment}</p>}
+                    {review.proComment && <p className="mb-3 text-sm text-nuit">{review.proComment}</p>}
 
                     {review.proReply ? (
                       <div className="rounded-sm bg-gris-light p-3">

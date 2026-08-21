@@ -23,14 +23,19 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
   const productsByPro = useProsStore((s) => s.productsByPro);
   const productsStatus = useProsStore((s) => s.productsStatus[pro.id]);
   const loadProductsForPro = useProsStore((s) => s.loadProductsForPro);
+  const reviewsByPro = useProsStore((s) => s.reviewsByPro);
+  const reviewsStatus = useProsStore((s) => s.reviewsStatus[pro.id]);
+  const loadReviewsForPro = useProsStore((s) => s.loadReviewsForPro);
   const [optionsModalProduct, setOptionsModalProduct] = useState<Product | null>(null);
   const [deepLinkConsumed, setDeepLinkConsumed] = useState(false);
 
   useEffect(() => {
     loadProductsForPro(pro.id);
+    loadReviewsForPro(pro.id);
   }, [pro.id]);
 
   const products = productsByPro[pro.id] ?? [];
+  const reviews = reviewsByPro[pro.id] ?? [];
 
   // Une fois les produits chargés, ouvre automatiquement la fiche du
   // produit visé par le lien — une seule fois (deepLinkConsumed évite de
@@ -55,8 +60,8 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
     // bloque l'ajout au panier ici plutôt que de laisser l'utilisateur
     // découvrir l'erreur seulement au moment de payer — le serveur refuse
     // de toute façon la commande dans ce cas (voir orders/route.ts). La
-    // consultation du produit (description, photos, options) reste
-    // possible même fermé : voir handlePressProduct ci-dessous.
+    // consultation du produit (description, photos, options, avis) reste
+    // possible même fermé : voir handleOpenProductDetail ci-dessous.
     if (!pro.isOpen) {
       Alert.alert(
         pro.openReason === "VACATION" ? "Commerçant en vacances" : "Commerçant fermé",
@@ -79,11 +84,19 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
     );
   }
 
-  function handlePressProduct(product: Product) {
-    // Toujours autorisé, même commerçant fermé : consulter la fiche d'un
-    // produit (photos, description complète, options) n'est pas une
-    // commande. Seul l'ajout réel au panier (handleAdd / handleConfirmOptions
-    // ci-dessous) est bloqué tant que le commerçant est fermé.
+  // Ouvre systématiquement la fiche détaillée du produit (photos,
+  // description, note moyenne, avis clients) -- y compris pour un produit
+  // sans options, qui ne l'ouvrait pas avant (ajout direct au panier sans
+  // jamais montrer sa note ni ses avis). Toujours autorisé même commerçant
+  // fermé : consulter une fiche n'est pas une commande.
+  function handleOpenProductDetail(product: Product) {
+    setOptionsModalProduct(product);
+  }
+
+  // Chemin rapide (bouton "+") : ajoute directement au panier si le produit
+  // n'a pas d'options à choisir, sinon ouvre la fiche (obligatoire pour
+  // choisir les options avant d'ajouter).
+  function handleQuickAdd(product: Product) {
     if (product.options && product.options.length > 0) {
       setOptionsModalProduct(product);
     } else {
@@ -239,7 +252,7 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
             {items.map((product) => (
               <Pressable
                 key={product.id}
-                onPress={() => handlePressProduct(product)}
+                onPress={() => handleOpenProductDetail(product)}
                 className="mb-2.5 flex-row gap-3.5 rounded-sm bg-gris-light p-3.5"
               >
                 <View
@@ -253,7 +266,14 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
                   )}
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[15px] font-semibold text-nuit">{product.name}</Text>
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className="text-[15px] font-semibold text-nuit">{product.name}</Text>
+                    {product.rating != null && (product.ratingCount ?? 0) > 0 && (
+                      <Text className="text-[11px] font-bold text-corail">
+                        ⭐ {Number(product.rating).toFixed(1)} ({product.ratingCount})
+                      </Text>
+                    )}
+                  </View>
                   <Text className="mb-1.5 mt-1 text-xs leading-4 text-gris">{product.description}</Text>
                   <Text className="text-[15px] font-bold text-golfe-green">
                     {Number(product.price).toFixed(2).replace(".", ",")} €
@@ -263,7 +283,7 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
                   </Text>
                 </View>
                 <Pressable
-                  onPress={() => handlePressProduct(product)}
+                  onPress={() => handleQuickAdd(product)}
                   className="h-8 w-8 self-center items-center justify-center rounded-full bg-golfe-green"
                 >
                   <Text style={{ fontSize: 16, color: "white", fontWeight: "700" }}>+</Text>
@@ -272,6 +292,42 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
             ))}
           </View>
         ))}
+
+        {/* Avis clients — miroir de ce que le Pro voit déjà dans sa propre
+            app (page "Avis clients"), mais en lecture seule côté client :
+            uniquement les avis visibles (isVisible=true), voir
+            GET /api/pros/[proId]/reviews. */}
+        <View className="mx-5 mb-4 mt-10 border-t border-gris-light pt-6">
+          <Text className="mb-4 font-heading text-base font-bold text-nuit">⭐ Avis clients</Text>
+
+          {reviewsStatus === "loading" && reviews.length === 0 && (
+            <ActivityIndicator color="#2ECC71" />
+          )}
+
+          {reviewsStatus === "loaded" && reviews.length === 0 && (
+            <Text className="text-sm text-gris">Aucun avis pour le moment.</Text>
+          )}
+
+          {reviews.map((review) => (
+            <View key={review.id} className="mb-3 rounded-sm bg-gris-light p-3.5">
+              <View className="mb-1 flex-row items-center justify-between">
+                <Text className="text-sm font-semibold text-nuit">
+                  {review.client?.user?.firstName ?? "Client"}
+                </Text>
+                <Text className="text-xs font-bold text-corail">⭐ {review.proRating}</Text>
+              </View>
+              {review.proComment && <Text className="text-sm text-nuit">{review.proComment}</Text>}
+              {review.proReply && (
+                <View className="mt-2 rounded-sm bg-white p-2.5">
+                  <Text className="mb-0.5 text-xs font-semibold text-golfe-green">
+                    Réponse de {pro.businessName}
+                  </Text>
+                  <Text className="text-xs text-nuit">{review.proReply}</Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
       </ScrollView>
 
       {optionsModalProduct && (

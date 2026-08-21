@@ -21,7 +21,7 @@ export const DEFAULT_PACKS: AdminPartnerPack[] = [
     tier: SubscriptionType.FREE,
     name: "Découverte",
     priceMonthly: 0,
-    commissionRate: 0.15,
+    commissionRate: 0.18,
     features: [
       "Fiche commerçant visible sur l'application et le site",
       "Réception et gestion des commandes en temps réel",
@@ -34,10 +34,10 @@ export const DEFAULT_PACKS: AdminPartnerPack[] = [
   {
     tier: SubscriptionType.PREMIUM,
     name: "Premium",
-    priceMonthly: 29,
-    commissionRate: 0.1,
+    priceMonthly: 49.9,
+    commissionRate: 0.15,
     features: [
-      "Commission réduite à 10% (au lieu de 15%)",
+      "Commission réduite à 15% (au lieu de 18%)",
       "Classement prioritaire dans les résultats de recherche",
       'Badge "Partenaire Premium" affiché sur votre fiche',
     ],
@@ -48,10 +48,10 @@ export const DEFAULT_PACKS: AdminPartnerPack[] = [
   {
     tier: SubscriptionType.PREMIUM_PLUS,
     name: "Premium+",
-    priceMonthly: 59,
-    commissionRate: 0.07,
+    priceMonthly: 79.9,
+    commissionRate: 0.12,
     features: [
-      "Commission réduite à 7% (au lieu de 15%)",
+      "Commission réduite à 12% (au lieu de 18%)",
       "Classement prioritaire maximal dans les résultats de recherche",
       'Badge "Partenaire Premium+" affiché sur votre fiche',
     ],

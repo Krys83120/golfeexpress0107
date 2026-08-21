@@ -6,9 +6,12 @@ import { prisma } from "@/lib/prisma";
 /**
  * GET /api/pros/me/reviews
  *
- * Liste les avis (Review) laissés sur la boutique du Pro connecté, du plus
- * récent au plus ancien. N'inclut que les avis visibles (isVisible=true) —
- * les avis masqués (modération) ne sont pas renvoyés même au Pro concerné.
+ * Avis clients laissés sur le commerçant connecté, du plus récent au plus
+ * ancien. Ne renvoie que les avis visibles (isVisible=true) qui portent
+ * effectivement une note commerçant (proRating non nul) -- une ligne
+ * Review peut exister pour cette commande sans que le client ait
+ * spécifiquement noté le commerçant (proRating optionnel, voir model
+ * Review) si l'avis ne portait que sur le livreur ou la plateforme.
  */
 async function getHandler(req: NextRequest) {
   const auth = await requireAuth(req, [UserRole.PRO]);
@@ -19,7 +22,7 @@ async function getHandler(req: NextRequest) {
   }
 
   const reviews = await prisma.review.findMany({
-    where: { proId: pro.id, isVisible: true },
+    where: { proId: pro.id, isVisible: true, proRating: { not: null } },
     include: { client: { select: { user: { select: { firstName: true, lastName: true } } } } },
     orderBy: { createdAt: "desc" },
     take: 100,

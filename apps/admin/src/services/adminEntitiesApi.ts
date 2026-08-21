@@ -1,5 +1,5 @@
 import { apiFetch } from "@/services/apiClient";
-import type { User, Pro, Rider, Address, Product } from "@golfeexpress/types";
+import type { User, Pro, Rider, Address, Product, Review } from "@golfeexpress/types";
 
 /** GET /api/admin/pros/:proId/products */
 export async function fetchAdminProProducts(proId: string): Promise<Product[]> {
@@ -123,4 +123,26 @@ export async function updateAdminPro(proId: string, payload: UpdateAdminProPaylo
     body: payload,
   });
   return data.pro;
+}
+
+/** GET /api/admin/riders/:riderId/reviews */
+export async function fetchAdminRiderReviews(riderId: string): Promise<Review[]> {
+  const data = await apiFetch<{ reviews: Review[] }>(`/api/admin/riders/${riderId}/reviews`);
+  return data.reviews;
+}
+
+/** GET /api/admin/pros/:proId/reviews */
+export async function fetchAdminProReviews(proId: string): Promise<Review[]> {
+  const data = await apiFetch<{ reviews: Review[] }>(`/api/admin/pros/${proId}/reviews`);
+  return data.reviews;
+}
+
+/**
+ * GET /api/admin/reviews/platform — avis clients sur l'application Do You
+ * Geckoo elle-même (volet `platform` de Review, indépendant des avis
+ * commerçant/livreur).
+ */
+export async function fetchAdminPlatformReviews(): Promise<Review[]> {
+  const data = await apiFetch<{ reviews: Review[] }>("/api/admin/reviews/platform");
+  return data.reviews;
 }

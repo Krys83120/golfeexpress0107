@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { X, Star, CheckCircle2, XCircle, Package, FolderCog } from "lucide-react";
-import type { ProStatus, Product } from "@golfeexpress/types";
+import type { ProStatus, Product, Review } from "@golfeexpress/types";
 import { PRO_STATUS_LABELS, PRO_CATEGORY_EMOJIS } from "@/services/proLabels";
-import { updateAdminPro, fetchAdminProProducts, toggleAdminProduct, type AdminProRow } from "@/services/adminEntitiesApi";
+import {
+  updateAdminPro,
+  fetchAdminProProducts,
+  toggleAdminProduct,
+  fetchAdminProReviews,
+  type AdminProRow,
+} from "@/services/adminEntitiesApi";
 import { validatePro } from "@/services/validationsApi";
 import { AdminCategoryManagerModal } from "@/components/AdminCategoryManagerModal";
 import { AdminProductDetailModal } from "@/components/AdminProductDetailModal";
@@ -34,6 +40,27 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showRejectReason, setShowRejectReason] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsStatus, setReviewsStatus] = useState<"loading" | "loaded" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    setReviewsStatus("loading");
+    fetchAdminProReviews(pro.id)
+      .then((data) => {
+        if (!cancelled) {
+          setReviews(data);
+          setReviewsStatus("loaded");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setReviewsStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pro.id]);
 
   function reloadProducts() {
     fetchAdminProProducts(pro.id)
@@ -268,7 +295,12 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
         </div>
 
         <div className="mb-6">
-          <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gris">📄 CGU / CGV</h3>
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gris">
+            📄 CGU / CGV{" "}
+            <a href="https://www.doyougeckoo.fr/conditions-generales" target="_blank" rel="noreferrer" className="normal-case text-golfe-green underline">
+              (voir le document)
+            </a>
+          </h3>
           <div className="rounded-sm bg-gris-light p-4">
             {pro.termsAcceptedAt ? (
               <p className="flex items-center gap-1.5 text-sm text-golfe-green">
@@ -378,6 +410,52 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
                   </span>
                 </button>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Avis clients — historique complet (visibles ET masqués par
+            modération) puisque c'est une vue admin, miroir de la section
+            équivalente dans RiderDetailModal côté livreur. */}
+        <div className="mb-6">
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gris">💬 Avis clients</h3>
+          {reviewsStatus === "loading" ? (
+            <p className="rounded-sm bg-gris-light p-4 text-sm text-gris">Chargement des avis...</p>
+          ) : reviewsStatus === "error" ? (
+            <p className="rounded-sm bg-gris-light p-4 text-sm text-red-500">Impossible de charger les avis.</p>
+          ) : reviews.length === 0 ? (
+            <p className="rounded-sm bg-gris-light p-4 text-sm text-gris">Aucun avis pour le moment.</p>
+          ) : (
+            <div className="flex max-h-64 flex-col gap-2 overflow-y-auto rounded-sm bg-gris-light p-3">
+              {reviews.map((review) => {
+                const clientName = review.client?.user
+                  ? `${review.client.user.firstName} ${review.client.user.lastName}`
+                  : "Client";
+                return (
+                  <div key={review.id} className="rounded-sm bg-white p-2.5">
+                    <div className="mb-0.5 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-nuit">
+                        {clientName}
+                        {!review.isVisible && (
+                          <span className="ml-1.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-500">
+                            masqué
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-0.5 text-xs font-bold text-nuit">
+                        <Star size={11} fill="#FF6B35" color="#FF6B35" /> {review.proRating}
+                      </span>
+                    </div>
+                    {review.proComment && <p className="text-xs text-gris">{review.proComment}</p>}
+                    {review.proReply && (
+                      <div className="mt-1.5 rounded-sm bg-gris-light p-2">
+                        <p className="mb-0.5 text-[10px] font-semibold text-golfe-green">Réponse du commerçant</p>
+                        <p className="text-xs text-gris">{review.proReply}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

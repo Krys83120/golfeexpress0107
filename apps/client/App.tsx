@@ -19,6 +19,7 @@ import { OrdersScreen } from "@/screens/OrdersScreen";
 import { FidelityScreen } from "@/screens/FidelityScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
 import { ReviewScreen } from "@/screens/ReviewScreen";
+import { ReportIssueScreen } from "@/screens/ReportIssueScreen";
 import type { ProWithUi } from "@/services/prosApi";
 import { fetchPros } from "@/services/prosApi";
 import { fetchMyOrders } from "@/services/ordersApi";
@@ -49,6 +50,7 @@ function MainApp() {
   const [addressPickerOpen, setAddressPickerOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
+  const [reportOrder, setReportOrder] = useState<Order | null>(null);
 
   const logout = useAuthStore((s) => s.logout);
   const clearCart = useCartStore((s) => s.clear);
@@ -146,6 +148,7 @@ function MainApp() {
             onOpenTracking={setTrackingOrder}
             onReorder={handleReorder}
             onOpenReview={setReviewOrder}
+            onReportIssue={setReportOrder}
           />
         );
       case "fidelity":
@@ -267,6 +270,11 @@ function MainApp() {
       {/* MODAL: Notation post-livraison */}
       <Modal visible={!!reviewOrder} animationType="slide" onRequestClose={() => setReviewOrder(null)}>
         {reviewOrder && <ReviewScreen order={reviewOrder} onClose={() => setReviewOrder(null)} />}
+      </Modal>
+
+      {/* MODAL: Réclamation / signalement de problème */}
+      <Modal visible={!!reportOrder} animationType="slide" onRequestClose={() => setReportOrder(null)}>
+        {reportOrder && <ReportIssueScreen order={reportOrder} onClose={() => setReportOrder(null)} />}
       </Modal>
 
       {/* MODAL: Sélection d'adresse */}

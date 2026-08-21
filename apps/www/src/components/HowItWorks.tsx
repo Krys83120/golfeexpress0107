@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 interface Step {
   title: string;
   description: string;
@@ -61,6 +63,15 @@ export function HowItWorks() {
           <StepColumn emoji="🛍️" title="Pour un client" steps={CLIENT_STEPS} accent="#2ECC71" />
           <StepColumn emoji="🏪" title="Pour un commerçant" steps={PRO_STEPS} accent="#FF6B35" />
           <StepColumn emoji="🛵" title="Pour un livreur" steps={RIDER_STEPS} accent="#1A1A2E" />
+        </div>
+
+        <div className="mt-12 text-center">
+          <Link
+            href="/comment-ca-marche"
+            className="inline-block rounded-full border-2 border-nuit px-6 py-2.5 text-sm font-bold text-nuit transition hover:bg-nuit hover:text-white"
+          >
+            Voir toutes les fonctionnalités →
+          </Link>
         </div>
       </div>
     </section>

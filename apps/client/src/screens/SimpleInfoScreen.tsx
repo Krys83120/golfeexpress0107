@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, Pressable } from "react-native";
+import { View, Text, ScrollView, Pressable, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 interface SimpleInfoScreenProps {
@@ -7,9 +7,12 @@ interface SimpleInfoScreenProps {
   emoji: string;
   content: string;
   onClose: () => void;
+  /** Lien externe optionnel affiché sous le contenu (ex. version web complète des CGU/Confidentialité). */
+  linkLabel?: string;
+  linkUrl?: string;
 }
 
-export function SimpleInfoScreen({ title, emoji, content, onClose }: SimpleInfoScreenProps) {
+export function SimpleInfoScreen({ title, emoji, content, onClose, linkLabel, linkUrl }: SimpleInfoScreenProps) {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
       <View className="flex-1 px-5 pt-5">
@@ -23,6 +26,11 @@ export function SimpleInfoScreen({ title, emoji, content, onClose }: SimpleInfoS
         </View>
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text className="text-[15px] leading-6 text-nuit">{content}</Text>
+          {linkUrl && (
+            <Pressable onPress={() => Linking.openURL(linkUrl)} style={{ marginTop: 20 }}>
+              <Text className="text-[15px] font-semibold text-golfe-green underline">{linkLabel ?? "Voir la version complète ↗"}</Text>
+            </Pressable>
+          )}
           <View style={{ height: 32 }} />
         </ScrollView>
       </View>

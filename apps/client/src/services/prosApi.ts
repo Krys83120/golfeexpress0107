@@ -1,6 +1,6 @@
 import { apiFetch } from "@/services/apiClient";
 import { getCategoryVisual, haversineDistanceKm, estimateDeliveryMinutes } from "@/services/categoryVisuals";
-import type { Pro, Product, OpenStatus } from "@golfeexpress/types";
+import type { Pro, Product, OpenStatus, Review, ProductReview } from "@golfeexpress/types";
 
 export interface ProWithUi extends Pro {
   emoji: string;
@@ -94,4 +94,20 @@ export async function fetchPros(params: FetchProsParams = {}): Promise<ProWithUi
 export async function fetchProProducts(proId: string): Promise<Product[]> {
   const data = await apiFetch<{ products: Product[] }>(`/api/pros/${proId}/products`, { skipAuth: true });
   return data.products;
+}
+
+/** GET /api/pros/[proId]/reviews — avis clients publics d'un commerçant. */
+export async function fetchProReviews(proId: string): Promise<Review[]> {
+  const data = await apiFetch<{ reviews: Review[] }>(`/api/pros/${proId}/reviews`, { skipAuth: true });
+  return data.reviews;
+}
+
+/**
+ * GET /api/products/[productId]/reviews — avis clients publics sur un
+ * produit précis, entièrement indépendants des avis sur le commerçant (voir
+ * model ProductReview) : affichés sur la fiche du produit lui-même.
+ */
+export async function fetchProductReviews(productId: string): Promise<ProductReview[]> {
+  const data = await apiFetch<{ reviews: ProductReview[] }>(`/api/products/${productId}/reviews`, { skipAuth: true });
+  return data.reviews;
 }

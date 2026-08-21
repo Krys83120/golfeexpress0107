@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, Linking } from "react-native";
+import { View, Text, Pressable, Linking, Image } from "react-native";
 import type { ProWithUi } from "@/services/prosApi";
 
 // Même ordre que côté Pro (SettingsPage.tsx) : dayOfWeek 0 = Dimanche.
@@ -57,102 +57,42 @@ function TikTokNote({ size }: { size: number }) {
   );
 }
 
-/**
- * Fond dégradé du badge Instagram — reproduit la palette officielle de
- * l'icône Instagram (jaune -> rose/magenta -> violet, en diagonale) au lieu
- * d'un aplat unique, en superposant trois cercles colorés à l'intérieur
- * d'un conteneur `overflow: hidden`. Toujours zéro dépendance externe
- * (aucune police, aucun SVG, aucune image) — uniquement des <View>.
- */
-function InstagramMark({ size }: { size: number }) {
-  return (
-    <>
-      <View
-        style={{
-          position: "absolute",
-          width: size * 1.5,
-          height: size * 1.5,
-          borderRadius: size * 0.75,
-          backgroundColor: "#FFDC80",
-          bottom: -size * 0.45,
-          left: -size * 0.45,
-        }}
-      />
-      <View
-        style={{
-          position: "absolute",
-          width: size * 1.5,
-          height: size * 1.5,
-          borderRadius: size * 0.75,
-          backgroundColor: "#E1306C",
-          bottom: -size * 0.15,
-          left: -size * 0.05,
-          opacity: 0.92,
-        }}
-      />
-      <View
-        style={{
-          position: "absolute",
-          width: size * 1.3,
-          height: size * 1.3,
-          borderRadius: size * 0.65,
-          backgroundColor: "#5851DB",
-          top: -size * 0.35,
-          right: -size * 0.35,
-          opacity: 0.9,
-        }}
-      />
-    </>
-  );
-}
-
 /** Silhouette de l'icône (sans le `Pressable` — géré par `SocialLink` ci-dessous, qui englobe aussi le libellé texte). */
 function SocialIcon({ kind, size = 34 }: { kind: SocialKind; size?: number }) {
-  const isSquare = kind === "instagram";
-  // Facebook : bleu officiel exact de la marque (#1877F2, identique au logo). Instagram : le dégradé
-  // de InstagramMark ci-dessus recouvre tout le badge, ce bg n'est qu'un repli si jamais il ne couvrait pas un coin.
-  const bg = kind === "instagram" ? "#E1306C" : kind === "facebook" ? "#1877F2" : "#1A1A2E";
+  // Instagram/Facebook : mascotte Do You Geckoo (demande explicite) au lieu
+  // de reproduire les chartes de marque Instagram/Facebook -- le lien
+  // pointe toujours vers le compte du commerçant, seule l'icône change.
+  if (kind === "instagram") {
+    return (
+      <Image
+        source={require("../../assets/instagram-badge-mascot.png")}
+        style={{ width: size, height: size, borderRadius: size / 2 }}
+        resizeMode="contain"
+      />
+    );
+  }
+  if (kind === "facebook") {
+    return (
+      <Image
+        source={require("../../assets/facebook-badge-mascot.png")}
+        style={{ width: size, height: size, borderRadius: size / 2 }}
+        resizeMode="contain"
+      />
+    );
+  }
 
   return (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: isSquare ? size * 0.28 : size / 2,
-        backgroundColor: bg,
+        borderRadius: size / 2,
+        backgroundColor: "#1A1A2E",
         alignItems: "center",
         justifyContent: "center",
         overflow: "hidden",
       }}
     >
-      {kind === "instagram" && (
-        <>
-          <InstagramMark size={size} />
-          <View
-            style={{
-              width: size * 0.42,
-              height: size * 0.42,
-              borderRadius: size * 0.21,
-              borderWidth: 1.8,
-              borderColor: "white",
-            }}
-          />
-          <View
-            style={{
-              position: "absolute",
-              top: size * 0.2,
-              right: size * 0.2,
-              width: size * 0.1,
-              height: size * 0.1,
-              borderRadius: size * 0.05,
-              backgroundColor: "white",
-            }}
-          />
-        </>
-      )}
-      {kind === "facebook" && (
-        <Text style={{ color: "white", fontWeight: "800", fontSize: size * 0.55, lineHeight: size * 0.62 }}>f</Text>
-      )}
       {kind === "tiktok" && <TikTokNote size={size} />}
     </View>
   );
@@ -249,7 +189,13 @@ export function BusinessInfoCard({ pro }: { pro: ProWithUi }) {
       </View>
 
       {hasSocialRow && (
-        <View className="mt-4 flex-row items-center gap-3 border-t border-gris-light pt-3.5">
+        // gap élargi (12px -> 24px) : les badges "www" + réseaux sociaux
+        // étaient collés les uns aux autres, surtout avec le label texte
+        // à côté de chaque icône (Instagram/Facebook) qui réduisait encore
+        // l'espace perçu entre deux liens. justify-center : www + Instagram
+        // + Facebook (+ TikTok) doivent rester sur une même ligne, centrés
+        // sur la largeur de la carte en mobile plutôt qu'alignés à gauche.
+        <View className="mt-4 flex-row flex-wrap items-center justify-center gap-6 border-t border-gris-light pt-3.5">
           {pro.websiteUrl && (
             <Pressable onPress={() => Linking.openURL(pro.websiteUrl!)}>
               <Text style={{ color: "#2563EB", fontWeight: "700", fontSize: 14, textDecorationLine: "underline" }}>www</Text>

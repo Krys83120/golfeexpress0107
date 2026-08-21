@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const CATEGORIES = [
   { emoji: "🍽️", label: "Restaurants" },
   { emoji: "🥖", label: "Boulangeries" },
@@ -30,12 +32,12 @@ export function CommercantsCategories() {
         </div>
 
         <div className="mt-10">
-          <a
+          <Link
             href="/commercants"
             className="inline-block rounded-full bg-nuit px-7 py-3 text-sm font-bold text-white transition hover:bg-golfe-green hover:text-nuit"
           >
             Voir tous les commerçants →
-          </a>
+          </Link>
         </div>
       </div>
     </section>

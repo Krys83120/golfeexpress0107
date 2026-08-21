@@ -1,25 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OrderStatus, UserRole } from "@golfeexpress/types";
+import { UserRole, OrderStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
-import { createReviewSchema } from "@/lib/validation/reviews";
+
+interface TargetInput {
+  rating: number;
+  comment?: string;
+}
+
+interface ProductInput {
+  productId: string;
+  rating: number;
+  comment?: string;
+}
+
+interface ReviewBody {
+  pro?: TargetInput;
+  rider?: TargetInput;
+  platform?: TargetInput;
+  products?: ProductInput[];
+}
+
+function isValidRating(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 5;
+}
+
+/**
+ * GET /api/orders/[orderId]/review
+ *
+ * Renvoie l'avis déjà laissé pour cette commande (s'il existe), tous
+ * volets confondus : Review (commerçant/livreur/plateforme, peut être null
+ * si le client n'a encore rien laissé sur ces 3 cibles-là) et
+ * ProductReview[] (avis produit par produit, entièrement indépendants).
+ * Utilisé par l'app Client pour savoir si l'écran d'avis doit s'afficher
+ * en mode "déjà noté" (lecture seule) ou "formulaire".
+ */
+async function getHandler(req: NextRequest, { params }: { params: { orderId: string } }) {
+  const auth = await requireAuth(req, [UserRole.CLIENT]);
+
+  const client = await prisma.client.findUnique({ where: { userId: auth.userId } });
+  if (!client) {
+    throw new ApiError(404, "Profil client introuvable.");
+  }
+
+  const order = await prisma.order.findUnique({ where: { id: params.orderId } });
+  if (!order || order.clientId !== client.id) {
+    throw new ApiError(404, "Commande introuvable.");
+  }
+
+  const [review, productReviews] = await Promise.all([
+    prisma.review.findUnique({ where: { orderId: order.id } }),
+    prisma.productReview.findMany({ where: { orderId: order.id } }),
+  ]);
+
+  return NextResponse.json({ review, productReviews });
+}
 
 /**
  * POST /api/orders/[orderId]/review
  *
- * Un client note en une seule fois les 4 aspects de sa commande livrée :
- * le produit, le commerçant, le livreur (si assigné), et la plateforme.
- * Crée une seule ligne Review par commande (orderId est unique — voir
- * prisma/schema.prisma) et met à jour au passage les moyennes affichées
- * (Pro.rating/ratingCount, Rider.rating/ratingCount) : personne d'autre
- * n'écrit ces compteurs aujourd'hui, donc c'est cette route qui en est la
- * seule source de vérité.
+ * Dépose un avis pour une commande livrée -- REDESIGN (voir prisma/schema.prisma
+ * model Review/ProductReview pour le contexte complet) : le client choisit
+ * librement CE QU'IL VEUT NOTER, chaque cible est indépendante avec son
+ * propre commentaire :
+ *   - `pro`      : avis sur le commerçant
+ *   - `rider`    : avis sur le livreur de cette commande (refusé si la
+ *                  commande n'a pas eu de livreur assigné)
+ *   - `platform` : avis sur l'application Do You Geckoo elle-même
+ *   - `products` : un avis par produit réellement acheté dans cette commande
+ *                  (0, 1 ou plusieurs produits notés, chacun avec sa propre
+ *                  note/commentaire) -- alimente Product.rating affiché sur
+ *                  la fiche du produit.
  *
- * GET /api/orders/[orderId]/review renvoie l'avis existant (ou null) pour
- * que l'app Client sache si la commande a déjà été notée avant d'afficher
- * le formulaire.
+ * Toutes ces clés sont optionnelles, mais au moins une doit être fournie.
+ * Un seul envoi par commande (comme avant) : si un avis (Review ou
+ * ProductReview) existe déjà pour cette commande, la requête est refusée.
  */
-async function postHandler(req: NextRequest, ctx: { params: { orderId: string } }) {
+async function postHandler(req: NextRequest, { params }: { params: { orderId: string } }) {
   const auth = await requireAuth(req, [UserRole.CLIENT]);
 
   const client = await prisma.client.findUnique({ where: { userId: auth.userId } });
@@ -27,85 +84,130 @@ async function postHandler(req: NextRequest, ctx: { params: { orderId: string } 
     throw new ApiError(404, "Profil client introuvable.");
   }
 
-  const order = await prisma.order.findUnique({ where: { id: ctx.params.orderId } });
+  const order = await prisma.order.findUnique({ where: { id: params.orderId }, include: { items: true } });
   if (!order || order.clientId !== client.id) {
     throw new ApiError(404, "Commande introuvable.");
   }
+
   if (order.status !== OrderStatus.DELIVERED) {
-    throw new ApiError(400, "Cette commande n'a pas encore été livrée.");
+    throw new ApiError(400, "Seule une commande livrée peut être notée.");
   }
 
-  const existing = await prisma.review.findUnique({ where: { orderId: order.id } });
-  if (existing) {
+  const [existingReview, existingProductReviews] = await Promise.all([
+    prisma.review.findUnique({ where: { orderId: order.id } }),
+    prisma.productReview.findMany({ where: { orderId: order.id } }),
+  ]);
+  if (existingReview || existingProductReviews.length > 0) {
     throw new ApiError(409, "Vous avez déjà laissé un avis pour cette commande.");
   }
 
-  const body = await req.json().catch(() => null);
-  const parsed = createReviewSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new ApiError(400, parsed.error.issues.map((i) => i.message).join(" "));
+  const body = (await req.json()) as ReviewBody;
+
+  const targets: Array<[keyof ReviewBody, TargetInput | undefined]> = [
+    ["pro", body.pro],
+    ["rider", body.rider],
+    ["platform", body.platform],
+  ];
+  for (const [key, target] of targets) {
+    if (target && !isValidRating(target.rating)) {
+      throw new ApiError(400, `Note invalide pour "${key}" (doit être un entier de 1 à 5).`);
+    }
   }
-  const { productRating, proRating, riderRating, platformRating, comment } = parsed.data;
+  if (body.rider && !order.riderId) {
+    throw new ApiError(400, "Cette commande n'a pas eu de livreur assigné.");
+  }
 
-  // riderRating n'est pris en compte que si un livreur est réellement
-  // rattaché à la commande — évite de fausser la moyenne d'un livreur au
-  // hasard si l'app envoyait quand même une valeur par défaut.
-  const effectiveRiderRating = order.riderId ? riderRating ?? null : null;
+  const orderProductIds = new Set(order.items.map((item) => item.productId));
+  const productInputs = new Map<string, ProductInput>();
+  for (const p of body.products ?? []) {
+    if (!orderProductIds.has(p.productId)) {
+      throw new ApiError(400, "Un des produits notés ne fait pas partie de cette commande.");
+    }
+    if (!isValidRating(p.rating)) {
+      throw new ApiError(400, "Note invalide pour un produit (doit être un entier de 1 à 5).");
+    }
+    // Déduplique par productId si jamais le client a soumis deux fois le même produit.
+    productInputs.set(p.productId, p);
+  }
 
-  const review = await prisma.$transaction(async (tx) => {
-    const created = await tx.review.create({
-      data: {
-        clientId: client.id,
-        proId: order.proId,
-        riderId: order.riderId,
-        orderId: order.id,
-        rating: proRating,
-        productRating,
-        riderRating: effectiveRiderRating,
-        platformRating,
-        comment,
-      },
+  const hasOrderLevelTarget = !!(body.pro || body.rider || body.platform);
+  if (!hasOrderLevelTarget && productInputs.size === 0) {
+    throw new ApiError(400, "Merci de noter au moins un élément (commerçant, livreur, plateforme ou un produit).");
+  }
+
+  const review = hasOrderLevelTarget
+    ? await prisma.review.create({
+        data: {
+          clientId: client.id,
+          proId: order.proId,
+          riderId: order.riderId,
+          orderId: order.id,
+          proRating: body.pro?.rating,
+          proComment: body.pro?.comment?.trim() || undefined,
+          riderRating: body.rider?.rating,
+          riderComment: body.rider?.comment?.trim() || undefined,
+          platformRating: body.platform?.rating,
+          platformComment: body.platform?.comment?.trim() || undefined,
+        },
+      })
+    : null;
+
+  const productReviews = await Promise.all(
+    Array.from(productInputs.values()).map((p) =>
+      prisma.productReview.create({
+        data: {
+          clientId: client.id,
+          orderId: order.id,
+          productId: p.productId,
+          rating: p.rating,
+          comment: p.comment?.trim() || undefined,
+        },
+      })
+    )
+  );
+
+  // Recalcule les moyennes affichées ailleurs (fiche commerçant, fiche
+  // livreur, fiche produit) à partir de TOUS les avis en base plutôt qu'en
+  // incrémentant une moyenne existante -- plus simple et évite toute dérive
+  // en cas de modération (avis masqué) ou de bug antérieur.
+  if (body.pro) {
+    const agg = await prisma.review.aggregate({
+      where: { proId: order.proId, proRating: { not: null }, isVisible: true },
+      _avg: { proRating: true },
+      _count: { proRating: true },
     });
-
-    const pro = await tx.pro.findUnique({ where: { id: order.proId }, select: { rating: true, ratingCount: true } });
-    if (pro) {
-      const newCount = pro.ratingCount + 1;
-      const newAverage = (Number(pro.rating ?? 0) * pro.ratingCount + proRating) / newCount;
-      await tx.pro.update({ where: { id: order.proId }, data: { rating: newAverage, ratingCount: newCount } });
-    }
-
-    if (order.riderId && effectiveRiderRating !== null) {
-      const rider = await tx.rider.findUnique({ where: { id: order.riderId }, select: { rating: true, ratingCount: true } });
-      if (rider) {
-        const newCount = rider.ratingCount + 1;
-        const newAverage = (Number(rider.rating ?? 0) * rider.ratingCount + effectiveRiderRating) / newCount;
-        await tx.rider.update({ where: { id: order.riderId }, data: { rating: newAverage, ratingCount: newCount } });
-      }
-    }
-
-    return created;
-  });
-
-  return NextResponse.json({ review }, { status: 201 });
-}
-
-async function getHandler(req: NextRequest, ctx: { params: { orderId: string } }) {
-  const auth = await requireAuth(req, [UserRole.CLIENT]);
-
-  const client = await prisma.client.findUnique({ where: { userId: auth.userId } });
-  if (!client) {
-    throw new ApiError(404, "Profil client introuvable.");
+    await prisma.pro.update({
+      where: { id: order.proId },
+      data: { rating: agg._avg.proRating ?? null, ratingCount: agg._count.proRating },
+    });
   }
 
-  const review = await prisma.review.findUnique({ where: { orderId: ctx.params.orderId } });
-  if (review && review.clientId !== client.id) {
-    // Ne devrait jamais arriver (orderId appartient toujours à un seul
-    // client), mais on ne renvoie jamais l'avis d'un autre client par sécurité.
-    throw new ApiError(404, "Avis introuvable.");
+  if (body.rider && order.riderId) {
+    const agg = await prisma.review.aggregate({
+      where: { riderId: order.riderId, riderRating: { not: null }, isVisible: true },
+      _avg: { riderRating: true },
+      _count: { riderRating: true },
+    });
+    await prisma.rider.update({
+      where: { id: order.riderId },
+      data: { rating: agg._avg.riderRating ?? null, ratingCount: agg._count.riderRating },
+    });
   }
 
-  return NextResponse.json({ review: review ?? null });
+  for (const productId of productInputs.keys()) {
+    const agg = await prisma.productReview.aggregate({
+      where: { productId, isVisible: true },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    await prisma.product.update({
+      where: { id: productId },
+      data: { rating: agg._avg.rating ?? null, ratingCount: agg._count.rating },
+    });
+  }
+
+  return NextResponse.json({ review, productReviews });
 }
 
-export const POST = withErrorHandling(postHandler);
 export const GET = withErrorHandling(getHandler);
+export const POST = withErrorHandling(postHandler);

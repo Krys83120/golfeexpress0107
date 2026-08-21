@@ -64,3 +64,4 @@ package-lock.json
 deploy-client/
 deploy-livreur/
 .vercel
+.env*

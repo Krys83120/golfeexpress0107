@@ -9,7 +9,7 @@ const FAQS = [
   },
   {
     q: "En quoi Do You Geckoo est-il différent d'Uber Eats ?",
-    a: "Do You Geckoo applique une commission commerçant nettement plus basse (à partir de 10%, contre des taux qui peuvent atteindre 30% sur les grandes plateformes) et reverse une part plus importante de chaque course au livreur. C'est une plateforme locale, pensée pour le Golfe de Saint-Tropez, pas un acteur mondial.",
+    a: "Do You Geckoo applique une commission commerçant nettement plus basse (à partir de 12%, contre des taux qui peuvent atteindre 30% sur les grandes plateformes) et reverse une part plus importante de chaque course au livreur. C'est une plateforme locale, pensée pour le Golfe de Saint-Tropez, pas un acteur mondial.",
   },
   {
     q: "Comment devenir livreur chez Do You Geckoo ?",
@@ -17,7 +17,7 @@ const FAQS = [
   },
   {
     q: "Combien coûte l'inscription pour un commerçant ?",
-    a: "L'inscription est gratuite. Do You Geckoo se rémunère uniquement via une commission sur les commandes effectivement livrées, à partir de 10% selon la formule choisie — sans abonnement fixe obligatoire.",
+    a: "L'inscription est gratuite. Do You Geckoo se rémunère uniquement via une commission sur les commandes effectivement livrées, à partir de 12% selon la formule choisie — sans abonnement fixe obligatoire.",
   },
   {
     q: "Les applications mobiles sont-elles disponibles ?",
@@ -37,7 +37,7 @@ const faqJsonLd = {
 
 export function Faq() {
   return (
-    <section className="bg-sable py-16 sm:py-24">
+    <section id="faq" className="scroll-mt-20 bg-sable py-16 sm:py-24">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <p className="mb-3 text-center text-sm font-bold uppercase tracking-widest text-golfe-green">Questions fréquentes</p>

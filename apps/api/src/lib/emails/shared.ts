@@ -30,7 +30,13 @@ export interface EmailAttachment {
  * validation, une commande... doivent rester effectives même si l'email
  * ne part pas).
  */
-export async function sendEmail(to: string, subject: string, html: string, attachments?: EmailAttachment[]): Promise<void> {
+export async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  attachments?: EmailAttachment[],
+  replyTo?: string
+): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn(`[email] RESEND_API_KEY manquante — email non envoyé (destinataire: ${to}, sujet: ${subject}).`);
@@ -47,6 +53,7 @@ export async function sendEmail(to: string, subject: string, html: string, attac
         subject,
         html,
         ...(attachments && attachments.length > 0 ? { attachments } : {}),
+        ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     });
 
@@ -60,9 +67,14 @@ export async function sendEmail(to: string, subject: string, html: string, attac
   }
 }
 
-/** Envoie une alerte à l'équipe Do You Geckoo (toi). */
-export async function sendAdminAlert(subject: string, html: string): Promise<void> {
-  await sendEmail(ADMIN_EMAIL, subject, html);
+/**
+ * Envoie une alerte à l'équipe Do You Geckoo (toi). `replyTo` optionnel —
+ * utilisé par le formulaire "Nous contacter" du site vitrine pour que
+ * répondre directement dans ta boîte mail réponde au visiteur, sans avoir
+ * besoin d'une interface admin dédiée pour ces messages ponctuels.
+ */
+export async function sendAdminAlert(subject: string, html: string, replyTo?: string): Promise<void> {
+  await sendEmail(ADMIN_EMAIL, subject, html, undefined, replyTo);
 }
 
 /** Habillage visuel commun (logo, carte blanche, pied de page) à tous les emails. */

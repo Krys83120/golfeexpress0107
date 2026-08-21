@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { OrderStatus, type Order } from "@golfeexpress/types";
 import { apiFetch } from "@/services/apiClient";
@@ -94,6 +94,15 @@ export function TrackingScreen({ order: initialOrder, onClose }: TrackingScreenP
 
         <Text className="mb-4 text-sm text-gris">Commande {order.orderNumber}</Text>
 
+        {!isCancelled && order.deliveryCode && order.status !== OrderStatus.DELIVERED && (
+          <View className="mb-4 items-center rounded-lg bg-[#E8F5E9] py-3">
+            <Text className="text-xs text-gris">🔑 Code à donner au livreur à la remise</Text>
+            <Text className="mt-1 text-2xl font-extrabold text-nuit" style={{ letterSpacing: 4 }}>
+              {order.deliveryCode}
+            </Text>
+          </View>
+        )}
+
         {isCancelled ? (
           <View className="items-center py-12">
             <Text style={{ fontSize: 40 }}>❌</Text>
@@ -125,13 +134,34 @@ export function TrackingScreen({ order: initialOrder, onClose }: TrackingScreenP
             </View>
 
             <View className="mb-5 flex-row items-center gap-3">
-              <View className="h-[50px] w-[50px] items-center justify-center rounded-full bg-corail">
-                <Text style={{ fontSize: 24 }}>🦎</Text>
-              </View>
+              {order.rider?.profilePhotoUrl ? (
+                <Image
+                  source={{ uri: order.rider.profilePhotoUrl }}
+                  className="h-[50px] w-[50px] rounded-full"
+                  style={{ backgroundColor: "#F3F4F6" }}
+                />
+              ) : (
+                <View className="h-[50px] w-[50px] items-center justify-center rounded-full bg-corail">
+                  <Text style={{ fontSize: 24 }}>🦎</Text>
+                </View>
+              )}
               <View>
-                <Text className="font-bold text-nuit">
-                  {order.riderId ? "Votre livreur est en route !" : "Recherche d'un livreur..."}
-                </Text>
+                <View className="flex-row items-center gap-2">
+                  <Text className="font-bold text-nuit">
+                    {order.riderId ? "Votre livreur est en route !" : "Recherche d'un livreur..."}
+                  </Text>
+                  {/* Note moyenne du livreur -- pas les avis détaillés (choix
+                      délibéré, comme Uber/Deliveroo) : juste de quoi rassurer
+                      le client, sans exposer les commentaires écrits d'autres
+                      clients ici. Voir RiderDetailModal côté admin pour le
+                      détail complet. */}
+                  {order.rider?.rating != null && order.rider.ratingCount > 0 && (
+                    <View className="flex-row items-center gap-0.5 rounded-full bg-orange-50 px-2 py-0.5">
+                      <Text style={{ fontSize: 10 }}>⭐</Text>
+                      <Text className="text-xs font-bold text-corail">{Number(order.rider.rating).toFixed(1)}</Text>
+                    </View>
+                  )}
+                </View>
                 {order.estimatedDelivery && (
                   <Text className="text-[13px] text-gris">
                     Arrivée estimée :{" "}

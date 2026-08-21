@@ -126,6 +126,34 @@ enum NotificationType {
   PAYMENT
 }
 
+/// Catégories de réclamation/signalement sur une commande -- volontairement
+/// une liste unique partagée par les 3 rôles qui peuvent créer un
+/// OrderReport (Client, Livreur, Pro) plutôt que 3 enums séparés : chaque
+/// app ne propose à l'utilisateur que le sous-ensemble pertinent pour son
+/// rôle (voir apps/*/reportsApi.ts / ReportIssueScreen), mais l'admin
+/// consulte tout au même endroit avec une seule liste de filtres.
+enum OrderReportCategory {
+  MISSING_ITEMS
+  WRONG_ITEMS
+  DAMAGED_OR_QUALITY
+  LATE_DELIVERY
+  DELIVERY_NOT_RECEIVED
+  RIDER_BEHAVIOR
+  CLIENT_UNREACHABLE
+  ADDRESS_ISSUE
+  PAYMENT_ISSUE
+  STOCK_UNAVAILABLE
+  TECHNICAL_ISSUE
+  OTHER
+}
+
+enum OrderReportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+}
+
 // ==================== UTILISATEURS ====================
 
 // NOTE IMPORTANT — Intégration Supabase Auth :
@@ -157,6 +185,7 @@ model User {
   addresses       Address[]
   notifications   Notification[]
   passwordResetTokens PasswordResetToken[]
+  orderReports    OrderReport[]
 }
 
 // ==================== RÉINITIALISATION DE MOT DE PASSE ====================
@@ -192,6 +221,7 @@ model Client {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   orders          Order[]
   reviews         Review[]
+  productReviews  ProductReview[]
   referredBy      Client?  @relation("Referrals", fields: [referredById], references: [id])
   referrals       Client[] @relation("Referrals")
 }
@@ -464,10 +494,16 @@ model Product {
   category    String
   isAvailable Boolean  @default(true) @map("is_available")
   isFeatured  Boolean  @default(false) @map("is_featured")
+  /// Moyenne des avis ProductReview visibles pour ce produit -- recalculee a
+  /// chaque nouvel avis (voir POST /api/orders/[orderId]/review), affichee
+  /// sur la fiche produit (ProductOptionsModal cote app Client).
+  rating      Decimal? @db.Decimal(2,1)
+  ratingCount Int      @default(0) @map("rating_count")
   options     ProductOption[]
-  
-  pro         Pro      @relation(fields: [proId], references: [id])
-  orderItems  OrderItem[]
+
+  pro            Pro             @relation(fields: [proId], references: [id])
+  orderItems     OrderItem[]
+  productReviews ProductReview[]
 }
 
 model ProductOption {
@@ -535,6 +571,12 @@ model Order {
   /// DELIVERED) -- evite d'appliquer la penalite deux fois si cette route
   /// etait rappelee par erreur sur une commande deja livree.
   latePenaltyApplied Boolean  @default(false) @map("late_penalty_applied")
+  /// true dès qu'une alerte admin "aucun livreur" a été envoyée pour cette
+  /// commande (voir cron/capacity-sweep/route.ts) -- évite de renvoyer le
+  /// même email à chaque passage du cron tant que la commande reste
+  /// bloquée ; jamais remis à false ensuite (même si un livreur finit par
+  /// accepter, ce n'est qu'un flag anti-doublon, pas un état métier).
+  riderSearchAlertSent Boolean @default(false) @map("rider_search_alert_sent")
 
   clientNote      String?     @map("client_note")
   deliveryPhoto   String?     @map("delivery_photo")
@@ -552,9 +594,13 @@ model Order {
   trackingEvents  TrackingEvent[]
   /// Nomme "reviewRecord" (pas "review") pour ne pas entrer en collision
   /// avec le champ historique Order.review (simple texte libre, conserve
-  /// tel quel) -- reviewRecord est le nouvel avis structure a 4 notes
-  /// (produit/pro/livreur/plateforme), voir model Review.
+  /// tel quel) -- reviewRecord est l'avis structure sur commercant/livreur/
+  /// plateforme (voir model Review), cree seulement si au moins une de ces
+  /// 3 cibles est notee. productReviews couvre les avis sur les produits
+  /// achetes, entierement independants (voir model ProductReview).
   reviewRecord    Review?
+  productReviews  ProductReview[]
+  reports         OrderReport[]
 }
 
 model OrderItem {
@@ -626,6 +672,89 @@ model Withdrawal {
   rider       Rider    @relation(fields: [riderId], references: [id])
 }
 
+// ==================== RÉCLAMATIONS / SIGNALEMENTS ====================
+
+/// Réclamation (Client) ou signalement de problème (Livreur, Pro) rattaché
+/// à une commande. Un seul modèle pour les 3 cas plutôt que 3 tables
+/// distinctes : la structure est identique (qui signale, quoi, message,
+/// suivi par l'admin) et seul `reporterRole` change -- ça simplifie
+/// grandement la page admin unique "Réclamations" qui doit tout centraliser
+/// (voir apps/admin/src/pages/ReportsPage.tsx). `photoUrl` est optionnel et
+/// seulement proposé côté Client/Livreur pour l'instant (apps disposant
+/// déjà d'un client Supabase Storage -- voir uploadsApi.ts de ces apps).
+model OrderReport {
+  id            String              @id @default(uuid())
+  orderId       String              @map("order_id")
+  userId        String              @map("user_id")
+  reporterRole  UserRole            @map("reporter_role")
+  category      OrderReportCategory
+  message       String              @db.Text
+  photoUrl      String?             @map("photo_url")
+  status        OrderReportStatus   @default(OPEN)
+  adminReply    String?             @db.Text @map("admin_reply")
+  repliedAt     DateTime?           @map("replied_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  order         Order               @relation(fields: [orderId], references: [id])
+  user          User                @relation(fields: [userId], references: [id])
+
+  @@map("order_reports")
+}
+
+// ==================== CONTACT SITE VITRINE ====================
+
+/// Message envoyé via le widget "Nous contacter" du site vitrine (voir
+/// apps/www ContactWidget.tsx et POST /api/contact) -- PAS de relation User
+/// contrairement à OrderReport : ce sont des visiteurs anonymes, pas
+/// forcément des comptes existants sur la plateforme. Géré et archivé
+/// entièrement depuis l'admin (voir apps/admin ContactMessagesPage.tsx),
+/// avec réponse envoyée par email au visiteur sans jamais passer par la
+/// messagerie personnelle de l'équipe.
+model ContactMessage {
+  id          String               @id @default(uuid())
+  name        String
+  email       String
+  /// Libre plutôt qu'un enum -- "Aide" / "Bug" / "Erreur" / "Demande directe"
+  /// définis côté API (voir CONTACT_TYPES dans contact/route.ts), pour
+  /// pouvoir ajuster ce libellé sans migration.
+  type        String
+  subject     String
+  message     String               @db.Text
+  status      OrderReportStatus    @default(OPEN)
+  adminReply  String?              @db.Text @map("admin_reply")
+  repliedAt   DateTime?            @map("replied_at")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  @@map("contact_messages")
+}
+
+// ==================== VILLES ACTIVÉES (LANCEMENT PROGRESSIF) ====================
+
+/// Villes/communes sur lesquelles la plateforme accepte des commandes.
+/// Distinct de DeliveryZone (qui définit le rayon de livraison propre à
+/// CHAQUE commerçant) : ServiceCity est un interrupteur global, utilisé
+/// pour ouvrir le service progressivement commune par commune (Sainte-
+/// Maxime, puis Saint-Tropez, Cogolin...) plutôt que sur tout le Golfe en
+/// même temps au lancement. Rattachée à Address.city par un rapprochement
+/// texte normalisé (voir normalizeCity() dans orders/route.ts), pas par une
+/// relation stricte : Address.city reste un champ libre, on ne voulait pas
+/// bloquer la création d'adresse si une ville n'a pas encore été ajoutée ici.
+/// N'a AUCUN effet tant que le réglage GlobalSetting
+/// "capacity.city_gating_enabled" n'est pas activé depuis Admin > Zones &
+/// Capacité (voir CapacityPage.tsx côté admin).
+model ServiceCity {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(false) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("service_cities")
+}
+
 // ==================== PARAMÈTRES ADMIN ====================
 
 model GlobalSetting {
@@ -678,30 +807,79 @@ model OpeningHours {
 
 // ==================== AVIS ====================
 
+/// Avis client sur une commande -- REDESIGN : chaque cible (commercant /
+/// livreur / plateforme) a sa PROPRE note et son PROPRE commentaire,
+/// totalement independants les uns des autres. Le client choisit librement
+/// ce qu'il note (uniquement le livreur, uniquement le commercant, tout,
+/// ou rien de tout ca s'il ne note que des produits -- voir ProductReview
+/// ci-dessous, gere separement car une commande peut contenir plusieurs
+/// produits). Avant ce redesign, un seul champ `comment` etait affiche tel
+/// quel sous les 3 cibles a la fois, ce qui n'avait pas de sens (un avis sur
+/// le gout d'un plat n'est pas un avis sur le livreur).
+///
+/// proId/riderId restent toujours renseignes depuis la commande (meme si le
+/// client n'a pas note cette cible) -- c'est la presence de proRating /
+/// riderRating / platformRating (non-null) qui indique qu'un avis a
+/// effectivement ete laisse pour cette cible precise. Une ligne Review
+/// n'est creee que si au moins une des 3 cibles est notee ; sinon (avis
+/// uniquement sur des produits) seules des lignes ProductReview existent.
 model Review {
   id          String   @id @default(uuid())
   clientId    String   @map("client_id")
   proId       String?  @map("pro_id")
   riderId     String?  @map("rider_id")
   orderId     String   @unique @map("order_id")
-  /// Note du COMMERCANT (1-5) -- nom de champ historique conserve tel quel
-  /// pour ne pas casser ReviewsPage.tsx (cote Pro) qui l'affiche deja.
-  rating      Int
-  /// Notes complementaires ajoutees pour permettre au client de noter
-  /// separement chaque aspect de la commande (voir POST
-  /// /api/orders/[orderId]/review) -- toutes optionnelles pour rester
-  /// compatibles avec d'eventuels avis anterieurs a cet ajout.
-  productRating  Int?  @map("product_rating")
-  riderRating    Int?  @map("rider_rating")
-  platformRating Int?  @map("platform_rating")
-  comment     String?
-  proReply    String?  @map("pro_reply")
+
+  /// Avis sur le COMMERCANT -- independant du livreur/de la plateforme.
+  proRating    Int?     @map("pro_rating")
+  proComment   String?  @map("pro_comment")
+  proReply     String?  @map("pro_reply")
   proRepliedAt DateTime? @map("pro_replied_at")
+
+  /// Avis sur le LIVREUR de cette commande -- independant du commercant/de la plateforme.
+  riderRating  Int?     @map("rider_rating")
+  riderComment String?  @map("rider_comment")
+
+  /// Avis sur l'application Do You Geckoo elle-meme (experience globale,
+  /// pas un commercant ni un livreur en particulier).
+  platformRating  Int?    @map("platform_rating")
+  platformComment String? @map("platform_comment")
+
   isVisible   Boolean  @default(true) @map("is_visible")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  client      Client   @relation(fields: [clientId], references: [id])
-  pro         Pro?     @relation(fields: [proId], references: [id])
-  rider       Rider?   @relation(fields: [riderId], references: [id])
-  order       Order    @relation(fields: [orderId], references: [id])
+  client Client @relation(fields: [clientId], references: [id])
+  pro    Pro?   @relation(fields: [proId], references: [id])
+  rider  Rider? @relation(fields: [riderId], references: [id])
+  order  Order  @relation(fields: [orderId], references: [id])
+}
+
+/// Avis sur un PRODUIT precis achete -- entierement independant de Review
+/// ci-dessus (pas de FK obligatoire) : le client peut noter un produit sans
+/// rien dire du commercant/livreur, ou l'inverse. Une ligne par produit
+/// note (une commande pouvant contenir plusieurs produits differents),
+/// contrairement a l'ancien Review.productRating qui etait un simple
+/// scalaire par commande, jamais reellement exploitable ni rattache a un
+/// produit precis. Alimente la note affichee sur la fiche du produit
+/// (Product.rating/ratingCount, voir POST /api/orders/[orderId]/review qui
+/// recalcule ces agregats a chaque nouvel avis).
+model ProductReview {
+  id        String   @id @default(uuid())
+  clientId  String   @map("client_id")
+  orderId   String   @map("order_id")
+  productId String   @map("product_id")
+
+  rating    Int
+  comment   String?
+  isVisible Boolean  @default(true) @map("is_visible")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client  Client  @relation(fields: [clientId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  /// Un seul avis par produit et par commande (un produit peut apparaitre
+  /// plusieurs fois dans une commande via des lignes d'options differentes
+  /// -- OrderItem -- mais un seul avis global par produit suffit).
+  @@unique([orderId, productId])
 }

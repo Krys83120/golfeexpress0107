@@ -4,8 +4,11 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { useAuthStore } from "@/store/useAuthStore";
+import { useRiderSessionStore } from "@/store/useRiderSessionStore";
+import { useRiderStatsStore } from "@/store/useRiderStatsStore";
 import { SplashLoader } from "@/components/SplashLoader";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
+import { useOnlineKeepAwake } from "@/hooks/useOnlineKeepAwake";
 import { AuthScreen } from "@/screens/AuthScreen";
 import { ResetPasswordScreen } from "@/screens/ResetPasswordScreen";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -31,6 +34,15 @@ function MainApp() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const logout = useAuthStore((s) => s.logout);
   useLocationTracking();
+  useOnlineKeepAwake();
+
+  // Précharge la note moyenne / nb d'avis dès la connexion, pour que la
+  // carte "Gains" (onglet Accueil) affiche une vraie valeur immédiatement
+  // plutôt que d'attendre que le livreur ouvre l'onglet Stats (qui appelle
+  // aussi ce même store) — voir EarningsCard.tsx.
+  useEffect(() => {
+    useRiderStatsStore.getState().load();
+  }, []);
 
   function renderTabContent() {
     switch (activeTab) {
@@ -90,6 +102,21 @@ export default function App() {
   useEffect(() => {
     restoreSession();
   }, []);
+
+  // Resynchronise le statut "en ligne" affiché avec la valeur réelle
+  // renvoyée par le serveur (profil rider) à chaque fois qu'elle change --
+  // notamment après restoreSession(). Sans ça, useRiderSessionStore.isOnline
+  // repart toujours à `false` (sa valeur initiale en mémoire) quel que soit
+  // le vrai statut en base, ce qui affichait "Hors ligne" à tort après
+  // qu'un verrouillage d'écran ait fait recharger la page (comportement
+  // courant sur mobile web/PWA), même si le livreur était toujours en ligne
+  // côté serveur.
+  const profile = useAuthStore((s) => s.profile);
+  useEffect(() => {
+    if (profile) {
+      useRiderSessionStore.setState({ isOnline: profile.isOnline });
+    }
+  }, [profile]);
 
   if (resetToken) {
     return (

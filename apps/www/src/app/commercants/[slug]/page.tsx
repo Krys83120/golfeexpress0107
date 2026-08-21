@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { fetchPublicProBySlug, fetchPublicProProducts, CATEGORY_LABELS, CATEGORY_LABELS_PLAIN } from "@/lib/publicApi";
+import {
+  fetchPublicProBySlug,
+  fetchPublicProProducts,
+  fetchPublicProReviews,
+  CATEGORY_LABELS,
+  CATEGORY_LABELS_PLAIN,
+} from "@/lib/publicApi";
 
 interface PageProps {
   params: { slug: string };
@@ -34,6 +41,7 @@ export default async function CommercantDetailPage({ params }: PageProps) {
   if (!pro) notFound();
 
   const products = await fetchPublicProProducts(pro.id);
+  const reviews = await fetchPublicProReviews(pro.id);
   const categories = Array.from(new Set(products.map((p) => p.category)));
   const city = pro.addresses?.[0]?.city;
   const categoryLabel = CATEGORY_LABELS_PLAIN[pro.category] ?? pro.category;
@@ -52,9 +60,9 @@ export default async function CommercantDetailPage({ params }: PageProps) {
               utile pour l'utilisateur et pour le maillage interne SEO
               (liens texte vers les pages catégorie/ville). */}
           <nav aria-label="Fil d'Ariane" className="mb-4 flex flex-wrap items-center gap-1.5 text-xs text-gris">
-            <a href="/commercants" className="hover:text-golfe-green hover:underline">
+            <Link href="/commercants" className="hover:text-golfe-green hover:underline">
               Commerçants
-            </a>
+            </Link>
             {city && (
               <>
                 <span>/</span>
@@ -147,6 +155,36 @@ export default async function CommercantDetailPage({ params }: PageProps) {
           <p className="mt-4 text-center text-xs text-gris">
             Pour commander, connectez-vous ou créez votre compte sur l'app Client — c'est rapide et gratuit.
           </p>
+
+          {/* Avis clients — visibles par tout visiteur, même non connecté
+              (voir GET /api/pros/[proId]/reviews, route publique). */}
+          <div className="mt-12 border-t border-gris-light pt-8">
+            <h2 className="mb-6 font-heading text-xl font-bold text-nuit">Avis clients</h2>
+            {reviews.length === 0 ? (
+              <p className="text-gris">Aucun avis pour le moment.</p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {reviews.map((review) => {
+                  const clientName = review.client?.user?.firstName ? `${review.client.user.firstName}` : "Client";
+                  return (
+                    <div key={review.id} className="rounded-2xl border border-gris-light p-4">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-nuit">{clientName}</span>
+                        <span className="text-xs font-bold text-corail">⭐ {review.proRating}</span>
+                      </div>
+                      {review.proComment && <p className="text-sm text-gris">{review.proComment}</p>}
+                      {review.proReply && (
+                        <div className="mt-2 rounded-xl bg-sable p-3">
+                          <p className="mb-0.5 text-xs font-semibold text-golfe-green">Réponse de {pro.businessName}</p>
+                          <p className="text-xs text-gris">{review.proReply}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </main>
       <Footer />

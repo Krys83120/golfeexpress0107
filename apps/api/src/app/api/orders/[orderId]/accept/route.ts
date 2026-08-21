@@ -69,7 +69,17 @@ async function postHandler(req: NextRequest, ctx: { params: { orderId: string } 
 
   const updated = await prisma.order.findUnique({
     where: { id: order.id },
-    include: { items: true, pro: true, fromAddress: true, toAddress: true },
+    include: {
+      items: true,
+      pro: true,
+      fromAddress: true,
+      toAddress: true,
+      // Sans ça, le client n'apparaît jamais dans activeDelivery dès
+      // l'acceptation — même souci que orders/[orderId]/status/route.ts, ici
+      // dès la toute première assignation plutôt qu'au changement de statut
+      // suivant.
+      client: { select: { id: true, user: { select: { firstName: true, lastName: true, phone: true } } } },
+    },
   });
 
   return NextResponse.json({ order: updated });

@@ -4,15 +4,28 @@ import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { createOrderSchema } from "@/lib/validation/orders";
 import { computeOpenStatus } from "@/lib/openingHours";
+import { generateDeliveryCode } from "@/lib/deliveryCode";
+import { normalizeCity } from "@/lib/normalizeCity";
+import { haversineDistanceKm } from "@/lib/distance";
+import {
+  isCityGatingEnabled,
+  isRiderCheckEnabled,
+  isOpeningHoursMandatoryEnabled,
+  getAvailableRidersCount,
+} from "@/lib/capacitySettings";
+import {
+  isMinOrderByDistanceEnabled,
+  getMinOrderTiers,
+  computeRequiredMinOrder,
+  getDeliveryFee,
+  getRiderPayForDistance,
+} from "@/lib/pricingSettings";
 
-// Frais fixes appliqués par la plateforme — à terme, ces valeurs devraient
-// venir de GlobalSetting (min_delivery_fee, max_delivery_fee, etc.) plutôt
-// que d'être codées ici. Laissé en constantes pour ce premier jet ; prévoir
-// un GET /api/settings qui lit GlobalSetting pour remplacer ces valeurs.
+// Frais de service — pas encore piloté depuis Admin > Tarification (voir
+// pricingSettings.ts pour les frais de livraison et la rémunération
+// livreur, qui eux le sont depuis l'échange produit du 21/08/2026).
 const SERVICE_FEE = 0.99;
-const DEFAULT_DELIVERY_FEE = 2.9;
-const PLATFORM_COMMISSION_RATE_FALLBACK = 0.15;
-const RIDER_SHARE_OF_DELIVERY_FEE = 0.8;
+const PLATFORM_COMMISSION_RATE_FALLBACK = 0.18;
 
 /**
  * POST /api/orders
@@ -46,6 +59,19 @@ async function postHandler(req: NextRequest) {
     throw new ApiError(404, "Ce commerçant n'est pas disponible actuellement.");
   }
 
+  // Horaires d'ouverture obligatoires (voir capacitySettings.ts —
+  // isOpeningHoursMandatoryEnabled) : un Pro qui n'a jamais renseigné
+  // d'horaires ne doit pas rester invisible au contrôle "ouvert/fermé"
+  // ci-dessous — distinct du message "commerçant fermé" pour que le client
+  // comprenne qu'il s'agit d'un commerçant pas encore complètement
+  // configuré, et non simplement fermé à cette heure. Désactivé par défaut.
+  if ((await isOpeningHoursMandatoryEnabled()) && pro.openingHours.length === 0) {
+    throw new ApiError(
+      400,
+      "Ce commerçant n'a pas encore renseigné ses horaires d'ouverture — commande impossible pour le moment."
+    );
+  }
+
   // Vérification serveur du statut ouvert/fermé — indispensable en plus du
   // badge affiché côté Client (qui peut être obsolète de quelques minutes
   // ou contourné) : évite qu'une commande soit créée chez un commerçant
@@ -73,6 +99,57 @@ async function postHandler(req: NextRequest) {
   }
   if (!toAddress || toAddress.userId !== auth.userId) {
     throw new ApiError(400, "Adresse de livraison invalide.");
+  }
+
+  // Distance à vol d'oiseau entre le Pro et le client — calculée une seule
+  // fois ici, réutilisée à la fois par le garde-fou optionnel "panier
+  // minimum selon la distance" et par le calcul de la rémunération livreur
+  // (voir pricingSettings.ts — getRiderPayForDistance), qui dépend
+  // désormais de la distance et non plus d'un montant fixe.
+  const distanceKm = haversineDistanceKm(
+    Number(fromAddress.lat),
+    Number(fromAddress.lng),
+    Number(toAddress.lat),
+    Number(toAddress.lng)
+  );
+
+  // Sécurisation de la capacité de livraison (voir échange produit du
+  // 20/08/2026) — deux garde-fous INDÉPENDANTS, chacun n'ayant d'effet que
+  // si son réglage GlobalSetting correspondant est activé depuis
+  // Admin > Zones & Capacité. Tant que rien n'est activé, ce bloc entier ne
+  // change rien au comportement existant (aucune commande refusée).
+  if (await isCityGatingEnabled()) {
+    // Ouverture progressive commune par commune : une commande n'est
+    // acceptée que si la ville de l'adresse de livraison correspond à une
+    // ServiceCity marquée active. Comparaison normalisée (accents/casse)
+    // plutôt qu'exacte, voir normalizeCity().
+    const cities = await prisma.serviceCity.findMany({ where: { isActive: true }, select: { name: true } });
+    const normalizedActiveCities = new Set(cities.map((c) => normalizeCity(c.name)));
+    if (!normalizedActiveCities.has(normalizeCity(toAddress.city))) {
+      throw new ApiError(
+        400,
+        `Do You Geckoo n'est pas encore disponible à ${toAddress.city}. Nous ouvrons le service commune par commune — revenez bientôt !`
+      );
+    }
+  }
+
+  if (await isRiderCheckEnabled()) {
+    // Garde-fou volontairement simple pour ce premier palier : capacité
+    // globale (tous livreurs en ligne ET sans course active en cours,
+    // toutes communes confondues), pas encore un calcul par zone avec ETA
+    // réel par livreur — voir le message livré à l'utilisateur le
+    // 20/08/2026 pour la feuille de route complète (P1/P2). Un livreur
+    // "disponible" = en ligne, KYC validé, et sans commande dans un statut
+    // actif (RIDER_ASSIGNED/PICKED_UP/IN_DELIVERY) — voir getAvailableRidersCount,
+    // seule source de vérité pour ce calcul (aussi utilisée par l'indicateur
+    // temps réel du Dashboard admin).
+    const availableRidersCount = await getAvailableRidersCount();
+    if (availableRidersCount === 0) {
+      throw new ApiError(
+        503,
+        "🦎 Nos Geckoo sont actuellement tous en livraison. Réessayez dans quelques minutes — merci de votre patience !"
+      );
+    }
   }
 
   // Récupère les produits demandés en une seule requête, vérifie qu'ils
@@ -138,13 +215,32 @@ async function postHandler(req: NextRequest) {
     };
   });
 
-  const deliveryFee = DEFAULT_DELIVERY_FEE;
+  // Panier minimum selon la distance (échange produit du 20/08/2026) —
+  // protège la marge Geckoo sur les petites commandes livrées loin
+  // (frais de livraison et part livreur restent volontairement fixes,
+  // voir pricingSettings.ts). Désactivé par défaut : ce bloc ne change rien
+  // tant que l'admin n'a pas activé "Panier minimum selon la distance"
+  // depuis Admin > Tarification.
+  if (await isMinOrderByDistanceEnabled()) {
+    const tiers = await getMinOrderTiers();
+    const requiredMinOrder = computeRequiredMinOrder(distanceKm, tiers);
+    if (subtotal < requiredMinOrder) {
+      throw new ApiError(
+        400,
+        `Panier minimum de ${requiredMinOrder.toFixed(2)} € pour une livraison à ${distanceKm.toFixed(
+          1
+        )} km — ajoutez des articles pour atteindre ce montant.`
+      );
+    }
+  }
+
+  const deliveryFee = await getDeliveryFee();
   const serviceFee = SERVICE_FEE;
   const total = subtotal + deliveryFee + serviceFee;
 
   const commissionRate = Number(pro.commissionRate ?? PLATFORM_COMMISSION_RATE_FALLBACK);
   const proEarnings = subtotal * (1 - commissionRate);
-  const riderEarnings = deliveryFee * RIDER_SHARE_OF_DELIVERY_FEE;
+  const riderEarnings = await getRiderPayForDistance(distanceKm);
   const platformEarnings = total - proEarnings - riderEarnings;
 
   const orderNumber = `GE-${Date.now().toString().slice(-8)}`;
@@ -166,6 +262,12 @@ async function postHandler(req: NextRequest) {
       riderEarnings,
       platformEarnings,
       clientNote: clientNote ?? undefined,
+      // Code à 4 chiffres que le client devra communiquer au livreur pour
+      // valider la remise — généré une fois pour toutes ici, jamais changé
+      // ensuite (voir sendOrderConfirmedEmail et TrackingScreen.tsx pour la
+      // communication au client, et orders/[orderId]/status/route.ts pour
+      // la vérification côté livreur).
+      deliveryCode: generateDeliveryCode(),
       items: { create: orderItemsData },
       statusHistory: {
         create: { status: OrderStatus.PENDING, changedBy: auth.userId },

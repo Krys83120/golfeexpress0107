@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { OrderStatus, UserRole } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
+import { stripe } from "@/lib/stripe";
 
 /**
  * GET /api/auth/me
@@ -89,5 +91,153 @@ async function patchHandler(req: NextRequest) {
   return NextResponse.json({ user });
 }
 
+// Statuts non-terminaux d'une commande -- voir OrderStatus dans
+// prisma/schema.prisma. Tant qu'une commande est dans l'un de ces états,
+// il y a un Client/Pro/Rider concret de l'autre côté qui compte dessus :
+// on ne laisse jamais quelqu'un supprimer son compte au milieu d'une
+// course, ça laisserait une commande orpheline sans personne pour la
+// finaliser ni répondre en cas de souci.
+const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
+  OrderStatus.PENDING,
+  OrderStatus.CONFIRMED,
+  OrderStatus.PREPARING,
+  OrderStatus.READY,
+  OrderStatus.RIDER_ASSIGNED,
+  OrderStatus.PICKED_UP,
+  OrderStatus.IN_DELIVERY,
+];
+
+/**
+ * DELETE /api/auth/me
+ *
+ * Suppression de compte en libre-service (Client, Pro ou Livreur -- pas
+ * Admin, volontairement exclu ci-dessous). Anonymise plutôt que de
+ * supprimer réellement les lignes User/Client/Pro/Rider : Order.client /
+ * Order.pro / Order.rider sont des relations obligatoires (pas de FK
+ * nullable), donc supprimer la ligne casserait l'historique des commandes
+ * déjà passées -- qu'on doit de toute façon conserver pour nos obligations
+ * comptables (factures, ~10 ans en France). On efface donc uniquement les
+ * champs identifiants (nom, email, téléphone, avatar, documents...) et on
+ * verrouille le compte (status suspendu -> requireAuth le bloque
+ * immédiatement, voir middleware/auth.ts), ce qui revient au même pour
+ * l'utilisateur : il ne peut plus se connecter ni être identifié.
+ *
+ * NOTE (limite connue) : ceci anonymise uniquement les données en base.
+ * Les fichiers déjà uploadés dans Supabase Storage (photo de profil,
+ * selfie de vérification, pièce d'identité, Kbis...) ne sont PAS purgés
+ * automatiquement par cette route -- à traiter séparément (script admin)
+ * si une suppression complète de ces fichiers est nécessaire.
+ */
+async function deleteHandler(req: NextRequest) {
+  const auth = await requireAuth(req);
+
+  if (auth.role === UserRole.ADMIN || auth.role === UserRole.SUPER_ADMIN) {
+    throw new ApiError(403, "La suppression de compte n'est pas disponible pour les comptes admin depuis cette route.");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: auth.userId },
+    include: { clientProfile: true, proProfile: true, riderProfile: true },
+  });
+  if (!user) {
+    throw new ApiError(404, "Utilisateur introuvable.");
+  }
+
+  const activeOrderWhere = user.clientProfile
+    ? { clientId: user.clientProfile.id, status: { in: ACTIVE_ORDER_STATUSES } }
+    : user.proProfile
+      ? { proId: user.proProfile.id, status: { in: ACTIVE_ORDER_STATUSES } }
+      : user.riderProfile
+        ? { riderId: user.riderProfile.id, status: { in: ACTIVE_ORDER_STATUSES } }
+        : null;
+
+  if (activeOrderWhere) {
+    const activeOrderCount = await prisma.order.count({ where: activeOrderWhere });
+    if (activeOrderCount > 0) {
+      throw new ApiError(
+        409,
+        "Impossible de supprimer votre compte : vous avez une commande en cours. Attendez qu'elle soit terminée (livrée ou annulée) avant de réessayer."
+      );
+    }
+  }
+
+  // Résilie tout de suite l'abonnement Stripe payant du Pro (pas de
+  // cancel_at_period_end ici, contrairement à /pros/me/subscription/cancel
+  // -- une suppression de compte doit couper l'accès immédiatement, pas
+  // continuer à facturer jusqu'à la fin de la période). Ne bloque jamais la
+  // suppression si Stripe répond mal : le compte doit pouvoir être
+  // verrouillé même si Stripe est indisponible.
+  if (user.proProfile?.stripeSubscriptionId) {
+    try {
+      await stripe.subscriptions.cancel(user.proProfile.stripeSubscriptionId);
+    } catch (err) {
+      console.error("[auth/me DELETE] échec résiliation abonnement Stripe:", err);
+    }
+  }
+
+  const anonEmail = `deleted+${user.id}@doyougeckoo.fr`;
+  const anonPhone = `deleted-${user.id}`;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        firstName: "Compte",
+        lastName: "supprimé",
+        email: anonEmail,
+        phone: anonPhone,
+        avatar: null,
+        status: "SUSPENDED",
+      },
+    });
+
+    if (user.proProfile) {
+      await tx.pro.update({
+        where: { id: user.proProfile.id },
+        data: {
+          status: "CLOSED",
+          phone: anonPhone,
+          emailContact: anonEmail,
+          managerFirstName: null,
+          managerLastName: null,
+          logo: null,
+          coverImage: null,
+          kbisUrl: null,
+          description: null,
+          instagramUrl: null,
+          facebookUrl: null,
+          tiktokUrl: null,
+          websiteUrl: null,
+          stripeSubscriptionId: null,
+          subscriptionStatus: null,
+          subscriptionType: "FREE",
+        },
+      });
+    }
+
+    if (user.riderProfile) {
+      await tx.rider.update({
+        where: { id: user.riderProfile.id },
+        data: {
+          status: "SUSPENDED",
+          isOnline: false,
+          profilePhotoUrl: null,
+          verificationSelfieUrl: null,
+          idCardFront: "",
+          idCardBack: "",
+          iban: "",
+          street: null,
+          zipCode: null,
+          city: null,
+          birthDate: null,
+        },
+      });
+    }
+  });
+
+  return NextResponse.json({ deleted: true });
+}
+
 export const GET = withErrorHandling(getHandler);
 export const PATCH = withErrorHandling(patchHandler);
+export const DELETE = withErrorHandling(deleteHandler);

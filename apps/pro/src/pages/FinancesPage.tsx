@@ -112,7 +112,7 @@ export function FinancesPage() {
           <h1 className="font-heading text-2xl font-extrabold text-nuit">Finances</h1>
           <p className="text-sm text-gris">
             Abonnement <span className="font-semibold text-golfe-green">{summary?.subscriptionType ?? "FREE"}</span> · Commission{" "}
-            {((summary?.commissionRate ?? 0.15) * 100).toFixed(0)}%
+            {((summary?.commissionRate ?? 0.18) * 100).toFixed(0)}%
           </p>
         </div>
       </div>

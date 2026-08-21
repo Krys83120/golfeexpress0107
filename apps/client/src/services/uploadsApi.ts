@@ -58,3 +58,37 @@ export async function uploadAvatar(userId: string, localUri: string): Promise<st
 export function withCacheBust(url: string): string {
   return `${url}?t=${Date.now()}`;
 }
+
+/**
+ * Upload une photo jointe à une réclamation (voir ReportIssueScreen.tsx et
+ * POST /api/reports). Bucket dédié "report-photos" (À CRÉER manuellement
+ * dans Supabase Storage, voir README) — séparé des autres buckets car ces
+ * photos ne concernent ni le profil ni la preuve de livraison. Chemin
+ * "{orderId}/{timestamp}.ext" (pas d'upsert : une commande peut avoir
+ * plusieurs réclamations, chacune avec sa propre photo).
+ */
+export async function uploadReportPhoto(orderId: string, localUri: string): Promise<string> {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+
+  if (blob.size > MAX_FILE_SIZE_BYTES) {
+    throw new UploadError("Photo trop lourde (2 Mo maximum).");
+  }
+
+  const ext = extensionFromUri(localUri);
+  const contentType = blob.type || mimeTypeForExtension(ext);
+
+  const supabase = getSupabaseClient();
+  const path = `${orderId}/${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage.from("report-photos").upload(path, blob, {
+    contentType,
+  });
+
+  if (error) {
+    throw new UploadError(`Échec de l'upload : ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("report-photos").getPublicUrl(path);
+  return data.publicUrl;
+}

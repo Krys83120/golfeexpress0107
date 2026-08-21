@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { fetchWwwLogoUrl } from "@/lib/brandingApi";
+import { CookiePreferencesLink } from "@/components/CookiePreferencesLink";
 
 /**
  * Composant serveur volontairement (comme Nav.tsx / JoinUs.tsx) — récupère
@@ -15,14 +17,15 @@ export async function Footer() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="grid gap-10 sm:grid-cols-4">
           <div className="sm:col-span-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- logo dynamique (URL Supabase Storage), pas un asset local optimisable par next/image
-                <img src={logoUrl} alt="Do You Geckoo" className="h-14 w-14 object-contain" />
+                // Taille x6 par rapport à l'originale (h-14/w-14 = 56px, puis x3 puis encore x2 sur demandes successives).
+                // Le libellé "Do You Geckoo" à côté a été retiré : le logo contient déjà le nom, à cette taille il se suffit à lui-même.
+                <img src={logoUrl} alt="Do You Geckoo" className="h-auto w-[403px] object-contain" />
               ) : (
-                <span className="text-6xl">🦎</span>
+                <span className="text-[360px] leading-none">🦎</span>
               )}
-              <span className="notranslate font-heading text-lg font-extrabold text-white" translate="no">Do You Geckoo</span>
             </div>
             <p className="mt-4 max-w-sm text-sm">
               La livraison locale du Golfe de Saint-Tropez. Créée pour que les commerçants gardent plus de marge et
@@ -36,24 +39,25 @@ export async function Footer() {
               <li><a href="https://commander.doyougeckoo.fr" className="hover:text-white">Espace Client</a></li>
               <li><a href="https://pro.doyougeckoo.fr" className="hover:text-white">Espace Commerçant</a></li>
               <li><a href="https://livreur.doyougeckoo.fr" className="hover:text-white">Espace Livreur</a></li>
-              <li><a href="https://admin.doyougeckoo.fr" className="hover:text-white">Espace Admin</a></li>
             </ul>
           </div>
 
           <div>
             <p className="notranslate mb-4 text-xs font-bold uppercase tracking-wide text-white/40" translate="no">Do You Geckoo</p>
             <ul className="space-y-2.5 text-sm">
-              <li><a href="/#comment-ca-marche" className="hover:text-white">Comment ça marche</a></li>
-              <li><a href="/#devenir-partenaire" className="hover:text-white">Devenir partenaire</a></li>
-              <li><a href="#" className="hover:text-white">Conditions générales</a></li>
-              <li><a href="#" className="hover:text-white">Confidentialité</a></li>
+              <li><Link href="/comment-ca-marche" className="hover:text-white">Comment ça marche</Link></li>
+              <li><Link href="/devenir-partenaire" className="hover:text-white">Devenir partenaire</Link></li>
+              <li><Link href="/devenir-partenaire#livreurs" className="hover:text-white">Devenir livreur</Link></li>
+              <li><Link href="/conditions-generales" className="hover:text-white">Conditions générales</Link></li>
+              <li><Link href="/confidentialite" className="hover:text-white">Confidentialité</Link></li>
+              <li><CookiePreferencesLink /></li>
             </ul>
           </div>
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-xs sm:flex-row">
           <p>© {new Date().getFullYear()} Do You Geckoo — Sainte-Maxime, Golfe de Saint-Tropez</p>
-          <p>Fait avec 🦎 sur la Côte d'Azur</p>
+          <p>Fait avec ♥️ dans le Golfe de Saint-Tropez</p>
         </div>
       </div>
     </footer>

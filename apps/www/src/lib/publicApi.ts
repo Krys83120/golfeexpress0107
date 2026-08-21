@@ -107,6 +107,33 @@ export async function fetchPublicProProducts(proId: string): Promise<PublicProdu
   }
 }
 
+export interface PublicReview {
+  id: string;
+  proRating?: number | null;
+  proComment?: string | null;
+  proReply?: string | null;
+  createdAt: string;
+  client?: { user?: { firstName?: string; lastName?: string } };
+}
+
+/**
+ * Avis clients visibles pour un commerçant — mêmes avis que ceux affichés
+ * côté app Client sur la fiche commerçant (GET /api/pros/[proId]/reviews,
+ * route publique). Affichés sur la fiche commerçant du site vitrine pour
+ * que les visiteurs non connectés puissent aussi les consulter avant de
+ * créer un compte.
+ */
+export async function fetchPublicProReviews(proId: string): Promise<PublicReview[]> {
+  try {
+    const res = await fetchWithTimeout(`${API_URL}/api/pros/${proId}/reviews`, { next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.reviews ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export interface PublicPartnerPack {
   tier: "FREE" | "PREMIUM" | "PREMIUM_PLUS";
   name: string;
@@ -130,6 +157,29 @@ export async function fetchPublicPartnerPacks(): Promise<PublicPartnerPack[]> {
     return data.packs ?? [];
   } catch {
     return [];
+  }
+}
+
+export interface PlatformReviewStats {
+  average: number | null;
+  count: number;
+}
+
+/**
+ * Note moyenne + nombre d'avis clients réels sur l'application Do You
+ * Geckoo -- alimente le badge "Avis vérifiés" du site vitrine
+ * (VerifiedReviewsBadge.tsx). Volontairement de VRAIES données maison
+ * plutôt qu'un badge de certification tiers auquel la plateforme n'est pas
+ * abonnée.
+ */
+export async function fetchPlatformReviewStats(): Promise<PlatformReviewStats> {
+  try {
+    const res = await fetchWithTimeout(`${API_URL}/api/reviews/platform-stats`, { next: { revalidate: 300 } });
+    if (!res.ok) return { average: null, count: 0 };
+    const data = await res.json();
+    return { average: data.average ?? null, count: data.count ?? 0 };
+  } catch {
+    return { average: null, count: 0 };
   }
 }
 

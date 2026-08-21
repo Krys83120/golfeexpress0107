@@ -1,5 +1,5 @@
 import { apiFetch } from "@/services/apiClient";
-import type { Order, Rider } from "@golfeexpress/types";
+import type { Order, Rider, Review } from "@golfeexpress/types";
 
 /** GET /api/riders/me/available-orders */
 export async function fetchAvailableOrders(): Promise<Order[]> {
@@ -106,4 +106,10 @@ export interface RiderStats {
 /** GET /api/riders/me/stats */
 export async function fetchMyStats(): Promise<RiderStats> {
   return apiFetch<RiderStats>("/api/riders/me/stats");
+}
+
+/** GET /api/riders/me/reviews */
+export async function fetchMyReviews(): Promise<Review[]> {
+  const data = await apiFetch<{ reviews: Review[] }>("/api/riders/me/reviews");
+  return data.reviews;
 }

@@ -13,6 +13,8 @@ interface OrderEmailData {
   items?: OrderEmailItem[];
   /** Utilisé pour deep-linker vers l'écran de notation (voir sendOrderDeliveredEmail) — optionnel pour ne pas casser les appels existants qui n'en ont pas besoin. */
   orderId?: string;
+  /** Code à communiquer au livreur pour valider la remise — voir Order.deliveryCode. */
+  deliveryCode?: string | null;
 }
 
 const TRACKING_URL = `${PORTAL_URLS.client}?tab=orders`;
@@ -28,6 +30,15 @@ export async function sendOrderConfirmedEmail(email: string, order: OrderEmailDa
       confirmée, le paiement de <strong>${formatEuros(order.total)}</strong> a bien été accepté.
       ${order.proBusinessName} va maintenant la préparer.
     </p>
+    ${
+      order.deliveryCode
+        ? infoBox(
+            `🔑 Code de remise à donner à votre livreur pour valider la livraison :
+             <strong style="font-size:20px;letter-spacing:2px;">${order.deliveryCode}</strong>`,
+            "green"
+          )
+        : ""
+    }
     ${button("Suivre ma commande", TRACKING_URL)}
   `);
   await sendEmail(email, `Commande ${order.orderNumber} confirmée`, html);
@@ -58,6 +69,15 @@ export async function sendOrderOnTheWayEmail(email: string, order: OrderEmailDat
       Votre commande <strong>${order.orderNumber}</strong> a été récupérée chez ${order.proBusinessName} et arrive
       chez vous. Suivez le trajet en direct depuis l'app.
     </p>
+    ${
+      order.deliveryCode
+        ? infoBox(
+            `🔑 Rappel — code de remise à donner à votre livreur :
+             <strong style="font-size:20px;letter-spacing:2px;">${order.deliveryCode}</strong>`,
+            "green"
+          )
+        : ""
+    }
     ${button("Suivre la livraison en direct", TRACKING_URL)}
   `);
   await sendEmail(email, `Votre commande ${order.orderNumber} arrive`, html);

@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, Pressable, TextInput, StyleSheet, Linking, Platform } from "react-native";
 import { useKeepAwake } from "expo-keep-awake";
-import { OrderStatus } from "@golfeexpress/types";
+import { OrderStatus, OrderReportCategory } from "@golfeexpress/types";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
 import { getCategoryEmoji } from "@/services/categoryVisuals";
 import { DocumentPhotoField } from "@/components/DocumentPhotoField";
-import { uploadDeliveryProof } from "@/services/uploadsApi";
+import { uploadDeliveryProof, uploadReportPhoto } from "@/services/uploadsApi";
+import { createReport } from "@/services/reportsApi";
+
+const REPORT_CATEGORY_OPTIONS: Array<{ value: OrderReportCategory; label: string }> = [
+  { value: "CLIENT_UNREACHABLE" as OrderReportCategory, label: "Client injoignable" },
+  { value: "ADDRESS_ISSUE" as OrderReportCategory, label: "Problème d'adresse" },
+  { value: "DAMAGED_OR_QUALITY" as OrderReportCategory, label: "Article endommagé" },
+  { value: "TECHNICAL_ISSUE" as OrderReportCategory, label: "Problème technique" },
+  { value: "OTHER" as OrderReportCategory, label: "Autre" },
+];
 
 const STEP_LABELS = ["Assignée", "Récupérée", "En route", "Livrée"];
 const DELIVERY_FLOW: OrderStatus[] = [
@@ -68,6 +77,17 @@ export function CurrentDeliveryCard() {
   const [proofPhotoUrl, setProofPhotoUrl] = useState<string | null>(null);
   const [proofCode, setProofCode] = useState("");
 
+  // Signalement d'un problème sur la livraison en cours — indépendant du
+  // flux de statut ci-dessus, peut être ouvert à tout moment pendant la
+  // livraison (client injoignable, adresse introuvable...).
+  const [showReportPanel, setShowReportPanel] = useState(false);
+  const [reportCategory, setReportCategory] = useState<OrderReportCategory | null>(null);
+  const [reportMessage, setReportMessage] = useState("");
+  const [reportPhotoUrl, setReportPhotoUrl] = useState<string | null>(null);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
   // Recalcule l'affichage du compte à rebours toutes les 15s — un simple
   // compteur de rendu suffit, formatCountdown relit l'heure actuelle à
   // chaque appel.
@@ -118,9 +138,19 @@ export function CurrentDeliveryCard() {
 
   async function handleAction() {
     // Dernière étape (marquer livré) : on demande d'abord une preuve de
-    // remise (photo et/ou code) plutôt que de clôturer directement.
+    // remise (photo optionnelle + code obligatoire) plutôt que de clôturer
+    // directement.
     if (isFinalStep && !showProofPanel) {
       setShowProofPanel(true);
+      return;
+    }
+
+    // Le code est désormais obligatoire pour valider une livraison (le
+    // serveur le refuserait de toute façon — voir status/route.ts) : on le
+    // vérifie ici en plus pour donner un retour immédiat, sans aller-retour
+    // réseau inutile.
+    if (isFinalStep && !proofCode.trim()) {
+      setError("Merci de saisir le code de remise donné par le client avant de valider la livraison.");
       return;
     }
 
@@ -147,6 +177,37 @@ export function CurrentDeliveryCard() {
     setProofPhotoUrl(url);
   }
 
+  async function handleUploadReportPhoto(localUri: string) {
+    const url = await uploadReportPhoto(activeDelivery!.id, localUri);
+    setReportPhotoUrl(url);
+  }
+
+  async function handleSubmitReport() {
+    if (!reportCategory) {
+      setReportError("Merci de choisir une catégorie.");
+      return;
+    }
+    if (!reportMessage.trim()) {
+      setReportError("Merci de décrire le problème.");
+      return;
+    }
+    setReportError(null);
+    setReportSubmitting(true);
+    try {
+      await createReport({
+        orderId: activeDelivery!.id,
+        category: reportCategory,
+        message: reportMessage.trim(),
+        photoUrl: reportPhotoUrl ?? undefined,
+      });
+      setReportSubmitted(true);
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "Impossible d'envoyer le signalement pour le moment.");
+    } finally {
+      setReportSubmitting(false);
+    }
+  }
+
   function handleDirections() {
     if (!destinationAddress) return;
     openDirections(Number(destinationAddress.lat), Number(destinationAddress.lng), destinationAddress.street);
@@ -156,10 +217,74 @@ export function CurrentDeliveryCard() {
     <View style={[styles.card, { backgroundColor: "#1A1A2E" }]}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>🛵 Livraison en cours</Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{activeDelivery.orderNumber}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Pressable
+            onPress={() => {
+              setShowReportPanel((v) => !v);
+              setReportSubmitted(false);
+            }}
+            hitSlop={6}
+          >
+            <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>🚩 Signaler</Text>
+          </Pressable>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{activeDelivery.orderNumber}</Text>
+          </View>
         </View>
       </View>
+
+      {showReportPanel && (
+        <View style={styles.reportPanel}>
+          {reportSubmitted ? (
+            <View style={{ alignItems: "center", paddingVertical: 8 }}>
+              <Text style={{ fontSize: 28 }}>✅</Text>
+              <Text style={styles.reportSubmittedText}>Signalement envoyé — notre équipe est prévenue.</Text>
+              <Pressable onPress={() => setShowReportPanel(false)} style={{ marginTop: 8 }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#2ECC71" }}>Fermer</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.reportTitle}>Signaler un problème</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                {REPORT_CATEGORY_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setReportCategory(opt.value)}
+                    style={[styles.reportChip, reportCategory === opt.value && styles.reportChipActive]}
+                  >
+                    <Text
+                      style={[styles.reportChipText, reportCategory === opt.value && styles.reportChipTextActive]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                value={reportMessage}
+                onChangeText={setReportMessage}
+                placeholder="Décrivez le problème..."
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                multiline
+                numberOfLines={3}
+                style={styles.reportInput}
+              />
+              <View style={[styles.proofPhotoWrap, { marginTop: 8 }]}>
+                <DocumentPhotoField label="Photo (optionnel)" onUpload={handleUploadReportPhoto} />
+              </View>
+              {reportError && <Text style={styles.reportErrorText}>{reportError}</Text>}
+              <Pressable
+                onPress={handleSubmitReport}
+                disabled={reportSubmitting}
+                style={[styles.reportSubmitBtn, { opacity: reportSubmitting ? 0.6 : 1 }]}
+              >
+                <Text style={styles.reportSubmitText}>{reportSubmitting ? "Envoi..." : "Envoyer le signalement"}</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      )}
 
       <View style={styles.proRow}>
         <View style={styles.iconCircle}>
@@ -232,17 +357,19 @@ export function CurrentDeliveryCard() {
 
       {showProofPanel && (
         <View style={styles.proofPanel}>
-          <Text style={styles.proofTitle}>Preuve de remise (optionnel)</Text>
+          <Text style={styles.proofTitle}>Preuve de remise</Text>
           <View style={styles.proofPhotoWrap}>
-            <DocumentPhotoField label="Photo de la remise" onUpload={handleUploadProof} />
+            <DocumentPhotoField label="Photo de la remise (optionnel)" onUpload={handleUploadProof} />
           </View>
-          <Text style={styles.proofLabel}>Code de remise donné par le client</Text>
+          <Text style={styles.proofLabel}>Code de remise donné par le client (obligatoire)</Text>
           <TextInput
             value={proofCode}
             onChangeText={setProofCode}
             placeholder="Ex: 4821"
             placeholderTextColor="rgba(255,255,255,0.4)"
             style={styles.proofInput}
+            keyboardType="number-pad"
+            maxLength={4}
           />
         </View>
       )}
@@ -319,4 +446,31 @@ const styles = StyleSheet.create({
   },
   actionBtn: { alignItems: "center", borderRadius: 8, backgroundColor: "#2ECC71", paddingVertical: 14 },
   actionText: { fontWeight: "700", color: "white" },
+  reportPanel: { marginBottom: 16, borderRadius: 8, backgroundColor: "rgba(255,107,53,0.1)", padding: 12 },
+  reportTitle: { marginBottom: 10, fontSize: 13, fontWeight: "700", color: "white" },
+  reportChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  reportChipActive: { borderColor: "#FF6B35", backgroundColor: "rgba(255,107,53,0.25)" },
+  reportChipText: { fontSize: 11, fontWeight: "600", color: "rgba(255,255,255,0.7)" },
+  reportChipTextActive: { color: "white", fontWeight: "700" },
+  reportInput: {
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: "white",
+    fontSize: 13,
+    textAlignVertical: "top",
+    minHeight: 70,
+  },
+  reportErrorText: { marginTop: 8, fontSize: 12, color: "#FCA5A5" },
+  reportSubmitBtn: { marginTop: 10, alignItems: "center", borderRadius: 8, backgroundColor: "#FF6B35", paddingVertical: 12 },
+  reportSubmitText: { fontSize: 13, fontWeight: "700", color: "white" },
+  reportSubmittedText: { marginTop: 6, textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.85)" },
 });

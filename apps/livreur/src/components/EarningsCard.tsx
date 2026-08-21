@@ -1,11 +1,18 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
+import { useRiderStatsStore } from "@/store/useRiderStatsStore";
 
 export function EarningsCard() {
   const todayEarnings = useRiderSessionStore((s) => s.todayEarnings);
   const todayDeliveries = useRiderSessionStore((s) => s.todayDeliveries);
-  const todayRating = useRiderSessionStore((s) => s.todayRating);
+  // Note moyenne réelle (voir GET /api/riders/me/stats) plutôt que l'ancien
+  // champ useRiderSessionStore.todayRating, qui restait toujours à 0 faute
+  // de route API au moment où il a été écrit — voir StatsScreen qui charge
+  // déjà ces stats, et App.tsx qui les précharge dès la connexion pour que
+  // cette carte affiche une vraie valeur sans attendre que le livreur
+  // ouvre l'onglet Stats.
+  const rating = useRiderStatsStore((s) => s.stats?.rating ?? null);
   const onlineSinceMinutes = useRiderSessionStore((s) => s.onlineSinceMinutes);
 
   const hours = Math.floor(onlineSinceMinutes / 60);
@@ -24,7 +31,7 @@ export function EarningsCard() {
 
       <View style={styles.statsRow}>
         <EarningsStat value={String(todayDeliveries)} label="Livraisons" />
-        <EarningsStat value={todayRating.toFixed(1)} label="Note moyenne" />
+        <EarningsStat value={rating != null ? rating.toFixed(1) : "—"} label="Note moyenne" />
         <EarningsStat value={`${hours}h${minutes.toString().padStart(2, "0")}`} label="En ligne" />
       </View>
     </View>

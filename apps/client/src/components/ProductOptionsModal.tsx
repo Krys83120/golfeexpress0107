@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView, Image, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import type { Product, ProductOption } from "@golfeexpress/types";
+import type { Product, ProductOption, ProductReview } from "@golfeexpress/types";
+import { fetchProductReviews } from "@/services/prosApi";
 
 interface ProductOptionsModalProps {
   product: Product;
@@ -35,6 +36,29 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
     (url): url is string => !!url && url.startsWith("http")
   );
   const [activePhoto, setActivePhoto] = useState<string | undefined>(allPhotos[0]);
+
+  // Avis clients sur CE produit précisément (indépendants des avis sur le
+  // commerçant) — voir GET /api/products/[productId]/reviews.
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [reviewsStatus, setReviewsStatus] = useState<"loading" | "loaded" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    setReviewsStatus("loading");
+    fetchProductReviews(product.id)
+      .then((data) => {
+        if (!cancelled) {
+          setReviews(data);
+          setReviewsStatus("loaded");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setReviewsStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [product.id]);
 
   function toggleChoice(group: ProductOption, choiceName: string) {
     setSelection((prev) => {
@@ -115,7 +139,17 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
           )}
 
           <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-            <Text style={styles.title}>{product.name}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={styles.title}>{product.name}</Text>
+              {product.rating != null && (product.ratingCount ?? 0) > 0 && (
+                <View style={styles.ratingBadge}>
+                  <Text style={{ fontSize: 11 }}>⭐</Text>
+                  <Text style={styles.ratingBadgeText}>
+                    {Number(product.rating).toFixed(1)} ({product.ratingCount})
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.price}>{basePrice.toFixed(2).replace(".", ",")} €</Text>
             {product.description && <Text style={styles.description}>{product.description}</Text>}
 
@@ -165,6 +199,29 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
                 </View>
               );
             })}
+
+            {/* Avis clients sur ce produit précisément — indépendants des
+                avis sur le commerçant (voir GET /api/products/[productId]/reviews). */}
+            <View style={{ marginTop: 24, borderTopWidth: 1, borderTopColor: "#F3F4F6", paddingTop: 16 }}>
+              <Text style={styles.groupName}>Avis sur ce produit</Text>
+              {reviewsStatus === "loading" && (
+                <Text style={{ marginTop: 8, fontSize: 12, color: "#6B7280" }}>Chargement des avis...</Text>
+              )}
+              {reviewsStatus === "loaded" && reviews.length === 0 && (
+                <Text style={{ marginTop: 8, fontSize: 12, color: "#6B7280" }}>Aucun avis pour le moment.</Text>
+              )}
+              {reviews.map((review) => (
+                <View key={review.id} style={styles.productReviewCard}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#1A1A2E" }}>
+                      {review.client?.user?.firstName ?? "Client"}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: "#FF6B35" }}>⭐ {review.rating}</Text>
+                  </View>
+                  {review.comment && <Text style={{ marginTop: 4, fontSize: 13, color: "#1A1A2E" }}>{review.comment}</Text>}
+                </View>
+              ))}
+            </View>
           </View>
         </ScrollView>
 
@@ -206,6 +263,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.9)",
   },
   title: { fontSize: 20, fontWeight: "800", color: "#1A1A2E" },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    borderRadius: 999,
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  ratingBadgeText: { fontSize: 11, fontWeight: "700", color: "#FF6B35" },
+  productReviewCard: { marginTop: 10, borderRadius: 8, backgroundColor: "#F9FAFB", padding: 12 },
   price: { marginTop: 4, fontSize: 15, color: "#6B7280" },
   description: { marginTop: 8, fontSize: 13, lineHeight: 19, color: "#6B7280" },
   group: { marginTop: 20 },

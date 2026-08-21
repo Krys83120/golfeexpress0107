@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { StatCard } from "../components/StatCard";
+import { CapacityStatusCard } from "@/components/CapacityStatusCard";
 import { GlobalRevenueChart } from "@/components/GlobalRevenueChart";
 import { LiveMapCard } from "@/components/LiveMapCard";
 import { ValidationCard } from "@/components/ValidationCard";
@@ -7,6 +8,8 @@ import { SettingsTable } from "@/components/SettingsTable";
 import { SupportedCitiesGrid } from "@/components/SupportedCitiesGrid";
 import { useAdminDashboardStore } from "@/store/useAdminDashboardStore";
 import { useAdminSettingsStore } from "@/store/useAdminSettingsStore";
+import { useAdminOrdersStore } from "@/store/useAdminOrdersStore";
+import { OrderStatusSummary } from "@/components/OrderStatusSummary";
 import { fetchAdminStats, fetchSupportedCities, fetchLiveRiders, type AdminStats, type SupportedCity, type LiveRiderPosition } from "@/services/adminDashboardApi";
 
 interface DashboardPageProps {
@@ -22,6 +25,9 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const settings = useAdminSettingsStore((s) => s.settings);
   const loadSettings = useAdminSettingsStore((s) => s.loadSettings);
 
+  const orders = useAdminOrdersStore((s) => s.orders);
+  const loadOrders = useAdminOrdersStore((s) => s.loadOrders);
+
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [cities, setCities] = useState<SupportedCity[]>([]);
   const [liveRiders, setLiveRiders] = useState<LiveRiderPosition[]>([]);
@@ -30,6 +36,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   useEffect(() => {
     loadPendingValidations();
     loadSettings();
+    loadOrders();
 
     Promise.all([fetchAdminStats(), fetchSupportedCities(), fetchLiveRiders()])
       .then(([statsData, citiesData, ridersData]) => {
@@ -39,11 +46,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       })
       .catch((err) => setLoadError(err instanceof Error ? err.message : "Impossible de charger le dashboard."));
 
-    // Rafraîchit la carte live toutes les 15s. TODO: remplacer par une
-    // souscription Supabase Realtime (postgres_changes sur Rider) — voir
-    // apps/api/REALTIME.md.
+    // Rafraîchit la carte live et les commandes toutes les 15s. TODO:
+    // remplacer par une souscription Supabase Realtime (postgres_changes
+    // sur Rider / Order) — voir apps/api/REALTIME.md.
     const interval = setInterval(() => {
       fetchLiveRiders().then(setLiveRiders).catch(() => {});
+      loadOrders();
     }, 15000);
     return () => clearInterval(interval);
   }, []);
@@ -85,6 +93,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           accentColor="#9C27B0"
         />
       </div>
+
+      {/* CAPACITÉ LIVREURS EN TEMPS RÉEL */}
+      <CapacityStatusCard />
+
+      {/* COMMANDES PAR STATUT */}
+      <OrderStatusSummary orders={orders} onViewAll={() => onNavigate?.("orders")} />
 
       {/* CHART + LIVE MAP */}
       <div className="mb-6 grid grid-cols-2 gap-4">

@@ -38,6 +38,15 @@ async function postHandler(req: NextRequest, ctx: { params: { riderId: string } 
     throw new ApiError(400, "Ce livreur n'est pas en attente de validation.");
   }
 
+  // Photo de profil obligatoire (visible par les clients pendant la
+  // livraison, voir apps/client TrackingScreen) — verrou serveur en plus du
+  // blocage côté app livreur (RiderKycScreen) et du bouton désactivé côté
+  // admin (RiderDetailModal), pour empêcher toute validation contournant
+  // ces deux contrôles front.
+  if (parsed.data.approve && !rider.profilePhotoUrl) {
+    throw new ApiError(400, "Photo de profil manquante : impossible de valider ce livreur sans elle (obligatoire).");
+  }
+
   const updated = await prisma.rider.update({
     where: { id: rider.id },
     data: {

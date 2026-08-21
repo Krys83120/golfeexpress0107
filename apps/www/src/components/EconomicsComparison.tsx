@@ -34,8 +34,8 @@ export function EconomicsComparison() {
             <p className="mb-1 text-xs font-bold uppercase tracking-wide text-golfe-green">Notre modèle</p>
             <p className="notranslate mb-6 font-heading text-xl font-bold text-white" translate="no">Do You Geckoo</p>
 
-            <EarningsBar label="Commission plateforme" amountLabel="10 à 15%" widthPct={15} color="#2ECC71" />
-            <EarningsBar label="Le livreur touche" amountLabel="≈ 7-8 €" widthPct={38} color="#2ECC71" />
+            <EarningsBar label="Commission plateforme" amountLabel="12 à 18%" widthPct={18} color="#2ECC71" />
+            <EarningsBar label="Le livreur touche" amountLabel="≈ 5-10 €" widthPct={38} color="#2ECC71" />
 
             <p className="mt-6 text-sm text-white/70">
               Le taux exact dépend du forfait du commerçant (voir nos offres) — toujours pensé pour rester

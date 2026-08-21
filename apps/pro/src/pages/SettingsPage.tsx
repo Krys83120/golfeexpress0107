@@ -14,6 +14,8 @@ import { ImageUploadField } from "@/components/ImageUploadField";
 import { uploadProAsset, uploadProKbis, withCacheBust } from "@/services/uploadsApi";
 import { getCategoryEmoji, CATEGORY_LABELS } from "@/services/categoryVisuals";
 import { MapView, type MapPin } from "@/components/MapView";
+import { deleteMyAccount } from "@/services/accountApi";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
@@ -28,6 +30,8 @@ export function SettingsPage() {
   const [hours, setHours] = useState<OpeningHours[]>([]);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const logout = useAuthStore((s) => s.logout);
 
   // Champs contrôlés du formulaire "Informations générales"
   const [businessName, setBusinessName] = useState("");
@@ -359,6 +363,27 @@ export function SettingsPage() {
       setError(err instanceof Error ? err.message : "Impossible d'enregistrer les horaires.");
     } finally {
       setSavingHours(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    const confirmed = window.confirm(
+      "Supprimer définitivement votre compte commerçant ? Votre boutique sera fermée et votre abonnement résilié immédiatement. Cette action est irréversible."
+    );
+    if (!confirmed) return;
+
+    setDeletingAccount(true);
+    setError(null);
+    try {
+      await deleteMyAccount();
+      logout();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de supprimer votre compte. Réessayez dans un instant."
+      );
+      setDeletingAccount(false);
     }
   }
 
@@ -706,7 +731,16 @@ export function SettingsPage() {
               className="mt-0.5 h-4 w-4 accent-golfe-green"
             />
             <span className="text-sm text-nuit">
-              J'accepte les Conditions Générales d'Utilisation et de Vente de Do You Geckoo.
+              J'accepte les{" "}
+              <a
+                href="https://www.doyougeckoo.fr/conditions-generales"
+                target="_blank"
+                rel="noreferrer"
+                className="text-golfe-green underline"
+              >
+                Conditions Générales d'Utilisation et de Vente
+              </a>{" "}
+              de Do You Geckoo.
               {termsAcceptedAt && (
                 <span className="block text-xs text-gris">
                   Acceptées le {new Date(termsAcceptedAt).toLocaleDateString("fr-FR")}.
@@ -951,6 +985,22 @@ export function SettingsPage() {
           className="mt-5 rounded-sm bg-golfe-green px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
         >
           {savingHours ? "Enregistrement..." : "Enregistrer les modifications"}
+        </button>
+      </div>
+
+      <div className="mt-6 rounded border-2 border-red-100 bg-red-50 p-5">
+        <h3 className="mb-1 font-heading text-base font-bold text-red-600">Zone de danger</h3>
+        <p className="mb-4 text-sm text-red-600/80">
+          La suppression de votre compte ferme votre boutique et résilie immédiatement votre abonnement en cours.
+          Vos commandes déjà passées sont conservées (obligations comptables) mais anonymisées. Action impossible si
+          une commande est actuellement en cours.
+        </p>
+        <button
+          onClick={handleDeleteAccount}
+          disabled={deletingAccount}
+          className="rounded-sm border-2 border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-60"
+        >
+          {deletingAccount ? "Suppression..." : "Supprimer mon compte"}
         </button>
       </div>
     </div>

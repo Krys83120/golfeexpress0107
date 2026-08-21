@@ -116,10 +116,18 @@ export function RidersPage() {
                   <tr key={rider.id} className="relative border-b border-gris-light last:border-0">
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gris-light text-sm font-bold text-nuit">
-                          {rider.user.firstName[0]}
-                          {rider.user.lastName[0]}
-                        </div>
+                        {rider.profilePhotoUrl ? (
+                          <img
+                            src={rider.profilePhotoUrl}
+                            alt=""
+                            className="h-9 w-9 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gris-light text-sm font-bold text-nuit">
+                            {rider.user.firstName[0]}
+                            {rider.user.lastName[0]}
+                          </div>
+                        )}
                         <span className="text-sm font-semibold text-nuit">
                           {rider.user.firstName} {rider.user.lastName}
                         </span>

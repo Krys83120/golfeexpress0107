@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, StyleSheet, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Rider, RiderProfessionalStatus } from "@golfeexpress/types";
 import { VehicleType } from "@golfeexpress/types";
 import { fetchMyRiderProfile, updateMyRiderProfile } from "@/services/riderProfileApi";
-import { uploadKycDocument } from "@/services/uploadsApi";
+import { uploadKycDocument, uploadRiderProfilePhoto } from "@/services/uploadsApi";
 import { useAuthStore } from "@/store/useAuthStore";
 import { DocumentPhotoField } from "@/components/DocumentPhotoField";
 import { VEHICLE_LABELS } from "@/services/vehicleLabels";
@@ -87,6 +87,16 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
     setSaving(true);
     setMessage(null);
     try {
+      // Photo de profil obligatoire avant d'accepter les CGU/CGV (soumission
+      // du dossier pour validation admin) — voir aussi le contrôle côté
+      // serveur dans /api/admin/riders/[riderId]/validate qui bloque
+      // l'approbation admin si profilePhotoUrl est toujours absent.
+      if (acceptTerms && !rider?.termsAcceptedAt && !rider?.profilePhotoUrl) {
+        setMessage("❌ La photo de profil est obligatoire avant de soumettre votre dossier.");
+        setSaving(false);
+        return;
+      }
+
       const updated = await updateMyRiderProfile({
         birthDate: birthDate || null,
         street: street || null,
@@ -203,6 +213,26 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
           </Field>
         </Section>
 
+        <Section title="Photo de profil">
+          <DocumentPhotoField
+            label="Photo de profil *"
+            hint="Obligatoire — c'est la photo affichée à vos clients pendant la livraison (écran de suivi de commande). Choisissez une photo nette et présentable de votre visage."
+            currentImageUrl={rider?.profilePhotoUrl}
+            isSelfie
+            onUpload={async (uri) => {
+              if (!user) return;
+              const url = await uploadRiderProfilePhoto(user.id, uri);
+              const updated = await updateMyRiderProfile({ profilePhotoUrl: url });
+              setRider(updated);
+            }}
+          />
+          {!rider?.profilePhotoUrl && (
+            <Text style={{ fontSize: 12, color: "#E74C3C", marginTop: -8 }}>
+              Non fournie — requise pour la validation de votre dossier par l'équipe Do You Geckoo.
+            </Text>
+          )}
+        </Section>
+
         <Section title="Documents (KYC)">
           <DocumentPhotoField
             label="Pièce d'identité — recto"
@@ -261,6 +291,14 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
               {rider?.termsAcceptedAt && (
                 <Text style={{ color: "#6B7280" }}>{"\n"}Acceptées le {new Date(rider.termsAcceptedAt).toLocaleDateString("fr-FR")}.</Text>
               )}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => Linking.openURL("https://www.doyougeckoo.fr/conditions-generales")}
+            style={{ marginTop: 10 }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: "600", color: "#2ECC71", textDecorationLine: "underline" }}>
+              Lire les Conditions Générales complètes ↗
             </Text>
           </Pressable>
         </Section>

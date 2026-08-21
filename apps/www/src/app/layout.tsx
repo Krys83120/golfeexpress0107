@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Montserrat, Inter } from "next/font/google";
 import "./globals.css";
 import { SplashLoader } from "@/components/SplashLoader";
+import { CookieConsent } from "@/components/CookieConsent";
+import { ContactWidget } from "@/components/ContactWidget";
+import { VerifiedReviewsBadge } from "@/components/VerifiedReviewsBadge";
 import { fetchWwwOgText } from "@/lib/brandingApi";
 
 const montserrat = Montserrat({
@@ -115,6 +118,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-body bg-white text-nuit antialiased">
         <SplashLoader>{children}</SplashLoader>
+        <CookieConsent />
+        <ContactWidget />
+        <VerifiedReviewsBadge />
       </body>
     </html>
   );

@@ -97,7 +97,12 @@ export async function POST(req: NextRequest) {
                 prisma.client.findUnique({ where: { id: order.clientId }, include: { user: true } }),
                 prisma.pro.findUnique({ where: { id: order.proId } }),
               ]);
-              const emailData = { orderNumber: order.orderNumber, total: Number(order.total), proBusinessName: pro?.businessName ?? "" };
+              const emailData = {
+                orderNumber: order.orderNumber,
+                total: Number(order.total),
+                proBusinessName: pro?.businessName ?? "",
+                deliveryCode: order.deliveryCode,
+              };
               if (client) {
                 sendOrderConfirmedEmail(client.user.email, emailData).catch((err) =>
                   console.error("[stripe webhook] Échec email confirmation client:", err)
@@ -236,7 +241,7 @@ export async function POST(req: NextRequest) {
               data: {
                 subscriptionType: SubscriptionType.FREE,
                 subscriptionStatus: subscription.status,
-                commissionRate: freePack?.commissionRate ?? 0.15,
+                commissionRate: freePack?.commissionRate ?? 0.18,
               },
             });
           } else {
@@ -305,7 +310,7 @@ export async function POST(req: NextRequest) {
               subscriptionCurrentPeriodStart: null,
               subscriptionCancelAtPeriodEnd: false,
               stripeSubscriptionId: null,
-              commissionRate: freePack?.commissionRate ?? 0.15,
+              commissionRate: freePack?.commissionRate ?? 0.18,
             },
           });
         }

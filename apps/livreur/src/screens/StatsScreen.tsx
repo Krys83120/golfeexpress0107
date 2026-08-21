@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, ScrollView, ActivityIndicator, Modal, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MiniBarChart } from "@/components/MiniBarChart";
 import { useRiderStatsStore } from "@/store/useRiderStatsStore";
+import { ReviewsScreen } from "@/screens/ReviewsScreen";
 
 function computeBadges(totalDeliveries: number, rating: number | null) {
   return [
@@ -15,6 +16,7 @@ function computeBadges(totalDeliveries: number, rating: number | null) {
 
 export function StatsScreen() {
   const { stats, status, load } = useRiderStatsStore();
+  const [showReviews, setShowReviews] = useState(false);
 
   useEffect(() => {
     load();
@@ -40,7 +42,12 @@ export function StatsScreen() {
 
         <View style={styles.metricsRow}>
           <MetricCard icon="🛵" value={String(stats?.totalDeliveries ?? 0)} label="Livraisons totales" />
-          <MetricCard icon="⭐" value={stats?.rating != null ? stats.rating.toFixed(1) : "—"} label={`${stats?.ratingCount ?? 0} avis`} />
+          <MetricCard
+            icon="⭐"
+            value={stats?.rating != null ? stats.rating.toFixed(1) : "—"}
+            label={`${stats?.ratingCount ?? 0} avis — voir le détail`}
+            onPress={() => setShowReviews(true)}
+          />
           <MetricCard
             icon="⏱️"
             value={stats?.avgDeliveryMinutes != null ? `${stats.avgDeliveryMinutes} min` : "—"}
@@ -69,17 +76,32 @@ export function StatsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal visible={showReviews} animationType="slide" onRequestClose={() => setShowReviews(false)}>
+        <ReviewsScreen onClose={() => setShowReviews(false)} />
+      </Modal>
     </SafeAreaView>
   );
 }
 
-function MetricCard({ icon, value, label }: { icon: string; value: string; label: string }) {
+function MetricCard({
+  icon,
+  value,
+  label,
+  onPress,
+}: {
+  icon: string;
+  value: string;
+  label: string;
+  onPress?: () => void;
+}) {
+  const Container = onPress ? Pressable : View;
   return (
-    <View style={styles.metricCard}>
+    <Container style={styles.metricCard} onPress={onPress}>
       <Text style={{ fontSize: 22 }}>{icon}</Text>
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.subtle}>{label}</Text>
-    </View>
+    </Container>
   );
 }
 

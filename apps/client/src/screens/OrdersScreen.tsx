@@ -23,9 +23,10 @@ interface OrdersScreenProps {
   onOpenTracking: (order: Order) => void;
   onReorder: (order: Order) => void;
   onOpenReview: (order: Order) => void;
+  onReportIssue: (order: Order) => void;
 }
 
-export function OrdersScreen({ onOpenTracking, onReorder, onOpenReview }: OrdersScreenProps) {
+export function OrdersScreen({ onOpenTracking, onReorder, onOpenReview, onReportIssue }: OrdersScreenProps) {
   const [filter, setFilter] = useState<Filter>("all");
   const [orders, setOrders] = useState<Order[]>([]);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
@@ -232,6 +233,18 @@ export function OrdersScreen({ onOpenTracking, onReorder, onOpenReview }: Orders
 
                   {receiptMessage[order.id] && (
                     <Text className="mt-1.5 text-[11px] text-gris">{receiptMessage[order.id]}</Text>
+                  )}
+
+                  {order.status !== OrderStatus.CANCELLED && (
+                    <Pressable
+                      onPress={() => onReportIssue(order)}
+                      className="mt-2.5 flex-row items-center gap-1.5 self-start border-t border-gris-light pt-2.5"
+                    >
+                      <Text style={{ fontSize: 11 }}>🚩</Text>
+                      <Text className="text-[11px] font-semibold text-gris">
+                        Signaler un problème / Faire une réclamation
+                      </Text>
+                    </Pressable>
                   )}
                 </Pressable>
               );

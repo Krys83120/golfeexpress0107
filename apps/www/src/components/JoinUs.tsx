@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { fetchPublicPartnerPacks } from "@/lib/publicApi";
 
 const TIER_ORDER = ["FREE", "PREMIUM", "PREMIUM_PLUS"];
@@ -25,16 +26,21 @@ export async function JoinUs() {
             visibilité auprès des habitants et vacanciers du Golfe.
           </p>
           <ul className="mt-6 space-y-2 text-sm text-white/90">
-            <li>✓ Commission dès 7%, sans engagement</li>
+            <li>✓ Commission dès 12%, sans engagement</li>
             <li>✓ Tableau de bord commandes en temps réel</li>
             <li>✓ Impression d'étiquette et notifications sonores</li>
           </ul>
-          <a
-            href="https://pro.doyougeckoo.fr"
-            className="mt-8 inline-block rounded-full bg-white px-7 py-3 text-sm font-bold text-corail transition hover:bg-nuit hover:text-white"
-          >
-            Devenir partenaire
-          </a>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <a
+              href="https://pro.doyougeckoo.fr"
+              className="inline-block rounded-full bg-white px-7 py-3 text-sm font-bold text-corail transition hover:bg-nuit hover:text-white"
+            >
+              Devenir partenaire
+            </a>
+            <Link href="/devenir-partenaire" className="text-sm font-semibold text-white underline underline-offset-4 hover:text-white/80">
+              En savoir plus →
+            </Link>
+          </div>
         </div>
 
         <div id="devenir-livreur" className="scroll-mt-24 rounded-3xl bg-nuit p-8 text-white sm:p-10">
@@ -48,12 +54,17 @@ export async function JoinUs() {
             <li>✓ Jusqu'à 40% de gains en plus qu'ailleurs*</li>
             <li>✓ Retraits de gains flexibles</li>
           </ul>
-          <a
-            href="https://livreur.doyougeckoo.fr"
-            className="mt-8 inline-block rounded-full bg-golfe-green px-7 py-3 text-sm font-bold text-nuit transition hover:bg-white"
-          >
-            Devenir livreur
-          </a>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <a
+              href="https://livreur.doyougeckoo.fr"
+              className="inline-block rounded-full bg-golfe-green px-7 py-3 text-sm font-bold text-nuit transition hover:bg-white"
+            >
+              Devenir livreur
+            </a>
+            <Link href="/devenir-partenaire#livreurs" className="text-sm font-semibold text-white underline underline-offset-4 hover:text-white/80">
+              En savoir plus →
+            </Link>
+          </div>
           <p className="mt-3 text-[11px] text-white/40">
             *Estimation comparée aux commissions moyennes constatées sur les plateformes de livraison classiques,
             selon le type de course.

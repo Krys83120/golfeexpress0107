@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CATEGORY_CHIPS } from "@/services/categoryChips";
 import { ProCard } from "@/components/ProCard";
 import { NearbyItem } from "@/components/NearbyItem";
+import { ProsCarousel } from "@/components/ProsCarousel";
 import { FloatingCart } from "@/components/FloatingCart";
 import { useAddressStore } from "@/store/useAddressStore";
 import { useProsStore } from "@/store/useProsStore";
@@ -131,6 +132,11 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
             )}
           </View>
         </View>
+
+        {/* COMMERÇANTS PARTENAIRES -- bandeau défilant entre la recherche et
+            les catégories, tous les commerçants inscrits (logo + accès
+            direct à leur fiche), voir ProsCarousel.tsx. */}
+        <ProsCarousel pros={pros} onOpenPro={onOpenPro} />
 
         {/* CATEGORIES */}
         <ScrollView
