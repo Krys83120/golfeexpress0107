@@ -55,9 +55,17 @@ const CLOSING_LINE = "Vos courses, votre rythme... à vous de jouer !";
 interface SplashLoaderProps {
   ready: boolean;
   onFinished: () => void;
+  /**
+   * URL de l'image du badge/mascotte, réglable en direct depuis
+   * Admin > Branding > "Écran de chargement" (sans reconstruire/redéployer
+   * l'app). `null`/`undefined` (pas encore réglé, ou fetch réseau pas
+   * encore terminé au moment du tout premier affichage) retombe sur la
+   * mascotte statique embarquée dans le build (`require`, jamais vide).
+   */
+  imageUrl?: string | null;
 }
 
-export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
+export function SplashLoader({ ready, onFinished, imageUrl }: SplashLoaderProps) {
   const [progress, setProgress] = useState(0);
   const readyRef = useRef(ready);
   readyRef.current = ready;
@@ -155,7 +163,7 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
           />
 
           <Image
-            source={require("../../assets/splash-badge.png")}
+            source={imageUrl ? { uri: imageUrl } : require("../../assets/splash-badge.png")}
             style={{ width: badgeSize, height: badgeSize }}
             resizeMode="contain"
           />
@@ -202,7 +210,7 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
           ]}
         >
           <Image
-            source={require("../../assets/splash-runner.png")}
+            source={imageUrl ? { uri: imageUrl } : require("../../assets/splash-runner.png")}
             style={{ width: runnerWidth, height: runnerHeight }}
             resizeMode="contain"
           />

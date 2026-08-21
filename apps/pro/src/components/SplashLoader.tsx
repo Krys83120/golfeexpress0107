@@ -55,9 +55,18 @@ const CLOSING_LINE = "Votre commerce, simplifié.";
 interface SplashLoaderProps {
   ready: boolean;
   onFinished: () => void;
+  /**
+   * URL de l'image du badge/mascotte, réglable en direct depuis
+   * Admin > Branding > "Écran de chargement" (sans redéploiement). `null`/
+   * `undefined` (pas encore réglé, ou fetch pas encore terminé) retombe sur
+   * la mascotte statique embarquée dans le build.
+   */
+  imageUrl?: string | null;
 }
 
-export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
+export function SplashLoader({ ready, onFinished, imageUrl }: SplashLoaderProps) {
+  const badgeSrc = imageUrl || "/splash-badge.png";
+  const runnerSrc = imageUrl || "/splash-runner.png";
   const [progress, setProgress] = useState(0);
   const readyRef = useRef(ready);
   readyRef.current = ready;
@@ -166,7 +175,7 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
           }}
         />
 
-        <img src="/splash-badge.png" alt="Do You Geckoo" style={{ width: BADGE_CSS_SIZE, height: "auto" }} />
+        <img src={badgeSrc} alt="Do You Geckoo" style={{ width: BADGE_CSS_SIZE, height: "auto" }} />
 
         <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
           {BULLETS.map((b, i) => (
@@ -240,7 +249,7 @@ export function SplashLoader({ ready, onFinished }: SplashLoaderProps) {
 
       {showRunner && (
         <img
-          src="/splash-runner.png"
+          src={runnerSrc}
           alt=""
           style={{
             position: "absolute",

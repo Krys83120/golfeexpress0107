@@ -249,6 +249,37 @@ async function fetchLogoSetting(settingKey: string): Promise<string | null> {
   }
 }
 
+/**
+ * Image de l'écran de chargement animé (SplashLoader — badge + mascotte qui
+ * traverse l'écran) affiché au lancement d'Admin/Pro/Commander/Livreur.
+ * Jusqu'ici une image STATIQUE figée dans le build (public/splash-badge.png
+ * ou assets/splash-badge.png), impossible à changer sans reconstruire et
+ * redéployer l'app. Réglable en direct depuis Admin > Branding, même
+ * mécanisme que le logo (upload Storage + GlobalSetting), une seule image
+ * réutilisée pour le badge central ET la mascotte qui traverse l'écran
+ * (aucune illustration distincte "en mouvement" n'existe à ce jour).
+ * "vitrine" n'a pas de SplashLoader (site Next.js classique, pas d'écran de
+ * restauration de session), donc pas de clé pour cette app ici.
+ */
+export type AppSplashKey = "admin" | "pro" | "commander" | "livreur";
+
+const APP_SPLASH_SETTING_KEY: Record<AppSplashKey, string> = {
+  admin: "branding.splash_url_admin",
+  pro: "branding.splash_url_pro",
+  commander: "branding.splash_url_commander",
+  livreur: "branding.splash_url_livreur",
+};
+
+/** Upload l'image de l'écran de chargement d'une app donnée et l'enregistre comme affichée en direct. */
+export async function uploadAppSplash(app: AppSplashKey, file: File): Promise<string> {
+  return uploadLogoToSetting(file, `splash-${app}.`, APP_SPLASH_SETTING_KEY[app]);
+}
+
+/** Récupère l'URL de l'image de chargement actuellement enregistrée pour une app donnée (ou null = mascotte par défaut du build). */
+export async function fetchAppSplashUrl(app: AppSplashKey): Promise<string | null> {
+  return fetchLogoSetting(APP_SPLASH_SETTING_KEY[app]);
+}
+
 export type OgAppKey = "commander" | "livreur" | "pro" | "www";
 
 /**

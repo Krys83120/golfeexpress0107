@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiFetch } from "@/services/apiClient";
 
 const CACHE_KEY = "branding.logoUrl";
+const SPLASH_CACHE_KEY = "branding.splashUrl";
 
 /**
  * Lit le logo mis en cache localement (instantané, pas d'attente réseau) —
@@ -31,6 +32,37 @@ export async function fetchBrandingLogoUrl(): Promise<string | null> {
       AsyncStorage.removeItem(CACHE_KEY).catch(() => {});
     }
     return data.livreurLogoUrl;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Image de l'écran de chargement animé (SplashLoader), réglable en direct
+ * depuis Admin > Branding (21/08/2026) — jusque-là une image statique
+ * embarquée dans le build (`require`), impossible à changer sans
+ * reconstruire/redéployer. Même mécanisme de cache que le logo : lue en
+ * mémoire au tout premier affichage (peut être vide la toute première
+ * fois), puis mise à jour pour les lancements suivants.
+ */
+export async function getCachedBrandingSplashUrl(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(SPLASH_CACHE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** GET /api/settings/branding (public) — lit `livreurSplashUrl` et met à jour le cache local. */
+export async function fetchBrandingSplashUrl(): Promise<string | null> {
+  try {
+    const data = await apiFetch<{ livreurSplashUrl: string | null }>("/api/settings/branding", { skipAuth: true });
+    if (data.livreurSplashUrl) {
+      AsyncStorage.setItem(SPLASH_CACHE_KEY, data.livreurSplashUrl).catch(() => {});
+    } else {
+      AsyncStorage.removeItem(SPLASH_CACHE_KEY).catch(() => {});
+    }
+    return data.livreurSplashUrl;
   } catch {
     return null;
   }

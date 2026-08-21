@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import type { Order } from "@golfeexpress/types";
 
 import { useAuthStore } from "@/store/useAuthStore";
+import { getCachedBrandingSplashUrl, fetchBrandingSplashUrl } from "@/services/brandingApi";
 import { SplashLoader } from "@/components/SplashLoader";
 import { AuthScreen } from "@/screens/AuthScreen";
 import { ResetPasswordScreen } from "@/screens/ResetPasswordScreen";
@@ -311,6 +312,12 @@ export default function App() {
   // coupée net et la fausse progression n'aurait servi à rien).
   const [showSplash, setShowSplash] = useState(true);
 
+  // Image du badge/mascotte de l'écran de chargement, réglable en direct
+  // depuis Admin > Branding — le cache local (AsyncStorage) est async donc
+  // pas dispo dès le tout premier rendu, d'où le `null` initial (repli
+  // automatique sur la mascotte statique du build, voir SplashLoader.tsx).
+  const [splashUrl, setSplashUrl] = useState<string | null>(null);
+
   // Arrivée depuis le lien "mot de passe oublié" reçu par email
   // (?reset_token=...) — voir apps/pro/src/App.tsx pour le détail du
   // raisonnement (identique ici).
@@ -321,6 +328,10 @@ export default function App() {
 
   useEffect(() => {
     restoreSession();
+    getCachedBrandingSplashUrl().then((cached) => {
+      if (cached) setSplashUrl(cached);
+    });
+    fetchBrandingSplashUrl().then(setSplashUrl);
   }, []);
 
   if (resetToken) {
@@ -342,7 +353,11 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="light" />
       {showSplash ? (
-        <SplashLoader ready={status !== "idle" && status !== "loading"} onFinished={() => setShowSplash(false)} />
+        <SplashLoader
+          ready={status !== "idle" && status !== "loading"}
+          onFinished={() => setShowSplash(false)}
+          imageUrl={splashUrl}
+        />
       ) : status === "authenticated" ? (
         <MainApp />
       ) : (
