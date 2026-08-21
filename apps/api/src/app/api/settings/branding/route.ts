@@ -25,10 +25,17 @@ export const dynamic = "force-dynamic";
  * ce partage faisait qu'un seul logo uploadé depuis Admin > Branding
  * s'affichait à l'identique dans les 4 apps, sans aucun moyen de les
  * distinguer. Chaque app a maintenant sa propre clé, réglable
- * indépendamment depuis Admin > Branding. logoUrl est conservé en plus
- * (miroir de proLogoUrl) uniquement pour ne pas casser un ancien build
- * client/livreur pas encore redéployé — à retirer une fois tous les
- * fronts sur le nouveau format.
+ * indépendamment depuis Admin > Branding.
+ *
+ * PAS de champ `logoUrl` de rétro-compat ici (retiré le 25/08/2026) : un
+ * premier essai le faisait pointer vers proLogoUrl pour ne pas casser un
+ * build Client/Livreur pas encore redéployé — mais ça a eu l'effet inverse
+ * de celui recherché : tant que Client/Livreur n'étaient pas redéployés
+ * (donc encore sur l'ancien code lisant `logoUrl`), ils affichaient
+ * silencieusement le logo de Pro au lieu du leur. Sans ce champ, un front
+ * pas encore redéployé retombe sur `undefined` → émoji 🦎 par défaut :
+ * un signal clair ("pas encore à jour") plutôt qu'un mauvais logo qui a
+ * l'air correct.
  *
  * On expose ici volontairement une liste blanche minimaliste plutôt que de
  * rendre /api/admin/settings public. Le logo d'Admin n'a pas besoin d'être
@@ -70,7 +77,6 @@ export async function GET() {
 
   return NextResponse.json(
     {
-      logoUrl: proLogoUrl, // rétro-compat temporaire, voir commentaire ci-dessus
       proLogoUrl,
       commanderLogoUrl,
       livreurLogoUrl,
