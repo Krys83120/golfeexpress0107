@@ -2,6 +2,7 @@ import { apiFetch } from "@/services/apiClient";
 
 const CACHE_KEY = "branding.logoUrl";
 const SPLASH_CACHE_KEY = "branding.splashUrl";
+const SPLASH_RUNNER_CACHE_KEY = "branding.splashRunnerUrl";
 
 /** Lit le logo mis en cache localement — évite le flash de l'emoji 🦎 par défaut. */
 export function getCachedBrandingLogoUrl(): string | null {
@@ -59,6 +60,35 @@ export async function fetchBrandingSplashUrl(): Promise<string | null> {
       /* sans conséquence */
     }
     return data.proSplashUrl;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Image de la mascotte qui TRAVERSE L'ÉCRAN (gauche → droite) une fois le
+ * chargement terminé — réglable indépendamment du badge ci-dessus
+ * (21/08/2026). Même mécanisme de cache local.
+ */
+export function getCachedBrandingSplashRunnerUrl(): string | null {
+  try {
+    return localStorage.getItem(SPLASH_RUNNER_CACHE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** GET /api/settings/branding (public) — lit `proSplashRunnerUrl` et met à jour le cache local. */
+export async function fetchBrandingSplashRunnerUrl(): Promise<string | null> {
+  try {
+    const data = await apiFetch<{ proSplashRunnerUrl: string | null }>("/api/settings/branding", { skipAuth: true });
+    try {
+      if (data.proSplashRunnerUrl) localStorage.setItem(SPLASH_RUNNER_CACHE_KEY, data.proSplashRunnerUrl);
+      else localStorage.removeItem(SPLASH_RUNNER_CACHE_KEY);
+    } catch {
+      /* sans conséquence */
+    }
+    return data.proSplashRunnerUrl;
   } catch {
     return null;
   }

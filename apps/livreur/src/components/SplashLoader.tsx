@@ -56,16 +56,18 @@ interface SplashLoaderProps {
   ready: boolean;
   onFinished: () => void;
   /**
-   * URL de l'image du badge/mascotte, réglable en direct depuis
-   * Admin > Branding > "Écran de chargement" (sans reconstruire/redéployer
-   * l'app). `null`/`undefined` (pas encore réglé, ou fetch réseau pas
+   * URL du badge central et de la mascotte qui traverse l'écran, réglables
+   * INDÉPENDAMMENT en direct depuis Admin > Branding > "Écran de
+   * chargement" (sans reconstruire/redéployer l'app, depuis le
+   * 21/08/2026). `null`/`undefined` (pas encore réglé, ou fetch réseau pas
    * encore terminé au moment du tout premier affichage) retombe sur la
    * mascotte statique embarquée dans le build (`require`, jamais vide).
    */
-  imageUrl?: string | null;
+  badgeUrl?: string | null;
+  runnerUrl?: string | null;
 }
 
-export function SplashLoader({ ready, onFinished, imageUrl }: SplashLoaderProps) {
+export function SplashLoader({ ready, onFinished, badgeUrl, runnerUrl }: SplashLoaderProps) {
   const [progress, setProgress] = useState(0);
   const readyRef = useRef(ready);
   readyRef.current = ready;
@@ -163,7 +165,7 @@ export function SplashLoader({ ready, onFinished, imageUrl }: SplashLoaderProps)
           />
 
           <Image
-            source={imageUrl ? { uri: imageUrl } : require("../../assets/splash-badge.png")}
+            source={badgeUrl ? { uri: badgeUrl } : require("../../assets/splash-badge.png")}
             style={{ width: badgeSize, height: badgeSize }}
             resizeMode="contain"
           />
@@ -210,7 +212,7 @@ export function SplashLoader({ ready, onFinished, imageUrl }: SplashLoaderProps)
           ]}
         >
           <Image
-            source={imageUrl ? { uri: imageUrl } : require("../../assets/splash-runner.png")}
+            source={runnerUrl ? { uri: runnerUrl } : require("../../assets/splash-runner.png")}
             style={{ width: runnerWidth, height: runnerHeight }}
             resizeMode="contain"
           />

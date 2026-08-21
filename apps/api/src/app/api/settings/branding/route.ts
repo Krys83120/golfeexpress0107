@@ -43,12 +43,19 @@ export const dynamic = "force-dynamic";
  * /api/admin/settings/branding.logo_url_admin.
  *
  * proSplashUrl/commanderSplashUrl/livreurSplashUrl (21/08/2026) : même
- * principe que le logo, mais pour l'image de l'écran de chargement animé
- * (SplashLoader) affiché au lancement de Pro/Commander/Livreur — jusqu'ici
- * une image statique figée dans le build (public/ ou assets/), impossible à
- * changer sans redéployer. Admin lit sa propre clé
- * (branding.splash_url_admin) en authentifié, pour la même raison que son
- * logo.
+ * principe que le logo, mais pour l'image du BADGE central de l'écran de
+ * chargement animé (SplashLoader) affiché au lancement de
+ * Pro/Commander/Livreur — jusqu'ici une image statique figée dans le build
+ * (public/ ou assets/), impossible à changer sans redéployer. Admin lit sa
+ * propre clé (branding.splash_url_admin) en authentifié, pour la même
+ * raison que son logo.
+ *
+ * proSplashRunnerUrl/commanderSplashRunnerUrl/livreurSplashRunnerUrl
+ * (21/08/2026) : pendant de ce qui précède, mais pour la MASCOTTE QUI
+ * TRAVERSE L'ÉCRAN de gauche à droite une fois le chargement terminé —
+ * réglable indépendamment du badge (avant, la même image servait aux
+ * deux). Admin lit sa propre clé (branding.splash_runner_url_admin) en
+ * authentifié.
  */
 export async function GET() {
   const [
@@ -60,6 +67,9 @@ export async function GET() {
     proSplashSetting,
     commanderSplashSetting,
     livreurSplashSetting,
+    proSplashRunnerSetting,
+    commanderSplashRunnerSetting,
+    livreurSplashRunnerSetting,
   ] = await Promise.all([
     prisma.globalSetting.findUnique({ where: { key: "branding.logo_url_pro" } }),
     prisma.globalSetting.findUnique({ where: { key: "branding.logo_url_commander" } }),
@@ -69,6 +79,9 @@ export async function GET() {
     prisma.globalSetting.findUnique({ where: { key: "branding.splash_url_pro" } }),
     prisma.globalSetting.findUnique({ where: { key: "branding.splash_url_commander" } }),
     prisma.globalSetting.findUnique({ where: { key: "branding.splash_url_livreur" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.splash_runner_url_pro" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.splash_runner_url_commander" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.splash_runner_url_livreur" } }),
   ]);
 
   function extractUrl(setting: typeof wwwLogoSetting): string | null {
@@ -83,6 +96,9 @@ export async function GET() {
   const proSplashUrl = extractUrl(proSplashSetting);
   const commanderSplashUrl = extractUrl(commanderSplashSetting);
   const livreurSplashUrl = extractUrl(livreurSplashSetting);
+  const proSplashRunnerUrl = extractUrl(proSplashRunnerSetting);
+  const commanderSplashRunnerUrl = extractUrl(commanderSplashRunnerSetting);
+  const livreurSplashRunnerUrl = extractUrl(livreurSplashRunnerSetting);
 
   // Titre/description utilisés pour l'aperçu de partage (WhatsApp/iMessage/
   // Facebook...) du site vitrine — éditables depuis Admin > SEO/GEO, avec
@@ -107,6 +123,9 @@ export async function GET() {
       proSplashUrl,
       commanderSplashUrl,
       livreurSplashUrl,
+      proSplashRunnerUrl,
+      commanderSplashRunnerUrl,
+      livreurSplashRunnerUrl,
     },
     // Cache court côté CDN/navigateur — le logo ne change pas souvent,
     // mais on veut qu'une mise à jour depuis l'Admin se propage sans

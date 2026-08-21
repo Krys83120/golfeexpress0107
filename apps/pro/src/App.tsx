@@ -14,7 +14,12 @@ import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProOrdersStore } from "@/store/useProOrdersStore";
 import { useNewOrderNotifications } from "@/hooks/useNewOrderNotifications";
-import { getCachedBrandingSplashUrl, fetchBrandingSplashUrl } from "@/services/brandingApi";
+import {
+  getCachedBrandingSplashUrl,
+  fetchBrandingSplashUrl,
+  getCachedBrandingSplashRunnerUrl,
+  fetchBrandingSplashRunnerUrl,
+} from "@/services/brandingApi";
 
 function MainApp() {
   const [activePage, setActivePage] = useState("dashboard");
@@ -80,14 +85,17 @@ export default function App() {
   // apps/client/App.tsx pour le détail du raisonnement (identique ici).
   const [showSplash, setShowSplash] = useState(true);
 
-  // Image du badge/mascotte de l'écran de chargement, réglable en direct
-  // depuis Admin > Branding — lue en cache localStorage au tout premier
-  // rendu (instantané, pas de flash), puis rafraîchie en tâche de fond.
+  // Image du badge et de la mascotte "traversée d'écran" de l'écran de
+  // chargement, réglables indépendamment en direct depuis Admin > Branding
+  // — lues en cache localStorage au tout premier rendu (instantané, pas de
+  // flash), puis rafraîchies en tâche de fond.
   const [splashUrl, setSplashUrl] = useState<string | null>(() => getCachedBrandingSplashUrl());
+  const [splashRunnerUrl, setSplashRunnerUrl] = useState<string | null>(() => getCachedBrandingSplashRunnerUrl());
 
   useEffect(() => {
     restoreSession();
     fetchBrandingSplashUrl().then(setSplashUrl);
+    fetchBrandingSplashRunnerUrl().then(setSplashRunnerUrl);
   }, []);
 
   if (resetToken) {
@@ -107,7 +115,8 @@ export default function App() {
       <SplashLoader
         ready={status !== "idle" && status !== "loading"}
         onFinished={() => setShowSplash(false)}
-        imageUrl={splashUrl}
+        badgeUrl={splashUrl}
+        runnerUrl={splashRunnerUrl}
       />
     );
   }

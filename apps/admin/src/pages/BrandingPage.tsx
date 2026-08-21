@@ -6,6 +6,8 @@ import {
   fetchAppLogoUrl,
   uploadAppSplash,
   fetchAppSplashUrl,
+  uploadAppSplashRunner,
+  fetchAppSplashRunnerUrl,
   type BrandingAssetSet,
   type AppLogoKey,
   type AppSplashKey,
@@ -52,13 +54,21 @@ export function BrandingPage() {
   const [updatedApp, setUpdatedApp] = useState<AppLogoKey | null>(null);
 
   // Écran de chargement animé (SplashLoader) par app — même logique que le
-  // logo ci-dessus, mais pour l'image du badge/mascotte affichée au
+  // logo ci-dessus, mais pour l'image du BADGE central affiché au
   // lancement d'Admin/Pro/Commander/Livreur. "vitrine" n'a pas cet écran.
   const [splashFiles, setSplashFiles] = useState<Partial<Record<AppSplashKey, File>>>({});
   const [splashPreviews, setSplashPreviews] = useState<Partial<Record<AppSplashKey, string>>>({});
   const [currentSplashUrls, setCurrentSplashUrls] = useState<Partial<Record<AppSplashKey, string | null>>>({});
   const [uploadingSplashApp, setUploadingSplashApp] = useState<AppSplashKey | null>(null);
   const [updatedSplashApp, setUpdatedSplashApp] = useState<AppSplashKey | null>(null);
+
+  // Mascotte qui TRAVERSE L'ÉCRAN (gauche → droite) une fois le chargement
+  // terminé — réglable indépendamment du badge ci-dessus (21/08/2026).
+  const [runnerFiles, setRunnerFiles] = useState<Partial<Record<AppSplashKey, File>>>({});
+  const [runnerPreviews, setRunnerPreviews] = useState<Partial<Record<AppSplashKey, string>>>({});
+  const [currentRunnerUrls, setCurrentRunnerUrls] = useState<Partial<Record<AppSplashKey, string | null>>>({});
+  const [uploadingRunnerApp, setUploadingRunnerApp] = useState<AppSplashKey | null>(null);
+  const [updatedRunnerApp, setUpdatedRunnerApp] = useState<AppSplashKey | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +80,12 @@ export function BrandingPage() {
       (pairs) => {
         if (cancelled) return;
         setCurrentSplashUrls(Object.fromEntries(pairs));
+      }
+    );
+    Promise.all(SPLASH_APPS.map((a) => fetchAppSplashRunnerUrl(a.key).then((url) => [a.key, url] as const))).then(
+      (pairs) => {
+        if (cancelled) return;
+        setCurrentRunnerUrls(Object.fromEntries(pairs));
       }
     );
     return () => {
@@ -122,6 +138,30 @@ export function BrandingPage() {
       setError(err instanceof Error ? err.message : "Échec de la mise à jour.");
     } finally {
       setUploadingSplashApp(null);
+    }
+  }
+
+  function handleRunnerFileChange(app: AppSplashKey, f: File) {
+    setRunnerFiles((prev) => ({ ...prev, [app]: f }));
+    setRunnerPreviews((prev) => ({ ...prev, [app]: URL.createObjectURL(f) }));
+    setError(null);
+  }
+
+  async function handleUpdateAppRunner(app: AppSplashKey) {
+    const f = runnerFiles[app];
+    if (!f) return;
+    setUploadingRunnerApp(app);
+    setError(null);
+    setUpdatedRunnerApp(null);
+    try {
+      const url = await uploadAppSplashRunner(app, f);
+      setCurrentRunnerUrls((prev) => ({ ...prev, [app]: url }));
+      setUpdatedRunnerApp(app);
+      setTimeout(() => setUpdatedRunnerApp((cur) => (cur === app ? null : cur)), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de la mise à jour.");
+    } finally {
+      setUploadingRunnerApp(null);
     }
   }
 
@@ -237,69 +277,52 @@ export function BrandingPage() {
         </div>
       </div>
 
-      {/* Écran de chargement animé (badge + mascotte qui traverse l'écran) par app — mis à jour en direct */}
+      {/* Écran de chargement animé — badge central et mascotte qui traverse l'écran, réglables indépendamment */}
       <div className="mt-6 rounded bg-white p-6 shadow-sm">
         <h2 className="font-heading text-base font-bold text-nuit">3. Écran de chargement (au lancement de l'app)</h2>
         <p className="mt-1 text-sm text-gris">
-          Image affichée en grand sur l'écran de chargement animé au lancement de l'app (badge central, et mascotte
-          qui traverse l'écran une fois le chargement terminé — la même image sert aux deux). Mis à jour{" "}
+          Deux images indépendantes par app : le badge affiché au centre pendant le chargement, et la mascotte qui
+          traverse l'écran de gauche à droite une fois le chargement terminé. Mis à jour{" "}
           <strong>en direct, sans redéploiement</strong>. Format carré ou portrait recommandé, fond transparent
           idéalement.
         </p>
 
-        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {SPLASH_APPS.map((app) => {
-            const currentUrl = currentSplashUrls[app.key];
-            const preview = splashPreviews[app.key];
-            const busy = uploadingSplashApp === app.key;
-            return (
-              <div key={app.key} className="rounded-sm border border-gris-light p-4">
-                <h3 className="font-heading text-sm font-bold text-nuit">{app.name}</h3>
-                <p className="mt-0.5 text-[11px] text-gris">{app.hint}</p>
+        <h3 className="mt-5 font-heading text-xs font-bold uppercase tracking-wide text-gris">Badge (centré)</h3>
+        <div className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {SPLASH_APPS.map((app) => (
+            <SplashImageCard
+              key={app.key}
+              name={app.name}
+              hint={app.hint}
+              currentUrl={currentSplashUrls[app.key]}
+              preview={splashPreviews[app.key]}
+              busy={uploadingSplashApp === app.key}
+              updated={updatedSplashApp === app.key}
+              disabled={!splashFiles[app.key]}
+              onFileChange={(f) => handleSplashFileChange(app.key, f)}
+              onUpdate={() => handleUpdateAppSplash(app.key)}
+            />
+          ))}
+        </div>
 
-                <div className="mt-3 flex items-center gap-3">
-                  {currentUrl && (
-                    <img
-                      src={currentUrl}
-                      alt={`Écran de chargement actuel — ${app.name}`}
-                      className="h-14 w-14 rounded-sm border border-gris-light bg-nuit object-contain p-1"
-                    />
-                  )}
-                  {preview && (
-                    <img src={preview} alt="Aperçu" className="h-14 w-14 rounded-sm border border-gris-light object-cover" />
-                  )}
-                </div>
-
-                <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-gris-light px-3 py-2 text-xs font-semibold text-nuit hover:bg-gris-light">
-                  <Upload size={14} />
-                  Choisir une image
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleSplashFileChange(app.key, f);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-
-                <button
-                  onClick={() => handleUpdateAppSplash(app.key)}
-                  disabled={!splashFiles[app.key] || busy}
-                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-sm bg-golfe-green py-2 text-xs font-semibold text-nuit disabled:opacity-50"
-                >
-                  {busy ? "Mise à jour..." : "Mettre à jour"}
-                </button>
-                {updatedSplashApp === app.key && (
-                  <span className="mt-2 flex items-center justify-center gap-1 text-xs font-semibold text-golfe-green">
-                    <CheckCircle2 size={14} /> Mis à jour !
-                  </span>
-                )}
-              </div>
-            );
-          })}
+        <h3 className="mt-6 font-heading text-xs font-bold uppercase tracking-wide text-gris">
+          Mascotte qui traverse l'écran (gauche → droite)
+        </h3>
+        <div className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {SPLASH_APPS.map((app) => (
+            <SplashImageCard
+              key={app.key}
+              name={app.name}
+              hint={app.hint}
+              currentUrl={currentRunnerUrls[app.key]}
+              preview={runnerPreviews[app.key]}
+              busy={uploadingRunnerApp === app.key}
+              updated={updatedRunnerApp === app.key}
+              disabled={!runnerFiles[app.key]}
+              onFileChange={(f) => handleRunnerFileChange(app.key, f)}
+              onUpdate={() => handleUpdateAppRunner(app.key)}
+            />
+          ))}
         </div>
       </div>
 
@@ -332,6 +355,75 @@ export function BrandingPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Carte réutilisée pour le badge ET la mascotte "traversée d'écran" (section 3) — même comportement, cible différente. */
+function SplashImageCard({
+  name,
+  hint,
+  currentUrl,
+  preview,
+  busy,
+  updated,
+  disabled,
+  onFileChange,
+  onUpdate,
+}: {
+  name: string;
+  hint: string;
+  currentUrl?: string | null;
+  preview?: string;
+  busy: boolean;
+  updated: boolean;
+  disabled: boolean;
+  onFileChange: (f: File) => void;
+  onUpdate: () => void;
+}) {
+  return (
+    <div className="rounded-sm border border-gris-light p-4">
+      <h3 className="font-heading text-sm font-bold text-nuit">{name}</h3>
+      <p className="mt-0.5 text-[11px] text-gris">{hint}</p>
+
+      <div className="mt-3 flex items-center gap-3">
+        {currentUrl && (
+          <img
+            src={currentUrl}
+            alt={`Actuel — ${name}`}
+            className="h-14 w-14 rounded-sm border border-gris-light bg-nuit object-contain p-1"
+          />
+        )}
+        {preview && <img src={preview} alt="Aperçu" className="h-14 w-14 rounded-sm border border-gris-light object-cover" />}
+      </div>
+
+      <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-gris-light px-3 py-2 text-xs font-semibold text-nuit hover:bg-gris-light">
+        <Upload size={14} />
+        Choisir une image
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFileChange(f);
+            e.target.value = "";
+          }}
+        />
+      </label>
+
+      <button
+        onClick={onUpdate}
+        disabled={disabled || busy}
+        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-sm bg-golfe-green py-2 text-xs font-semibold text-nuit disabled:opacity-50"
+      >
+        {busy ? "Mise à jour..." : "Mettre à jour"}
+      </button>
+      {updated && (
+        <span className="mt-2 flex items-center justify-center gap-1 text-xs font-semibold text-golfe-green">
+          <CheckCircle2 size={14} /> Mis à jour !
+        </span>
+      )}
     </div>
   );
 }

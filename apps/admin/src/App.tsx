@@ -23,7 +23,7 @@ import { useAdminDashboardStore } from "./store/useAdminDashboardStore";
 import { useAdminReportsStore } from "./store/useAdminReportsStore";
 import { useAdminContactMessagesStore } from "./store/useAdminContactMessagesStore";
 import { useAuthStore } from "./store/useAuthStore";
-import { fetchAppSplashUrl } from "./services/brandingApi";
+import { fetchAppSplashUrl, fetchAppSplashRunnerUrl } from "./services/brandingApi";
 
 function MainApp() {
   const [activePage, setActivePage] = useState("dashboard");
@@ -103,16 +103,18 @@ export default function App() {
   // apps/client/App.tsx pour le détail du raisonnement (identique ici).
   const [showSplash, setShowSplash] = useState(true);
 
-  // Image du badge/mascotte de l'écran de chargement, réglable en direct
-  // depuis Admin > Branding (rubrique "Écran de chargement"). Pas de cache
-  // local ici (Admin est un outil interne, toujours en ligne) : simple
-  // fetch au montage, avec repli sur la mascotte statique du build tant
-  // qu'il n'est pas résolu.
+  // Image du badge et de la mascotte "traversée d'écran" de l'écran de
+  // chargement, réglables indépendamment en direct depuis Admin > Branding
+  // (rubrique "Écran de chargement"). Pas de cache local ici (Admin est un
+  // outil interne, toujours en ligne) : simple fetch au montage, avec repli
+  // sur la mascotte statique du build tant qu'il n'est pas résolu.
   const [splashUrl, setSplashUrl] = useState<string | null>(null);
+  const [splashRunnerUrl, setSplashRunnerUrl] = useState<string | null>(null);
 
   useEffect(() => {
     restoreSession();
     fetchAppSplashUrl("admin").then(setSplashUrl);
+    fetchAppSplashRunnerUrl("admin").then(setSplashRunnerUrl);
   }, []);
 
   if (showSplash) {
@@ -120,7 +122,8 @@ export default function App() {
       <SplashLoader
         ready={status !== "idle" && status !== "loading"}
         onFinished={() => setShowSplash(false)}
-        imageUrl={splashUrl}
+        badgeUrl={splashUrl}
+        runnerUrl={splashRunnerUrl}
       />
     );
   }

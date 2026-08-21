@@ -4,7 +4,12 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { useAuthStore } from "@/store/useAuthStore";
-import { getCachedBrandingSplashUrl, fetchBrandingSplashUrl } from "@/services/brandingApi";
+import {
+  getCachedBrandingSplashUrl,
+  fetchBrandingSplashUrl,
+  getCachedBrandingSplashRunnerUrl,
+  fetchBrandingSplashRunnerUrl,
+} from "@/services/brandingApi";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
 import { useRiderStatsStore } from "@/store/useRiderStatsStore";
 import { SplashLoader } from "@/components/SplashLoader";
@@ -100,10 +105,12 @@ export default function App() {
   // apps/client/App.tsx pour le détail du raisonnement (identique ici).
   const [showSplash, setShowSplash] = useState(true);
 
-  // Image du badge/mascotte de l'écran de chargement, réglable en direct
-  // depuis Admin > Branding — voir apps/client/App.tsx pour le détail du
-  // raisonnement (identique ici).
+  // Image du badge et de la mascotte "traversée d'écran" de l'écran de
+  // chargement, réglables indépendamment en direct depuis Admin > Branding
+  // — voir apps/client/App.tsx pour le détail du raisonnement (identique
+  // ici).
   const [splashUrl, setSplashUrl] = useState<string | null>(null);
+  const [splashRunnerUrl, setSplashRunnerUrl] = useState<string | null>(null);
 
   useEffect(() => {
     restoreSession();
@@ -111,6 +118,10 @@ export default function App() {
       if (cached) setSplashUrl(cached);
     });
     fetchBrandingSplashUrl().then(setSplashUrl);
+    getCachedBrandingSplashRunnerUrl().then((cached) => {
+      if (cached) setSplashRunnerUrl(cached);
+    });
+    fetchBrandingSplashRunnerUrl().then(setSplashRunnerUrl);
   }, []);
 
   // Resynchronise le statut "en ligne" affiché avec la valeur réelle
@@ -150,7 +161,8 @@ export default function App() {
         <SplashLoader
           ready={status !== "idle" && status !== "loading"}
           onFinished={() => setShowSplash(false)}
-          imageUrl={splashUrl}
+          badgeUrl={splashUrl}
+          runnerUrl={splashRunnerUrl}
         />
       ) : status === "authenticated" ? (
         <MainApp />

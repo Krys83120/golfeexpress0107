@@ -49,17 +49,19 @@ interface SplashLoaderProps {
   ready: boolean;
   onFinished: () => void;
   /**
-   * URL de l'image du badge/mascotte, réglable en direct depuis
-   * Admin > Branding > "Écran de chargement" (sans redéploiement). `null`/
+   * URL du badge central et de la mascotte qui traverse l'écran, réglables
+   * INDÉPENDAMMENT en direct depuis Admin > Branding > "Écran de
+   * chargement" (sans redéploiement, depuis le 21/08/2026). `null`/
    * `undefined` (pas encore réglé, ou fetch pas encore terminé) retombe sur
    * la mascotte statique embarquée dans le build.
    */
-  imageUrl?: string | null;
+  badgeUrl?: string | null;
+  runnerUrl?: string | null;
 }
 
-export function SplashLoader({ ready, onFinished, imageUrl }: SplashLoaderProps) {
-  const badgeSrc = imageUrl || "/splash-badge.png";
-  const runnerSrc = imageUrl || "/splash-runner.png";
+export function SplashLoader({ ready, onFinished, badgeUrl, runnerUrl }: SplashLoaderProps) {
+  const badgeSrc = badgeUrl || "/splash-badge.png";
+  const runnerSrc = runnerUrl || "/splash-runner.png";
   const [progress, setProgress] = useState(0);
   const readyRef = useRef(ready);
   readyRef.current = ready;
