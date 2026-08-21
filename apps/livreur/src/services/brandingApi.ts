@@ -16,16 +16,21 @@ export async function getCachedBrandingLogoUrl(): Promise<string | null> {
   }
 }
 
-/** GET /api/settings/branding (public, pas d'auth requise) — met aussi à jour le cache local. */
+/**
+ * GET /api/settings/branding (public, pas d'auth requise) — met aussi à
+ * jour le cache local. Lit `livreurLogoUrl`, distinct du logo des autres
+ * apps depuis le 25/08/2026 (avant, un seul logo partagé s'affichait à
+ * l'identique dans Admin/Pro/Commander/Livreur).
+ */
 export async function fetchBrandingLogoUrl(): Promise<string | null> {
   try {
-    const data = await apiFetch<{ logoUrl: string | null }>("/api/settings/branding", { skipAuth: true });
-    if (data.logoUrl) {
-      AsyncStorage.setItem(CACHE_KEY, data.logoUrl).catch(() => {});
+    const data = await apiFetch<{ livreurLogoUrl: string | null }>("/api/settings/branding", { skipAuth: true });
+    if (data.livreurLogoUrl) {
+      AsyncStorage.setItem(CACHE_KEY, data.livreurLogoUrl).catch(() => {});
     } else {
       AsyncStorage.removeItem(CACHE_KEY).catch(() => {});
     }
-    return data.logoUrl;
+    return data.livreurLogoUrl;
   } catch {
     return null;
   }

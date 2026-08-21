@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   LayoutDashboard,
+  Package,
   ShieldCheck,
   Users,
   Store,
@@ -10,10 +11,15 @@ import {
   Settings,
   Palette,
   Search,
+  MessageSquareText,
+  AlertTriangle,
+  Mail,
+  MapPinned,
+  Euro,
   LogOut,
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
-import { fetchInAppLogoUrl } from "@/services/brandingApi";
+import { fetchAppLogoUrl } from "@/services/brandingApi";
 
 interface NavItem {
   key: string;
@@ -26,20 +32,33 @@ interface SidebarProps {
   activeItem: string;
   onSelect: (key: string) => void;
   pendingCount: number;
+  openReportsCount: number;
+  openContactMessagesCount: number;
 }
 
-export function Sidebar({ activeItem, onSelect, pendingCount }: SidebarProps) {
+export function Sidebar({
+  activeItem,
+  onSelect,
+  pendingCount,
+  openReportsCount,
+  openContactMessagesCount,
+}: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchInAppLogoUrl().then(setLogoUrl);
+    fetchAppLogoUrl("admin").then(setLogoUrl);
   }, []);
 
   const navItems: NavItem[] = [
     { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
+    { key: "orders", label: "Commandes", icon: <Package size={18} /> },
     { key: "validations", label: "Validations KYC", icon: <ShieldCheck size={18} />, badge: pendingCount },
+    { key: "reports", label: "Réclamations", icon: <AlertTriangle size={18} />, badge: openReportsCount },
+    { key: "contact-messages", label: "Messages", icon: <Mail size={18} />, badge: openContactMessagesCount },
+    { key: "capacity", label: "Zones & Capacité", icon: <MapPinned size={18} /> },
+    { key: "pricing", label: "Tarification", icon: <Euro size={18} /> },
     { key: "users", label: "Utilisateurs", icon: <Users size={18} /> },
     { key: "pros", label: "Commerçants", icon: <Store size={18} /> },
     { key: "riders", label: "Livreurs", icon: <Bike size={18} /> },
@@ -47,6 +66,7 @@ export function Sidebar({ activeItem, onSelect, pendingCount }: SidebarProps) {
     { key: "partner-packs", label: "Packs Partenaires", icon: <Crown size={18} /> },
     { key: "branding", label: "Branding", icon: <Palette size={18} /> },
     { key: "seo", label: "SEO / GEO", icon: <Search size={18} /> },
+    { key: "platform-reviews", label: "Avis plateforme", icon: <MessageSquareText size={18} /> },
     { key: "settings", label: "Paramètres globaux", icon: <Settings size={18} /> },
   ];
 
