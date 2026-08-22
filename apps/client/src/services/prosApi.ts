@@ -21,11 +21,29 @@ export interface ProWithUi extends Pro {
   pickupAddressId: string | null;
 }
 
-// Tant que GlobalSetting n'est pas exposé via une route publique dédiée
-// (voir TODO dans apps/api), ces valeurs par défaut reflètent
-// min_delivery_fee/max_delivery_fee des paramètres seedés par défaut.
-const DEFAULT_DELIVERY_FEE = 2.9;
+// Repli UNIQUEMENT si GET /api/settings/pricing échoue (panne réseau...) —
+// le vrai tarif vient maintenant de cette route (voir fetchDeliveryFeeDisplay
+// ci-dessous), plus d'un montant codé en dur qui divergeait silencieusement
+// du tarif réellement configuré depuis Admin > Tarification (bug corrigé le
+// 21/08/2026 : cette constante restait bloquée sur l'ancien tarif 2,90 €
+// même après que le tarif réel soit passé à 3,90 €).
+const DEFAULT_DELIVERY_FEE = 3.9;
 const DEFAULT_MIN_ORDER = 0;
+
+/**
+ * GET /api/settings/pricing (public) — vrai tarif de livraison actuellement
+ * configuré depuis Admin > Tarification, celui réellement facturé par
+ * POST /api/orders. Appelée une fois par écran de liste plutôt que mise en
+ * cache indéfiniment, pour rester à jour si l'Admin change le tarif.
+ */
+async function fetchDeliveryFeeDisplay(): Promise<number> {
+  try {
+    const data = await apiFetch<{ deliveryFee: number }>("/api/settings/pricing", { skipAuth: true });
+    return typeof data.deliveryFee === "number" ? data.deliveryFee : DEFAULT_DELIVERY_FEE;
+  } catch {
+    return DEFAULT_DELIVERY_FEE;
+  }
+}
 
 /**
  * Construit un ProWithUi (forme attendue par les composants existants —
@@ -33,7 +51,12 @@ const DEFAULT_MIN_ORDER = 0;
  * dérivant les champs visuels depuis la catégorie et la distance réelle
  * depuis les coordonnées de l'utilisateur.
  */
-function toProWithUi(pro: Pro & { addresses?: { lat: number; lng: number }[] }, userLat?: number, userLng?: number): ProWithUi {
+function toProWithUi(
+  pro: Pro & { addresses?: { lat: number; lng: number }[] },
+  userLat?: number,
+  userLng?: number,
+  deliveryFee: number = DEFAULT_DELIVERY_FEE
+): ProWithUi {
   const visual = getCategoryVisual(pro.category);
 
   const proAddress = pro.addresses?.[0];
@@ -66,7 +89,7 @@ function toProWithUi(pro: Pro & { addresses?: { lat: number; lng: number }[] }, 
     estimatedMaxMinutes: max,
     tags: [], // TODO: pas de champ "tags" dans le modèle Pro — à dériver de Product.category si besoin
     minOrder: DEFAULT_MIN_ORDER,
-    deliveryFeeDisplay: DEFAULT_DELIVERY_FEE,
+    deliveryFeeDisplay: deliveryFee,
     pickupAddressId: pro.pickupAddressId ?? (pro as Pro & { addresses?: { id: string }[] }).addresses?.[0]?.id ?? null,
   };
 }
@@ -85,9 +108,12 @@ export async function fetchPros(params: FetchProsParams = {}): Promise<ProWithUi
   if (params.city) query.set("city", params.city);
 
   const search = query.toString();
-  const data = await apiFetch<{ pros: Pro[] }>(`/api/pros${search ? `?${search}` : ""}`, { skipAuth: true });
+  const [data, deliveryFee] = await Promise.all([
+    apiFetch<{ pros: Pro[] }>(`/api/pros${search ? `?${search}` : ""}`, { skipAuth: true }),
+    fetchDeliveryFeeDisplay(),
+  ]);
 
-  return data.pros.map((pro) => toProWithUi(pro, params.userLat, params.userLng));
+  return data.pros.map((pro) => toProWithUi(pro, params.userLat, params.userLng, deliveryFee));
 }
 
 /** GET /api/pros/[proId]/products — menu public d'un commerçant. */
