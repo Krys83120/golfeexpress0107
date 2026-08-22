@@ -14,6 +14,8 @@ export const PRICING_SETTINGS_KEYS = {
   riderPayBase: "pricing.rider_pay_base",
   riderPayPerKm: "pricing.rider_pay_per_km",
   riderPayMinimum: "pricing.rider_pay_minimum",
+  deliveryFeeByDistanceEnabled: "pricing.delivery_fee_by_distance_enabled",
+  deliveryFeeTiers: "pricing.delivery_fee_tiers",
 } as const;
 
 // Échange produit du 21/08/2026, révisé le 21/08/2026 : la rémunération
@@ -37,6 +39,79 @@ async function readNumberSetting(key: string, fallback: number): Promise<number>
 
 export async function getDeliveryFee(): Promise<number> {
   return readNumberSetting(PRICING_SETTINGS_KEYS.deliveryFee, DEFAULT_DELIVERY_FEE);
+}
+
+/**
+ * Supplément de frais de livraison SELON LA DISTANCE (échange produit du
+ * 22/08/2026) — garde-fou inverse de "panier minimum selon la distance" :
+ * là où celui-ci protège la marge en refusant les petites commandes trop
+ * loin, celui-ci la protège en faisant payer un peu plus au client sur les
+ * livraisons longues, plutôt que de tout faire reposer sur la commission
+ * produit (l'écart entre frais de livraison fixe et rémunération livreur —
+ * qui elle grandit avec la distance, voir getRiderPayForDistance — se
+ * creusait sans limite au-delà de quelques km).
+ *
+ * Même "esprit désactivé par défaut" que minOrderByDistanceEnabled :
+ * tant que non activé depuis Admin > Tarification, getDeliveryFeeForDistance
+ * renvoie le tarif fixe unique (comportement historique, inchangé). Mêmes
+ * paliers que la grille "panier minimum" (3/6/10/15 km) pour rester
+ * cohérent et lisible, mais réglage totalement indépendant : chaque palier
+ * porte ici un montant de frais de livraison, pas un panier minimum.
+ */
+export const DEFAULT_DELIVERY_FEE_TIERS_KM = [3, 6, 10, 15];
+
+export interface DeliveryFeeTier {
+  maxDistanceKm: number;
+  fee: number;
+}
+
+export const DEFAULT_DELIVERY_FEE_TIERS: DeliveryFeeTier[] = [
+  { maxDistanceKm: 3, fee: 3.9 },
+  { maxDistanceKm: 6, fee: 5.9 },
+  { maxDistanceKm: 10, fee: 7.9 },
+  { maxDistanceKm: 15, fee: 9.9 },
+];
+
+export async function isDeliveryFeeByDistanceEnabled(): Promise<boolean> {
+  const setting = await prisma.globalSetting.findUnique({
+    where: { key: PRICING_SETTINGS_KEYS.deliveryFeeByDistanceEnabled },
+  });
+  return setting?.value === true;
+}
+
+export async function getDeliveryFeeTiers(): Promise<DeliveryFeeTier[]> {
+  const setting = await prisma.globalSetting.findUnique({ where: { key: PRICING_SETTINGS_KEYS.deliveryFeeTiers } });
+  const value = setting?.value as { tiers?: DeliveryFeeTier[] } | null;
+  if (!value?.tiers || !Array.isArray(value.tiers) || value.tiers.length === 0) {
+    return DEFAULT_DELIVERY_FEE_TIERS;
+  }
+  return [...value.tiers].sort((a, b) => a.maxDistanceKm - b.maxDistanceKm);
+}
+
+/**
+ * Frais de livraison pour une distance donnée : premier palier dont
+ * maxDistanceKm couvre le trajet ; au-delà du dernier palier configuré,
+ * son montant sert de plafond plutôt que de continuer à grimper sans
+ * limite (même convention que computeRequiredMinOrder ci-dessous).
+ */
+export function computeDeliveryFeeForDistance(distanceKm: number, tiers: DeliveryFeeTier[]): number {
+  if (tiers.length === 0) return DEFAULT_DELIVERY_FEE;
+  const match = tiers.find((t) => distanceKm <= t.maxDistanceKm);
+  return match ? match.fee : tiers[tiers.length - 1].fee;
+}
+
+/**
+ * Frais de livraison RÉELLEMENT appliqués à une commande pour une distance
+ * donnée — à utiliser à la place de getDeliveryFee() partout où la
+ * distance est déjà connue (POST /api/orders, affichage client par
+ * distance). Retombe sur le tarif fixe unique tant que le supplément par
+ * distance n'est pas activé.
+ */
+export async function getDeliveryFeeForDistance(distanceKm: number): Promise<number> {
+  const flatFee = await getDeliveryFee();
+  if (!(await isDeliveryFeeByDistanceEnabled())) return flatFee;
+  const tiers = await getDeliveryFeeTiers();
+  return computeDeliveryFeeForDistance(distanceKm, tiers);
 }
 
 /**

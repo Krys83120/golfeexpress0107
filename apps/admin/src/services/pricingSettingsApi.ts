@@ -13,6 +13,8 @@ export const PRICING_KEYS = {
   riderPayBase: "pricing.rider_pay_base",
   riderPayPerKm: "pricing.rider_pay_per_km",
   riderPayMinimum: "pricing.rider_pay_minimum",
+  deliveryFeeByDistance: "pricing.delivery_fee_by_distance_enabled",
+  deliveryFeeTiers: "pricing.delivery_fee_tiers",
 } as const;
 
 // Doivent rester identiques aux DEFAULT_* côté API
@@ -152,4 +154,55 @@ export async function saveRiderPayRates(rates: RiderPayRates): Promise<void> {
       "Rémunération livreur minimum garantie, même si base + kilométrage tombe en dessous."
     ),
   ]);
+}
+
+/**
+ * Supplément de frais de livraison selon la distance (échange produit du
+ * 22/08/2026) — désactivé par défaut, mêmes paliers que la grille "panier
+ * minimum" (3/6/10/15 km) pour rester cohérent, mais réglage indépendant :
+ * chaque palier porte ici un montant de frais de livraison. Voir
+ * apps/api/src/lib/pricingSettings.ts pour le détail du raisonnement.
+ */
+export interface DeliveryFeeTier {
+  maxDistanceKm: number;
+  fee: number;
+}
+
+// Doit rester identique à DEFAULT_DELIVERY_FEE_TIERS côté API.
+export const DEFAULT_DELIVERY_FEE_TIERS: DeliveryFeeTier[] = [
+  { maxDistanceKm: 3, fee: 3.9 },
+  { maxDistanceKm: 6, fee: 5.9 },
+  { maxDistanceKm: 10, fee: 7.9 },
+  { maxDistanceKm: 15, fee: 9.9 },
+];
+
+export async function fetchDeliveryFeeByDistanceEnabled(): Promise<boolean> {
+  return fetchFlag(PRICING_KEYS.deliveryFeeByDistance);
+}
+
+export async function setDeliveryFeeByDistanceEnabled(enabled: boolean): Promise<void> {
+  await setFlag(
+    PRICING_KEYS.deliveryFeeByDistance,
+    enabled,
+    "Applique un supplément de frais de livraison selon la distance (grille dédiée) au lieu du tarif fixe unique."
+  );
+}
+
+export async function fetchDeliveryFeeTiers(): Promise<DeliveryFeeTier[]> {
+  const data = await apiFetch<{ setting: RawSetting | null }>(`/api/admin/settings/${PRICING_KEYS.deliveryFeeTiers}`);
+  const value = data.setting?.value as { tiers?: DeliveryFeeTier[] } | null;
+  if (!value?.tiers || !Array.isArray(value.tiers) || value.tiers.length === 0) {
+    return DEFAULT_DELIVERY_FEE_TIERS;
+  }
+  return value.tiers;
+}
+
+export async function saveDeliveryFeeTiers(tiers: DeliveryFeeTier[]): Promise<void> {
+  await apiFetch(`/api/admin/settings/${PRICING_KEYS.deliveryFeeTiers}`, {
+    method: "PUT",
+    body: {
+      value: { tiers },
+      description: "Grille de frais de livraison par distance (Admin > Tarification).",
+    },
+  });
 }

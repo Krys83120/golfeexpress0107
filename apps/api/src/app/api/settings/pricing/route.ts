@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDeliveryFee } from "@/lib/pricingSettings";
+import { getDeliveryFee, isDeliveryFeeByDistanceEnabled, getDeliveryFeeTiers } from "@/lib/pricingSettings";
 
 // Voir apps/api/src/app/api/settings/branding/route.ts pour le détail du
 // raisonnement (identique ici) : sans "force-dynamic", Next.js fige cette
@@ -32,12 +32,23 @@ export const dynamic = "force-dynamic";
  * sans rapport avec le calcul réel des prix — ex: "commission_rate",
  * "min_delivery_fee"/"max_delivery_fee" à la racine, jamais lues par
  * POST /api/orders, contrairement à "pricing.delivery_fee").
+ *
+ * deliveryFeeByDistanceEnabled/deliveryFeeTiers (22/08/2026) : supplément
+ * de frais de livraison selon la distance (voir pricingSettings.ts ->
+ * getDeliveryFeeForDistance(), utilisé par POST /api/orders), désactivé
+ * par défaut. Exposés ici pour que le Client calcule lui-même le tarif
+ * exact par commerçant (chaque fiche a sa propre distance jusqu'au
+ * client) plutôt que d'appeler cette route une fois par commerçant.
  */
 export async function GET() {
-  const deliveryFee = await getDeliveryFee();
+  const [deliveryFee, deliveryFeeByDistanceEnabled, deliveryFeeTiers] = await Promise.all([
+    getDeliveryFee(),
+    isDeliveryFeeByDistanceEnabled(),
+    getDeliveryFeeTiers(),
+  ]);
 
   return NextResponse.json(
-    { deliveryFee },
+    { deliveryFee, deliveryFeeByDistanceEnabled, deliveryFeeTiers },
     // Cache court — le tarif ne change pas souvent, mais une mise à jour
     // depuis Admin > Tarification doit se propager sans attendre trop
     // longtemps côté clients qui parcourent déjà l'app.

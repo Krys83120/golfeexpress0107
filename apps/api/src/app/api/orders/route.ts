@@ -17,7 +17,7 @@ import {
   isMinOrderByDistanceEnabled,
   getMinOrderTiers,
   computeRequiredMinOrder,
-  getDeliveryFee,
+  getDeliveryFeeForDistance,
   getRiderPayForDistance,
 } from "@/lib/pricingSettings";
 
@@ -234,7 +234,9 @@ async function postHandler(req: NextRequest) {
     }
   }
 
-  const deliveryFee = await getDeliveryFee();
+  // Supplément par distance (échange produit du 22/08/2026) si activé —
+  // sinon tarif fixe unique inchangé, voir pricingSettings.ts.
+  const deliveryFee = await getDeliveryFeeForDistance(distanceKm);
   const serviceFee = SERVICE_FEE;
   const total = subtotal + deliveryFee + serviceFee;
 

@@ -9,12 +9,18 @@ import {
   setDeliveryFee,
   fetchRiderPayRates,
   saveRiderPayRates,
+  fetchDeliveryFeeByDistanceEnabled,
+  setDeliveryFeeByDistanceEnabled,
+  fetchDeliveryFeeTiers,
+  saveDeliveryFeeTiers,
   DEFAULT_DELIVERY_FEE,
   DEFAULT_RIDER_PAY_BASE,
   DEFAULT_RIDER_PAY_PER_KM,
   DEFAULT_RIDER_PAY_MINIMUM,
+  DEFAULT_DELIVERY_FEE_TIERS,
   type MinOrderTier,
   type RiderPayRates,
+  type DeliveryFeeTier,
 } from "@/services/pricingSettingsApi";
 
 /** Pastille interrupteur pilule — même esprit visuel que CapacityPage.tsx. */
@@ -71,6 +77,19 @@ export function PricingPage() {
   const [tiersSaving, setTiersSaving] = useState(false);
   const [tiersDirty, setTiersDirty] = useState(false);
 
+  // Supplément de frais de livraison selon la distance (échange produit du
+  // 22/08/2026) — même structure que le garde-fou "panier minimum"
+  // ci-dessus, mais chaque palier porte un montant de frais de livraison
+  // plutôt qu'un panier minimum. Désactivé par défaut.
+  const [feeByDistanceEnabled, setFeeByDistanceEnabledState] = useState(false);
+  const [feeFlagLoading, setFeeFlagLoading] = useState(true);
+  const [feeFlagSaving, setFeeFlagSaving] = useState(false);
+
+  const [feeTiers, setFeeTiers] = useState<DeliveryFeeTier[]>(DEFAULT_DELIVERY_FEE_TIERS);
+  const [feeTiersStatus, setFeeTiersStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [feeTiersSaving, setFeeTiersSaving] = useState(false);
+  const [feeTiersDirty, setFeeTiersDirty] = useState(false);
+
   useEffect(() => {
     Promise.all([fetchDeliveryFee(), fetchRiderPayRates()])
       .then(([fee, rates]) => {
@@ -88,6 +107,15 @@ export function PricingPage() {
         setTiersStatus("loaded");
       })
       .catch(() => setTiersStatus("error"));
+    fetchDeliveryFeeByDistanceEnabled()
+      .then(setFeeByDistanceEnabledState)
+      .finally(() => setFeeFlagLoading(false));
+    fetchDeliveryFeeTiers()
+      .then((t) => {
+        setFeeTiers(t);
+        setFeeTiersStatus("loaded");
+      })
+      .catch(() => setFeeTiersStatus("error"));
   }, []);
 
   async function handleSaveRates() {
@@ -154,6 +182,57 @@ export function PricingPage() {
     } finally {
       setTiersSaving(false);
     }
+  }
+
+  async function handleToggleFeeByDistance(next: boolean) {
+    setFeeFlagSaving(true);
+    try {
+      await setDeliveryFeeByDistanceEnabled(next);
+      setFeeByDistanceEnabledState(next);
+    } catch {
+      alert("Impossible de mettre à jour ce réglage pour le moment.");
+    } finally {
+      setFeeFlagSaving(false);
+    }
+  }
+
+  function updateFeeTier(index: number, field: keyof DeliveryFeeTier, value: number) {
+    setFeeTiers((prev) => prev.map((t, i) => (i === index ? { ...t, [field]: value } : t)));
+    setFeeTiersDirty(true);
+  }
+
+  function removeFeeTier(index: number) {
+    setFeeTiers((prev) => prev.filter((_, i) => i !== index));
+    setFeeTiersDirty(true);
+  }
+
+  function addFeeTier() {
+    const last = feeTiers[feeTiers.length - 1];
+    setFeeTiers((prev) => [
+      ...prev,
+      { maxDistanceKm: (last?.maxDistanceKm ?? 0) + 3, fee: (last?.fee ?? deliveryFee) + 2 },
+    ]);
+    setFeeTiersDirty(true);
+  }
+
+  async function handleSaveFeeTiers() {
+    const sorted = [...feeTiers].sort((a, b) => a.maxDistanceKm - b.maxDistanceKm);
+    setFeeTiersSaving(true);
+    try {
+      await saveDeliveryFeeTiers(sorted);
+      setFeeTiers(sorted);
+      setFeeTiersDirty(false);
+    } catch {
+      alert("Impossible d'enregistrer la grille pour le moment.");
+    } finally {
+      setFeeTiersSaving(false);
+    }
+  }
+
+  function previewDeliveryFee(km: number): number {
+    if (feeTiers.length === 0) return deliveryFee;
+    const match = feeTiers.find((t) => km <= t.maxDistanceKm);
+    return match ? match.fee : feeTiers[feeTiers.length - 1].fee;
   }
 
   return (
@@ -254,6 +333,89 @@ export function PricingPage() {
               {DISTANCE_PREVIEWS_KM.map((km) => (
                 <span key={km}>
                   {km} km → <strong className="text-nuit">{previewRiderPay(km).toFixed(2)} €</strong>
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="mb-8 rounded-lg border border-gris-light bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-nuit">Supplément de livraison selon la distance</p>
+            <p className="mt-1 text-xs text-gris">
+              Une fois activé : le tarif de livraison client suit la grille ci-dessous au lieu du montant fixe unique
+              ("Frais de livraison (client)" ci-dessus) — un client livré plus loin paye un peu plus, ce qui réduit
+              l'écart entre frais de livraison encaissés et rémunération livreur (qui grandit avec la distance) sans
+              faire reposer tout cet écart sur la commission. Désactivé, le montant fixe unique s'applique à toutes
+              les distances comme aujourd'hui.
+            </p>
+          </div>
+          <Toggle
+            checked={feeByDistanceEnabled}
+            onChange={handleToggleFeeByDistance}
+            disabled={feeFlagLoading || feeFlagSaving}
+          />
+        </div>
+
+        {feeTiersStatus === "loading" ? (
+          <p className="py-6 text-center text-sm text-gris">Chargement...</p>
+        ) : feeTiersStatus === "error" ? (
+          <p className="py-4 text-sm text-red-500">Impossible de charger la grille pour le moment.</p>
+        ) : (
+          <>
+            <div className="mb-4 flex flex-col gap-2">
+              {feeTiers.map((tier, index) => (
+                <div key={index} className="flex flex-wrap items-center gap-3 rounded-sm border border-gris-light px-4 py-3">
+                  <span className="text-xs text-gris">Jusqu'à</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={tier.maxDistanceKm}
+                    onChange={(e) => updateFeeTier(index, "maxDistanceKm", Number(e.target.value))}
+                    className="w-20 rounded-sm border border-gris-light px-2 py-1 text-sm"
+                  />
+                  <span className="text-xs text-gris">km → frais de livraison</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    value={tier.fee}
+                    onChange={(e) => updateFeeTier(index, "fee", Number(e.target.value))}
+                    className="w-20 rounded-sm border border-gris-light px-2 py-1 text-sm"
+                  />
+                  <span className="text-xs text-gris">€</span>
+                  <button onClick={() => removeFeeTier(index)} className="ml-auto text-xs font-semibold text-gris hover:text-corail">
+                    Retirer
+                  </button>
+                </div>
+              ))}
+              {feeTiers.length === 0 && <p className="py-4 text-sm text-gris">Aucun palier — ajoutez-en un ci-dessous.</p>}
+            </div>
+
+            <div className="mb-4 flex items-center gap-3">
+              <button
+                onClick={addFeeTier}
+                className="rounded-sm border border-gris-light px-3 py-2 text-xs font-semibold text-gris hover:border-golfe-green hover:text-golfe-green"
+              >
+                + Ajouter un palier
+              </button>
+              <button
+                onClick={handleSaveFeeTiers}
+                disabled={!feeTiersDirty || feeTiersSaving}
+                className="ml-auto rounded-sm bg-nuit px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                {feeTiersSaving ? "Enregistrement..." : "Enregistrer la grille"}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 rounded-sm bg-gris-light/40 px-4 py-3 text-xs text-gris">
+              <span className="font-semibold text-nuit">Aperçu :</span>
+              {DISTANCE_PREVIEWS_KM.map((km) => (
+                <span key={km}>
+                  {km} km → <strong className="text-nuit">{previewDeliveryFee(km).toFixed(2)} €</strong>
                 </span>
               ))}
             </div>
