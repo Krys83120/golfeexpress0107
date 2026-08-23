@@ -85,6 +85,7 @@ export const useProMenuStore = create<ProMenuState>((set, get) => ({
           name: o.name,
           isRequired: o.isRequired,
           isMultiple: o.isMultiple,
+          maxChoices: o.maxChoices ?? null,
           choices: o.choices.map((c) => ({ name: c.name, priceModifier: c.priceModifier })),
         }))
       );

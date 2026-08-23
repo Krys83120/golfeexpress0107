@@ -29,15 +29,24 @@ export async function deleteProductApi(productId: string): Promise<void> {
   await apiFetch(`/api/pros/me/products/${productId}`, { method: "DELETE" });
 }
 
-export type OptionGroupInput = Pick<ProductOption, "name" | "isRequired" | "isMultiple"> & {
+export type OptionGroupInput = Pick<ProductOption, "name" | "isRequired" | "isMultiple" | "maxChoices"> & {
   choices: { name: string; priceModifier: number }[];
 };
 
-/** PUT /api/pros/me/products/[productId]/options — remplace intégralement les options du produit. */
-export async function updateProductOptions(productId: string, options: OptionGroupInput[]): Promise<Product> {
+/**
+ * PUT /api/pros/me/products/[productId]/options — remplace intégralement les
+ * options du produit, et met à jour au passage les deux réglages du produit
+ * affichés au même endroit dans ProductFormModal.tsx (allowSpecialInstructions,
+ * hasExtraFeeNotice) -- omis (undefined) = inchangés côté serveur.
+ */
+export async function updateProductOptions(
+  productId: string,
+  options: OptionGroupInput[],
+  settings?: { allowSpecialInstructions?: boolean; hasExtraFeeNotice?: boolean }
+): Promise<Product> {
   const data = await apiFetch<{ product: Product }>(`/api/pros/me/products/${productId}/options`, {
     method: "PUT",
-    body: { options },
+    body: { options, ...settings },
   });
   return data.product;
 }

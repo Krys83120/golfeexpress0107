@@ -221,6 +221,30 @@ async function postHandler(req: NextRequest) {
     return ordered;
   }
 
+  /**
+   * Revalide côté serveur le nombre de choix envoyés pour chaque groupe à
+   * choix multiples contre sa limite `maxChoices` -- ne JAMAIS faire
+   * confiance uniquement au blocage côté Client (ProductOptionsModal.tsx),
+   * qui peut être contourné (appel direct à l'API, ancienne version de
+   * l'app en cache...). `selectedChoiceNames` est la chaîne "A, B" telle
+   * qu'envoyée pour ce groupe (voir computeOptionsSurcharge ci-dessus pour
+   * le même pattern de parsing).
+   */
+  function assertWithinMaxChoices(product: (typeof products)[number], selectedOptions: Record<string, string> | undefined) {
+    if (!selectedOptions) return;
+    for (const [groupName, selectedChoiceNames] of Object.entries(selectedOptions)) {
+      const group = product.options.find((o) => o.name === groupName);
+      if (!group || !group.isMultiple || !group.maxChoices) continue;
+      const chosenCount = selectedChoiceNames.split(",").map((n) => n.trim()).filter(Boolean).length;
+      if (chosenCount > group.maxChoices) {
+        throw new ApiError(
+          400,
+          `"${group.name}" : maximum ${group.maxChoices} choix (${chosenCount} envoyés) pour "${product.name}".`
+        );
+      }
+    }
+  }
+
   let subtotal = 0;
   const orderItemsData = items.map((item) => {
     const product = productById.get(item.productId);
@@ -230,6 +254,7 @@ async function postHandler(req: NextRequest) {
     if (!product.isAvailable) {
       throw new ApiError(400, `"${product.name}" n'est plus disponible.`);
     }
+    assertWithinMaxChoices(product, item.options);
 
     const unitPrice = Number(product.price) + computeOptionsSurcharge(product, item.options);
     const totalPrice = unitPrice * item.quantity;
@@ -242,6 +267,11 @@ async function postHandler(req: NextRequest) {
       unitPrice,
       totalPrice,
       options: reorderOptionsByProductDefinition(product, item.options),
+      // N'accepte l'instruction que si le Pro a explicitement activé cette
+      // fonctionnalité pour ce produit -- sinon on l'ignore silencieusement
+      // plutôt que de rejeter toute la commande pour un champ que le client
+      // n'aurait pas dû pouvoir remplir (ex: appel API direct).
+      specialInstructions: product.allowSpecialInstructions ? item.specialInstructions ?? null : null,
     };
   });
 

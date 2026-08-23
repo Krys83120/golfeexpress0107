@@ -28,15 +28,31 @@ const LABEL_WIDTH_MM = 58;
 export function printOrderLabel(order: Order) {
   const itemsHtml = (order.items ?? [])
     .map((item) => {
-      // Toutes les options choisies pour cet article tiennent sur UNE seule
-      // ligne, en énumération (séparées par des virgules) plutôt qu'une
-      // ligne par groupe -- plus rapide à scanner pour l'employé qui
-      // prépare la commande. L'ordre suit celui défini sur la fiche produit
-      // par le Pro (voir orders/route.ts, reorderOptionsByProductDefinition),
-      // jamais l'ordre alphabétique.
-      const optionsLine = formatItemOptions(item.options).join(", ");
-      const optionsHtml = optionsLine ? `<div class="item-option">— ${escapeHtml(optionsLine)}</div>` : "";
-      return `<div class="item"><span class="qty">${item.quantity}x</span> ${escapeHtml(item.productName)}</div>${optionsHtml}`;
+      // Un bloc par groupe d'options (ex: "La Taille :"), et en dessous une
+      // ligne par choix sélectionné dans ce groupe, précédée d'un tiret --
+      // c'est le format demandé par le Pro pour que l'employé qui prépare
+      // voie d'un coup d'œil, groupe par groupe, tout ce qui a été
+      // sélectionné (utile notamment pour un groupe à choix multiples comme
+      // "Extra Protéines" qui peut avoir plusieurs tirets). L'ordre des
+      // groupes suit celui défini sur la fiche produit par le Pro (voir
+      // orders/route.ts, reorderOptionsByProductDefinition), jamais l'ordre
+      // alphabétique.
+      const optionsHtml = formatItemOptionGroups(item.options)
+        .map(
+          (group) =>
+            `<div class="item-option-group">${escapeHtml(group.name)} :</div>` +
+            group.choices.map((choice) => `<div class="item-option">- ${escapeHtml(choice)}</div>`).join("")
+        )
+        .join("");
+      // Instruction spécifique du client pour CET article précisément (ex:
+      // "bien cuit", "sans oignon") -- distincte de la note de commande
+      // globale (order.clientNote, affichée plus bas). Uniquement présente
+      // si le Pro a activé "Instructions spécifiques" pour ce produit au
+      // moment de la commande.
+      const instructionsHtml = item.specialInstructions
+        ? `<div class="item-instructions">📝 ${escapeHtml(item.specialInstructions)}</div>`
+        : "";
+      return `<div class="item"><span class="qty">${item.quantity}x</span> ${escapeHtml(item.productName)}</div>${optionsHtml}${instructionsHtml}`;
     })
     .join("");
 
@@ -66,7 +82,9 @@ export function printOrderLabel(order: Order) {
     .meta { font-size: 11px; margin-bottom: 8px; }
     .items { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 6px 0; margin-bottom: 8px; }
     .item { font-size: 13px; padding: 2px 0; }
-    .item-option { font-size: 11px; color: #333; padding: 0 0 2px 14px; }
+    .item-option-group { font-size: 11px; color: #000; padding: 2px 0 0 8px; }
+    .item-option { font-size: 11px; color: #333; padding: 0 0 2px 20px; }
+    .item-instructions { font-size: 11px; font-style: italic; color: #000; padding: 2px 0 2px 8px; }
     .qty { font-weight: 700; }
     .note { font-size: 11px; font-style: italic; margin-bottom: 8px; }
     .payment { font-size: 11px; text-align: center; margin-bottom: 4px; }
@@ -122,17 +140,26 @@ export function printOrderLabel(order: Order) {
 }
 
 /**
- * Met en forme les options sélectionnées d'un article (ex: taille, sauce,
- * suppléments) en lignes lisibles pour la personne qui prépare la commande.
- * `item.options` est un objet { nom du groupe -> choix sélectionné(s) },
- * les choix multiples étant déjà fusionnés en une chaîne "A, B" côté client
- * (voir apps/client/src/store/useCartStore.ts).
+ * Met en forme les options sélectionnées d'un article, groupées par nom de
+ * groupe (ex: "La Taille", "Extra Protéines"), chaque groupe listant un ou
+ * plusieurs choix. `item.options` est un objet { nom du groupe -> choix
+ * sélectionné(s) }, les choix multiples étant déjà fusionnés en une chaîne
+ * "A, B" côté client (voir apps/client/src/store/useCartStore.ts) -- on les
+ * re-sépare ici pour en faire une ligne par choix sur le ticket.
  */
-function formatItemOptions(options: Record<string, unknown> | null | undefined): string[] {
+function formatItemOptionGroups(
+  options: Record<string, unknown> | null | undefined
+): Array<{ name: string; choices: string[] }> {
   if (!options) return [];
   return Object.entries(options)
-    .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== "")
-    .map(([group, value]) => `${group} : ${String(value)}`);
+    .map(([group, value]) => ({
+      name: group,
+      choices: String(value ?? "")
+        .split(",")
+        .map((choice) => choice.trim())
+        .filter((choice) => choice.length > 0),
+    }))
+    .filter((group) => group.choices.length > 0);
 }
 
 /**

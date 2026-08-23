@@ -15,7 +15,13 @@ import { serializeProduct } from "@/lib/serializeProduct";
  * groupes, quelques choix chacun) donc pas de souci de performance à tout
  * recréer à chaque sauvegarde.
  *
- * Body: { options: [{ name, isRequired, isMultiple, choices: [{ name, priceModifier }] }] }
+ * Body: {
+ *   options: [{ name, isRequired, isMultiple, maxChoices, choices: [{ name, priceModifier }] }],
+ *   allowSpecialInstructions?, hasExtraFeeNotice?
+ * }
+ * Les deux derniers champs sont les réglages produit affichés dans le même
+ * bloc "🧩 Options" du formulaire Pro (voir ProductFormModal.tsx) -- omis
+ * (undefined) = inchangés côté serveur, jamais réinitialisés à false.
  */
 async function putHandler(req: NextRequest, ctx: { params: { productId: string } }) {
   const auth = await requireAuth(req, [UserRole.PRO]);
@@ -55,10 +61,28 @@ async function putHandler(req: NextRequest, ctx: { params: { productId: string }
           name: option.name,
           isRequired: option.isRequired,
           isMultiple: option.isMultiple,
+          // Un choix maxi n'a de sens que pour un groupe à choix multiples --
+          // même garde que côté formulaire Pro (ProductFormModal.tsx) pour
+          // éviter qu'une valeur oubliée sur un groupe à choix unique ne
+          // bloque silencieusement sa sélection (voir aussi
+          // assertWithinMaxChoices dans orders/route.ts qui s'appuie sur ce
+          // champ à la création de la commande).
+          maxChoices: option.isMultiple ? option.maxChoices ?? null : null,
           choices: { create: option.choices.map((c) => ({ name: c.name, priceModifier: c.priceModifier })) },
         },
       });
     }
+
+    // Réglages produit portés par ce même endpoint (voir la note en tête de
+    // fichier) -- undefined = champ non transmis par le client, Prisma
+    // n'écrase alors pas la valeur existante en base.
+    await tx.product.update({
+      where: { id: product.id },
+      data: {
+        allowSpecialInstructions: parsed.data.allowSpecialInstructions,
+        hasExtraFeeNotice: parsed.data.hasExtraFeeNotice,
+      },
+    });
   });
 
   const updated = await prisma.product.findUnique({

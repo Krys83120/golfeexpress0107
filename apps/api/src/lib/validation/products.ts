@@ -26,11 +26,20 @@ export const productOptionInputSchema = z.object({
   name: z.string().min(1, "Le nom du groupe d'options est requis."),
   isRequired: z.boolean().default(false),
   isMultiple: z.boolean().default(false),
+  // Uniquement pertinent quand isMultiple=true -- ignoré sinon. null/absent
+  // = pas de limite (voir prisma/schema.prisma ProductOption.maxChoices).
+  maxChoices: z.number().int().positive().nullable().optional(),
   choices: z.array(optionChoiceInputSchema).min(1, "Ajoutez au moins un choix."),
 });
 
 export const updateProductOptionsSchema = z.object({
   options: z.array(productOptionInputSchema),
+  // Réglages du produit affichés/enregistrés depuis le bas de la section
+  // options (voir ProductFormModal.tsx) -- optionnels ici pour ne pas
+  // casser un appel qui ne les enverrait pas (ex: ancien client mis en
+  // cache) ; absents = inchangés côté serveur (voir la route PUT options).
+  allowSpecialInstructions: z.boolean().optional(),
+  hasExtraFeeNotice: z.boolean().optional(),
 });
 
 export type UpdateProductOptionsInput = z.infer<typeof updateProductOptionsSchema>;

@@ -10,6 +10,8 @@ export interface CartItem {
   optionsLabel?: string; // ex: "Medium, Sauce soja sucrée"
   /** Groupe d'options -> nom(s) du/des choix sélectionné(s), envoyé tel quel à l'API. */
   options?: Record<string, string>;
+  /** Instruction libre du client pour cette ligne (ex: "bien cuit"), uniquement si le produit l'autorise (Product.allowSpecialInstructions). */
+  specialInstructions?: string;
 }
 
 interface CartState {

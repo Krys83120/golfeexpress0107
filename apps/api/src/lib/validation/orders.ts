@@ -8,6 +8,11 @@ export const orderItemInputSchema = z.object({
   // stocké tel quel en JSON sur OrderItem.options pour traçabilité, même si
   // les ProductOption changent plus tard côté Pro.
   options: z.record(z.string()).optional(),
+  // Instruction libre du client pour CETTE ligne (ex: "bien cuit") --
+  // uniquement acceptée si le produit a allowSpecialInstructions=true, voir
+  // la vérification dans postHandler (orders/route.ts). Limite de longueur
+  // généreuse mais bornée pour éviter un abus (impression de ticket).
+  specialInstructions: z.string().max(300, "Instruction trop longue (300 caractères max).").optional(),
 });
 
 export const createOrderSchema = z.object({

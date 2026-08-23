@@ -231,6 +231,8 @@ export interface ProductOption {
   name: string;
   isRequired: boolean;
   isMultiple: boolean;
+  /** Nombre max de choix sélectionnables (isMultiple seulement) ; null = pas de limite. Voir prisma/schema.prisma. */
+  maxChoices?: number | null;
   choices: ProductOptionChoice[];
 }
 
@@ -245,6 +247,10 @@ export interface Product {
   category: string;
   isAvailable: boolean;
   isFeatured: boolean;
+  /** Client voit un champ "Instructions spécifiques" par ligne de panier pour ce produit. Voir prisma/schema.prisma. */
+  allowSpecialInstructions?: boolean;
+  /** Affiche au client un avertissement "des frais supplémentaires peuvent être appliqués" lors du choix des options. Voir prisma/schema.prisma. */
+  hasExtraFeeNotice?: boolean;
   /** Moyenne des avis clients sur ce produit précis (voir ProductReview) -- affichée sur sa fiche produit. Calculés côté serveur, jamais fournis à la création (voir ProductFormModal côté Pro). */
   rating?: number | null;
   ratingCount?: number;
@@ -260,6 +266,8 @@ export interface OrderItem {
   unitPrice: number;
   totalPrice: number;
   options?: Record<string, unknown> | null;
+  /** Instruction libre du client pour cette ligne (ex: "bien cuit"). Voir prisma/schema.prisma. */
+  specialInstructions?: string | null;
 }
 
 export interface OrderStatusHistoryEntry {
@@ -291,10 +299,6 @@ export interface Order {
 
   status: OrderStatus;
   paymentStatus: PaymentStatus;
-  /** Marque de la carte utilisée (ex: "visa"), voir prisma/schema.prisma. */
-  cardBrand?: string | null;
-  /** 4 derniers chiffres de la carte utilisée. */
-  cardLast4?: string | null;
 
   subtotal: number;
   deliveryFee: number;
@@ -323,6 +327,9 @@ export interface Order {
   deliveryCode?: string | null;
   rating?: number | null;
   review?: string | null;
+
+  cardBrand?: string | null;
+  cardLast4?: string | null;
 
   client?: Client;
   pro?: Pro;

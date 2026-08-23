@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, ScrollView, Image, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, Image, StyleSheet, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Product, ProductOption, ProductReview } from "@golfeexpress/types";
 import { fetchProductReviews } from "@/services/prosApi";
@@ -12,7 +12,15 @@ interface ProductOptionsModalProps {
    * hors contexte fiche Pro, ex: deep-link). */
   canOrder?: boolean;
   onClose: () => void;
-  onConfirm: (selection: { options: Record<string, string>; optionsLabel: string; extraPrice: number }) => void;
+  onConfirm: (selection: {
+    options: Record<string, string>;
+    optionsLabel: string;
+    extraPrice: number;
+    /** Commentaire libre du client pour CET article (ex: "bien cuit") —
+     * uniquement rempli si product.allowSpecialInstructions est actif,
+     * sinon toujours undefined (voir handleConfirm ci-dessous). */
+    specialInstructions?: string;
+  }) => void;
 }
 
 /** Sélections en cours : nom du groupe -> ensemble des noms de choix cochés. */
@@ -28,6 +36,11 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
   // Decimal déjà rencontré côté API) ferait planter .toFixed() sinon.
   const basePrice = Number(product.price);
   const [selection, setSelection] = useState<SelectionState>({});
+  // Commentaire libre pour cet article — champ affiché uniquement si le Pro
+  // a activé "Instructions spécifiques" sur ce produit (voir ProductFormModal
+  // côté Pro). Réinitialisé implicitement à chaque nouvelle ouverture de la
+  // modal puisque ce composant est remonté (product.id change de clé parent).
+  const [specialInstructions, setSpecialInstructions] = useState("");
 
   // Toutes les photos disponibles : la principale d'abord, puis les
   // photos de galerie — le clic sur une miniature change simplement quelle
@@ -64,8 +77,18 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
     setSelection((prev) => {
       const current = new Set(prev[group.name] ?? []);
       if (group.isMultiple) {
-        if (current.has(choiceName)) current.delete(choiceName);
-        else current.add(choiceName);
+        if (current.has(choiceName)) {
+          current.delete(choiceName);
+        } else {
+          // Limite de choix pour ce groupe (ex: "3 protéines maxi") réglée
+          // par le Pro sur sa fiche produit (ProductOption.maxChoices, voir
+          // aussi assertWithinMaxChoices côté serveur qui revalide cette
+          // même limite à la création de la commande). Une fois la limite
+          // atteinte, un nouveau choix est simplement ignoré -- décocher un
+          // choix déjà sélectionné reste toujours possible juste au-dessus.
+          if (group.maxChoices != null && current.size >= group.maxChoices) return prev;
+          current.add(choiceName);
+        }
       } else {
         // Choix unique : sélectionner un choix remplace le précédent.
         current.clear();
@@ -102,7 +125,17 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
       }
     }
     const optionsLabel = Object.values(flatOptions).join(", ");
-    onConfirm({ options: flatOptions, optionsLabel, extraPrice });
+    const trimmedInstructions = specialInstructions.trim();
+    onConfirm({
+      options: flatOptions,
+      optionsLabel,
+      extraPrice,
+      // Ne jamais envoyer d'instruction si le Pro n'a pas activé le réglage
+      // -- le champ n'est de toute façon pas affiché dans ce cas, mais on se
+      // protège ici aussi (défense en profondeur, cf. le même choix côté
+      // serveur dans orders/route.ts).
+      specialInstructions: product.allowSpecialInstructions && trimmedInstructions ? trimmedInstructions : undefined,
+    });
   }
 
   return (
@@ -153,6 +186,14 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
             <Text style={styles.price}>{basePrice.toFixed(2).replace(".", ",")} €</Text>
             {product.description && <Text style={styles.description}>{product.description}</Text>}
 
+            {product.hasExtraFeeNotice && (
+              <View style={styles.feeNotice}>
+                <Text style={styles.feeNoticeText}>
+                  ℹ️ Des frais supplémentaires peuvent être appliqués pour cette option.
+                </Text>
+              </View>
+            )}
+
             {options.map((group) => {
               const chosen = selection[group.name] ?? new Set<string>();
               return (
@@ -199,6 +240,22 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
                 </View>
               );
             })}
+
+            {product.allowSpecialInstructions && (
+              <View style={styles.group}>
+                <Text style={styles.groupName}>Instructions spécifiques</Text>
+                <Text style={styles.groupHint}>Une précision pour ce produit ? (optionnel)</Text>
+                <TextInput
+                  value={specialInstructions}
+                  onChangeText={setSpecialInstructions}
+                  placeholder="Ex : bien cuit, sans oignon..."
+                  placeholderTextColor="#9CA3AF"
+                  style={styles.instructionsInput}
+                  multiline
+                  maxLength={300}
+                />
+              </View>
+            )}
 
             {/* Avis clients sur ce produit précisément — indépendants des
                 avis sur le commerçant (voir GET /api/products/[productId]/reviews). */}
@@ -276,6 +333,27 @@ const styles = StyleSheet.create({
   productReviewCard: { marginTop: 10, borderRadius: 8, backgroundColor: "#F9FAFB", padding: 12 },
   price: { marginTop: 4, fontSize: 15, color: "#6B7280" },
   description: { marginTop: 8, fontSize: 13, lineHeight: 19, color: "#6B7280" },
+  feeNotice: {
+    marginTop: 12,
+    borderRadius: 8,
+    backgroundColor: "#FFF3E0",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  feeNoticeText: { fontSize: 12, color: "#8A5A00", lineHeight: 17 },
+  instructionsInput: {
+    marginTop: 10,
+    minHeight: 70,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    backgroundColor: "#F9FAFB",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: "#1A1A2E",
+    textAlignVertical: "top",
+  },
   group: { marginTop: 20 },
   groupHeader: { marginBottom: 8, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
   groupName: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },

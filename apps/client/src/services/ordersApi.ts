@@ -24,6 +24,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
         productId: item.productId,
         quantity: item.quantity,
         options: item.options,
+        specialInstructions: item.specialInstructions,
       })),
     },
   });

@@ -114,7 +114,12 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
     }
   }
 
-  function handleConfirmOptions(selection: { options: Record<string, string>; optionsLabel: string; extraPrice: number }) {
+  function handleConfirmOptions(selection: {
+    options: Record<string, string>;
+    optionsLabel: string;
+    extraPrice: number;
+    specialInstructions?: string;
+  }) {
     const product = optionsModalProduct;
     if (!product) return;
 
@@ -132,11 +137,18 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
     // Un id de ligne de panier différent par combinaison d'options choisie
     // (deux "Poke Saumon" avec des tailles différentes doivent rester deux
     // lignes distinctes), en combinant l'id produit avec les options triées.
+    // Idem pour l'instruction spécifique (22/08/2026, sur demande explicite
+    // du Pro) : deux "Poke Saumon" avec des instructions différentes ("bien
+    // cuit" vs "sans oignon") doivent aussi rester deux lignes séparées --
+    // sinon la 2e commande fusionnerait en quantité avec la 1ère et
+    // l'instruction de la 1ère ligne serait perdue côté ticket.
     const optionsKey = Object.entries(selection.options)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}:${v}`)
       .join("|");
-    const lineId = optionsKey ? `${product.id}__${optionsKey}` : product.id;
+    const instructionsKey = selection.specialInstructions ? `note:${selection.specialInstructions}` : "";
+    const lineKey = [optionsKey, instructionsKey].filter(Boolean).join("|");
+    const lineId = lineKey ? `${product.id}__${lineKey}` : product.id;
 
     addItem(
       {
@@ -147,6 +159,7 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
         unitPrice: Number(product.price) + selection.extraPrice,
         optionsLabel: selection.optionsLabel || undefined,
         options: Object.keys(selection.options).length > 0 ? selection.options : undefined,
+        specialInstructions: selection.specialInstructions,
       },
       pro.id,
       pro.businessName,

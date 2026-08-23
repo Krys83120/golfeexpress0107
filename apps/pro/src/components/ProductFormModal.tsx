@@ -25,6 +25,7 @@ function toOptionGroupInput(option: ProductOption): OptionGroupInput {
     name: option.name,
     isRequired: option.isRequired,
     isMultiple: option.isMultiple,
+    maxChoices: option.maxChoices ?? null,
     choices: option.choices.map((c) => ({ name: c.name, priceModifier: c.priceModifier })),
   };
 }
@@ -43,6 +44,8 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
   const [optionGroups, setOptionGroups] = useState<OptionGroupInput[]>(
     product?.options?.map(toOptionGroupInput) ?? []
   );
+  const [allowSpecialInstructions, setAllowSpecialInstructions] = useState(product?.allowSpecialInstructions ?? false);
+  const [hasExtraFeeNotice, setHasExtraFeeNotice] = useState(product?.hasExtraFeeNotice ?? false);
   const [savingOptions, setSavingOptions] = useState(false);
   const [optionsMessage, setOptionsMessage] = useState<string | null>(null);
 
@@ -95,7 +98,10 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
   }
 
   function addOptionGroup() {
-    setOptionGroups((prev) => [...prev, { name: "", isRequired: false, isMultiple: false, choices: [{ name: "", priceModifier: 0 }] }]);
+    setOptionGroups((prev) => [
+      ...prev,
+      { name: "", isRequired: false, isMultiple: false, maxChoices: null, choices: [{ name: "", priceModifier: 0 }] },
+    ]);
   }
 
   function updateGroup(index: number, patch: Partial<OptionGroupInput>) {
@@ -134,9 +140,17 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
       // Filtre les groupes/choix vides laissés en cours de saisie plutôt
       // que d'obliger à les supprimer manuellement avant d'enregistrer.
       const cleaned = optionGroups
-        .map((g) => ({ ...g, name: g.name.trim(), choices: g.choices.filter((c) => c.name.trim()) }))
+        .map((g) => ({
+          ...g,
+          name: g.name.trim(),
+          // "Choix max" n'a de sens que pour un groupe à choix multiples --
+          // on l'ignore silencieusement si "Choix multiples" n'est pas coché
+          // plutôt que de laisser une valeur orpheline sans effet visible.
+          maxChoices: g.isMultiple ? g.maxChoices : null,
+          choices: g.choices.filter((c) => c.name.trim()),
+        }))
         .filter((g) => g.name && g.choices.length > 0);
-      await updateProductOptions(product.id, cleaned);
+      await updateProductOptions(product.id, cleaned, { allowSpecialInstructions, hasExtraFeeNotice });
       setOptionGroups(cleaned);
       setOptionsMessage("✅ Options enregistrées.");
     } catch (err) {
@@ -369,6 +383,21 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
                       />
                       Choix multiples
                     </label>
+                    {group.isMultiple && (
+                      <label className="flex items-center gap-1.5 text-xs text-nuit">
+                        Choix maxi
+                        <input
+                          type="number"
+                          min={1}
+                          placeholder="illimité"
+                          value={group.maxChoices ?? ""}
+                          onChange={(e) =>
+                            updateGroup(groupIndex, { maxChoices: e.target.value ? Number(e.target.value) : null })
+                          }
+                          className="w-16 rounded-sm border border-gris-light px-1.5 py-1 text-xs"
+                        />
+                      </label>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-1.5">
@@ -410,6 +439,37 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2.5 border-t border-gris-light pt-4">
+              <label className="flex items-start gap-2 text-sm text-nuit">
+                <input
+                  type="checkbox"
+                  checked={allowSpecialInstructions}
+                  onChange={(e) => setAllowSpecialInstructions(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Instructions spécifiques
+                  <span className="block text-xs font-normal text-gris">
+                    Le client pourra ajouter un commentaire libre à ce produit (ex: "bien cuit", "sans oignon").
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-nuit">
+                <input
+                  type="checkbox"
+                  checked={hasExtraFeeNotice}
+                  onChange={(e) => setHasExtraFeeNotice(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Frais supplémentaires possibles
+                  <span className="block text-xs font-normal text-gris">
+                    Affiche au client : "Des frais supplémentaires peuvent être appliqués pour cette option."
+                  </span>
+                </span>
+              </label>
             </div>
 
             {optionsMessage && <p className="mt-3 text-xs">{optionsMessage}</p>}

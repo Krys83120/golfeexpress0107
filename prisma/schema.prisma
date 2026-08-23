@@ -543,6 +543,17 @@ model Product {
   category    String
   isAvailable Boolean  @default(true) @map("is_available")
   isFeatured  Boolean  @default(false) @map("is_featured")
+  /// true = le client voit un champ "Instructions spécifiques" (texte libre)
+  /// pour CE produit lors de l'ajout au panier, stocké par ligne de panier
+  /// sur OrderItem.specialInstructions -- voir ProductOptionsModal.tsx côté
+  /// Client. Réglable par le Pro depuis le bas de la fiche produit, au
+  /// niveau des options (ProductFormModal.tsx).
+  allowSpecialInstructions Boolean @default(false) @map("allow_special_instructions")
+  /// true = un message d'info ("Des frais supplémentaires peuvent être
+  /// appliqués pour cette option") s'affiche au client lors du choix des
+  /// options de CE produit -- un seul réglage pour tout le produit, pas par
+  /// groupe d'options. Réglable par le Pro au même endroit que ci-dessus.
+  hasExtraFeeNotice        Boolean @default(false) @map("has_extra_fee_notice")
   /// Moyenne des avis ProductReview visibles pour ce produit -- recalculee a
   /// chaque nouvel avis (voir POST /api/orders/[orderId]/review), affichee
   /// sur la fiche produit (ProductOptionsModal cote app Client).
@@ -561,8 +572,16 @@ model ProductOption {
   name        String
   isRequired  Boolean       @default(false) @map("is_required")
   isMultiple  Boolean       @default(false) @map("is_multiple")
+  /// Nombre maximum de choix sélectionnables dans ce groupe, uniquement
+  /// pertinent quand isMultiple=true (ex: "3 max" pour un groupe "Extra
+  /// Protéines" à 5 choix). null = pas de limite. Réglé par le Pro dans
+  /// ProductFormModal.tsx, appliqué côté Client (ProductOptionsModal.tsx,
+  /// bloque une sélection supplémentaire une fois la limite atteinte) ET
+  /// revalidé côté serveur à la création de commande (orders/route.ts) --
+  /// jamais fait confiance uniquement au blocage client.
+  maxChoices  Int?          @map("max_choices")
   choices     OptionChoice[]
-  
+
   product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
@@ -588,18 +607,7 @@ model Order {
   
   status          OrderStatus @default(PENDING)
   paymentStatus   PaymentStatus @default(PENDING) @map("payment_status")
-  /// Marque de la carte utilisée pour le paiement (ex: "visa", "mastercard"),
-  /// récupérée depuis Stripe (PaymentMethod.card.brand) au moment où le
-  /// paiement est capturé -- voir webhooks/stripe/route.ts. null tant que
-  /// le paiement n'a pas encore abouti (ou si Stripe échoue à la fournir).
-  cardBrand       String?     @map("card_brand")
-  /// 4 derniers chiffres de la carte -- même origine/moment que cardBrand.
-  /// Affiché sur le ticket imprimé (ex: "Visa •••• 4242", voir
-  /// apps/pro/src/services/printLabel.ts) pour aider le pro/livreur en cas
-  /// de litige. Stripe ne transmet jamais le numéro complet, uniquement
-  /// marque + 4 derniers chiffres.
-  cardLast4       String?     @map("card_last_4")
-
+  
   subtotal        Decimal     @db.Decimal(10,2)
   deliveryFee     Decimal     @db.Decimal(6,2) @map("delivery_fee")
   serviceFee      Decimal     @db.Decimal(6,2) @map("service_fee")
@@ -651,7 +659,15 @@ model Order {
   deliveryCode    String?     @map("delivery_code")
   rating          Int?
   review          String?
-  
+
+  /// Marque et 4 derniers chiffres de la carte utilisée pour le paiement
+  /// Stripe de cette commande (ex: "visa", "4242") -- renseignés uniquement
+  /// une fois le paiement capturé avec succès (voir webhooks/stripe/
+  /// route.ts, payment_intent.succeeded), jamais réinitialisés à null par
+  /// la suite. Affichés sur le ticket de préparation (voir printLabel.ts).
+  cardBrand       String?     @map("card_brand")
+  cardLast4       String?     @map("card_last_4")
+
   client          Client      @relation(fields: [clientId], references: [id])
   pro             Pro         @relation(fields: [proId], references: [id])
   rider           Rider?      @relation(fields: [riderId], references: [id])
@@ -680,7 +696,14 @@ model OrderItem {
   unitPrice   Decimal  @db.Decimal(8,2) @map("unit_price")
   totalPrice  Decimal  @db.Decimal(10,2) @map("total_price")
   options     Json?
-  
+  /// Instruction libre du client pour CETTE ligne précisément (ex: "bien
+  /// cuit", "sans oignon") -- distinct de Order.clientNote qui porte sur
+  /// toute la commande. Renseignable uniquement si le produit a
+  /// allowSpecialInstructions=true au moment de la commande (voir
+  /// ProductOptionsModal.tsx côté Client). Affiché sur le ticket de
+  /// préparation, voir apps/pro/src/services/printLabel.ts.
+  specialInstructions String? @map("special_instructions")
+
   order       Order    @relation(fields: [orderId], references: [id])
   product     Product  @relation(fields: [productId], references: [id])
 }
