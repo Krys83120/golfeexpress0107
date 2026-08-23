@@ -66,16 +66,66 @@ export async function POST(req: NextRequest) {
   try {
     switch (event.type) {
       case "payment_intent.succeeded": {
-        const paymentIntent = event.data.object as { id: string; metadata: Record<string, string> };
+        const paymentIntent = event.data.object as {
+          id: string;
+          metadata: Record<string, string>;
+          payment_method: string | null;
+        };
         const orderId = paymentIntent.metadata.orderId;
         if (orderId) {
           const order = await prisma.order.findUnique({ where: { id: orderId } });
           if (order) {
             const wasPending = order.status === OrderStatus.PENDING;
+
+            // Course possible avec l'annulation automatique des commandes
+            // PENDING restées impayées 5 minutes (voir orders/route.ts,
+            // cancelStalePendingOrders) : le paiement Stripe finit malgré
+            // tout par aboutir juste après que la commande ait déjà été
+            // annulée côté plateforme. On ne la fait alors JAMAIS repasser en
+            // CONFIRMED (elle n'existe plus pour le Pro), et on rembourse
+            // automatiquement plutôt que de laisser paymentStatus passer à
+            // CAPTURED sur une commande annulée — ce qui donnerait
+            // l'impression, notamment côté Admin, que l'argent a été encaissé
+            // pour une commande qui ne sera jamais honorée.
+            if (order.status === OrderStatus.CANCELLED) {
+              try {
+                await stripe.refunds.create({ payment_intent: paymentIntent.id });
+                await prisma.order.update({ where: { id: orderId }, data: { paymentStatus: PaymentStatus.REFUNDED } });
+              } catch (err) {
+                console.error(
+                  `[stripe webhook] Échec remboursement auto (commande ${orderId} déjà annulée avant confirmation du paiement):`,
+                  err
+                );
+              }
+              break;
+            }
+
+            // Marque + 4 derniers chiffres de la carte -- affichés sur le
+            // ticket imprimé par le Pro (voir printLabel.ts). Récupération
+            // "best effort" : un échec ici ne doit jamais empêcher la
+            // confirmation du paiement, on continue simplement sans ces
+            // infos (elles resteront à null sur cette commande).
+            let cardBrand: string | null = null;
+            let cardLast4: string | null = null;
+            if (paymentIntent.payment_method) {
+              try {
+                const paymentMethod = await stripe.paymentMethods.retrieve(paymentIntent.payment_method);
+                cardBrand = paymentMethod.card?.brand ?? null;
+                cardLast4 = paymentMethod.card?.last4 ?? null;
+              } catch (err) {
+                console.error(`[stripe webhook] Échec récupération du moyen de paiement (commande ${orderId}):`, err);
+              }
+            }
+
             await prisma.order.update({
               where: { id: orderId },
               data: {
                 paymentStatus: PaymentStatus.CAPTURED,
+                // Écrit uniquement si on a bien réussi à les récupérer --
+                // ne jamais écraser une valeur déjà enregistrée par un
+                // "null" en cas d'échec sur un replay/retry du webhook.
+                ...(cardBrand ? { cardBrand } : {}),
+                ...(cardLast4 ? { cardLast4 } : {}),
                 // On ne fait avancer le statut métier vers CONFIRMED que si
                 // la commande était encore PENDING — si le Pro/Rider l'a
                 // déjà fait progresser (webhook reçu en retard, replay

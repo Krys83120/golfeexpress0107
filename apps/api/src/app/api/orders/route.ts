@@ -17,7 +17,7 @@ import {
   isMinOrderByDistanceEnabled,
   getMinOrderTiers,
   computeRequiredMinOrder,
-  getDeliveryFeeForDistance,
+  getEffectiveDeliveryFee,
   getRiderPayForDistance,
 } from "@/lib/pricingSettings";
 
@@ -191,6 +191,36 @@ async function postHandler(req: NextRequest) {
     return surcharge;
   }
 
+  /**
+   * Réordonne les clés de `selectedOptions` (groupe -> choix) selon l'ordre
+   * des groupes d'options tel que défini sur la fiche produit (product.options,
+   * dans l'ordre renvoyé par Prisma), plutôt que l'ordre dans lequel le
+   * client les a envoyées (qui peut varier selon l'ordre de clic du
+   * client). Cet ordre est celui affiché ensuite sur le ticket de
+   * préparation (voir printLabel.ts) -- l'employé qui prépare doit voir les
+   * options dans le même ordre que sur la fiche produit du Pro, pas en
+   * ordre alphabétique ni en ordre de sélection client.
+   */
+  function reorderOptionsByProductDefinition(
+    product: (typeof products)[number],
+    selectedOptions: Record<string, string> | undefined
+  ): Record<string, string> | undefined {
+    if (!selectedOptions) return undefined;
+    const ordered: Record<string, string> = {};
+    for (const group of product.options) {
+      if (group.name in selectedOptions) {
+        ordered[group.name] = selectedOptions[group.name];
+      }
+    }
+    // Filet de sécurité : si un groupe envoyé par le client est introuvable
+    // sur la fiche produit actuelle (ex: produit modifié entre-temps), on le
+    // garde quand même à la fin plutôt que de perdre l'info silencieusement.
+    for (const [groupName, value] of Object.entries(selectedOptions)) {
+      if (!(groupName in ordered)) ordered[groupName] = value;
+    }
+    return ordered;
+  }
+
   let subtotal = 0;
   const orderItemsData = items.map((item) => {
     const product = productById.get(item.productId);
@@ -211,7 +241,7 @@ async function postHandler(req: NextRequest) {
       quantity: item.quantity,
       unitPrice,
       totalPrice,
-      options: item.options ?? undefined,
+      options: reorderOptionsByProductDefinition(product, item.options),
     };
   });
 
@@ -234,9 +264,11 @@ async function postHandler(req: NextRequest) {
     }
   }
 
-  // Supplément par distance (échange produit du 22/08/2026) si activé —
-  // sinon tarif fixe unique inchangé, voir pricingSettings.ts.
-  const deliveryFee = await getDeliveryFeeForDistance(distanceKm);
+  // Supplément par distance (échange produit du 22/08/2026) si activé, PUIS
+  // livraison gratuite si le panier atteint le seuil configuré (même date,
+  // désactivé par défaut) — voir getEffectiveDeliveryFee dans
+  // pricingSettings.ts. Sinon tarif fixe unique inchangé.
+  const deliveryFee = await getEffectiveDeliveryFee(distanceKm, subtotal);
   const serviceFee = SERVICE_FEE;
   const total = subtotal + deliveryFee + serviceFee;
 
@@ -292,15 +324,104 @@ async function postHandler(req: NextRequest) {
  *
  * Query params optionnels: ?status=PENDING,PREPARING (CSV)
  */
+
+const STALE_PENDING_TIMEOUT_MS = 5 * 60 * 1000;
+
+/**
+ * Annule automatiquement les commandes restées PENDING (jamais payées)
+ * depuis plus de 5 minutes -- sans ça, une commande abandonnée par un client
+ * avant paiement reste indéfiniment "en attente" et s'accumule dans la vue
+ * Admin/Pro, sans qu'aucun bouton ne permette de la supprimer ("ça pollue la
+ * vue" -- échange produit du 23/08/2026).
+ *
+ * Appelé ici, au tout début de GET /api/orders (lu très régulièrement par
+ * TOUS les rôles -- Admin toutes les 15s, Pro à chaque chargement/
+ * rafraîchissement) plutôt que via un cron Vercel séparé : évite toute
+ * dépendance à un plan Vercel supportant des cron jobs fréquents, et le
+ * nettoyage reste quasi temps réel tant qu'au moins un dashboard est ouvert
+ * quelque part sur la plateforme.
+ *
+ * Ne touche volontairement JAMAIS paymentStatus ici : si un paiement Stripe
+ * finit malgré tout par aboutir après coup pour une commande déjà annulée
+ * (webhook en retard), c'est le webhook lui-même qui gère ce cas précis --
+ * remboursement automatique plutôt que de laisser paymentStatus passer à
+ * CAPTURED sur une commande déjà annulée (voir webhooks/stripe/route.ts).
+ */
+async function cancelStalePendingOrders(): Promise<void> {
+  const staleOrders = await prisma.order.findMany({
+    where: { status: OrderStatus.PENDING, placedAt: { lt: new Date(Date.now() - STALE_PENDING_TIMEOUT_MS) } },
+    select: { id: true },
+  });
+  if (staleOrders.length === 0) return;
+
+  const staleIds = staleOrders.map((o) => o.id);
+  await prisma.order.updateMany({
+    where: { id: { in: staleIds } },
+    data: { status: OrderStatus.CANCELLED },
+  });
+  await prisma.orderStatusHistory.createMany({
+    data: staleIds.map((orderId) => ({
+      orderId,
+      status: OrderStatus.CANCELLED,
+      note: "Annulée automatiquement — paiement non reçu sous 5 minutes.",
+    })),
+  });
+}
+
+/**
+ * Exclut les commandes PENDING (pas encore payées) du `where` d'un Pro ou
+ * PRO_EMPLOYEE -- une commande reste PENDING tant que le paiement Stripe
+ * n'est pas confirmé (voir webhooks/stripe, event payment_intent.succeeded,
+ * qui fait passer PENDING -> CONFIRMED en même temps que paymentStatus ->
+ * CAPTURED, de façon atomique). Le Pro ne doit jamais voir une commande non
+ * payée dans sa file : ça évite la confusion "commande visible chez moi
+ * alors que le client n'a peut-être même pas terminé son paiement" --
+ * échange produit du 23/08/2026. Seul Admin/Super Admin garde une vue
+ * complète (PENDING inclus), pour le suivi/support.
+ *
+ * Combine via `AND` plutôt que d'écraser `where.status` directement : si un
+ * `?status=` explicite est un jour passé pour un Pro, les deux contraintes
+ * restent actives au lieu que l'une écrase l'autre (les deux utilisent la
+ * même clé `status`).
+ */
+function excludePendingForPro(where: Record<string, unknown>): Record<string, unknown> {
+  const { status: existingStatusFilter, ...rest } = where;
+  return {
+    ...rest,
+    AND: [
+      ...(existingStatusFilter !== undefined ? [{ status: existingStatusFilter }] : []),
+      { status: { not: OrderStatus.PENDING } },
+    ],
+  };
+}
+
 async function getHandler(req: NextRequest) {
   const auth = await requireAuth(req);
+
+  await cancelStalePendingOrders();
 
   const statusParam = req.nextUrl.searchParams.get("status");
   const statusFilter = statusParam
     ? { status: { in: statusParam.split(",") as OrderStatus[] } }
     : {};
 
-  let where: Record<string, unknown> = { ...statusFilter };
+  // Filtre par période (placedAt) -- utilisé notamment par la page Admin
+  // "Commandes" (traçabilité + statistiques panier moyen jour/semaine/mois,
+  // voir apps/admin/src/pages/OrdersPage.tsx) pour charger une plage sans
+  // dépendre uniquement du plafond `take` ci-dessous.
+  const fromParam = req.nextUrl.searchParams.get("from");
+  const toParam = req.nextUrl.searchParams.get("to");
+  const dateFilter =
+    fromParam || toParam
+      ? {
+          placedAt: {
+            ...(fromParam ? { gte: new Date(fromParam) } : {}),
+            ...(toParam ? { lte: new Date(toParam) } : {}),
+          },
+        }
+      : {};
+
+  let where: Record<string, unknown> = { ...statusFilter, ...dateFilter };
 
   if (auth.role === UserRole.CLIENT) {
     const client = await prisma.client.findUnique({ where: { userId: auth.userId } });
@@ -309,7 +430,16 @@ async function getHandler(req: NextRequest) {
   } else if (auth.role === UserRole.PRO) {
     const pro = await prisma.pro.findUnique({ where: { userId: auth.userId } });
     if (!pro) throw new ApiError(404, "Profil commerçant introuvable.");
-    where = { ...where, proId: pro.id };
+    where = excludePendingForPro({ ...where, proId: pro.id });
+  } else if (auth.role === UserRole.PRO_EMPLOYEE) {
+    // Un employé voit exactement les mêmes commandes que son patron (sa
+    // boutique), jamais celles des autres Pro -- voir ProEmployee dans
+    // prisma/schema.prisma. Sans cette branche, un compte PRO_EMPLOYEE
+    // tombait dans le cas "ADMIN/SUPER_ADMIN" ci-dessous (aucun filtre =
+    // vue plateforme complète), une fuite de données grave.
+    const employee = await prisma.proEmployee.findUnique({ where: { userId: auth.userId } });
+    if (!employee) throw new ApiError(404, "Compte employé introuvable ou détaché de sa boutique.");
+    where = excludePendingForPro({ ...where, proId: employee.proId });
   } else if (auth.role === UserRole.RIDER) {
     const rider = await prisma.rider.findUnique({ where: { userId: auth.userId } });
     if (!rider) throw new ApiError(404, "Profil livreur introuvable.");
@@ -323,12 +453,34 @@ async function getHandler(req: NextRequest) {
       items: true,
       client: { select: { id: true, user: { select: { firstName: true, lastName: true, phone: true } } } },
       pro: { select: { id: true, businessName: true, logo: true, category: true } },
-      rider: { select: { id: true, userId: true, currentLat: true, currentLng: true, vehicleType: true } },
+      rider: {
+        select: {
+          id: true,
+          userId: true,
+          currentLat: true,
+          currentLng: true,
+          vehicleType: true,
+          // Nom affiché sur le dashboard Admin, carte "Livraisons en cours"
+          // (chrono par livreur) — voir ActiveDeliveriesCard.tsx.
+          user: { select: { firstName: true, lastName: true } },
+        },
+      },
       fromAddress: true,
       toAddress: true,
+      // Traçabilité complète (qui a fait quoi, quand) -- consommé
+      // notamment par la page Admin "Commandes" pour le détail par
+      // commande (voir apps/admin/src/pages/OrdersPage.tsx). Petit volume
+      // par commande (quelques lignes), négligeable même sur les 50
+      // commandes renvoyées ici.
+      statusHistory: { orderBy: { changedAt: "asc" } },
     },
     orderBy: { placedAt: "desc" },
-    take: 50,
+    // Plafond volontairement plus haut pour Admin/Super Admin (vue
+    // plateforme utilisée pour la traçabilité + les statistiques panier
+    // moyen jour/semaine/mois) que pour Client/Pro/Rider (leur propre
+    // historique récent suffit). Toujours un plafond, jamais "tout" -- à
+    // remonter si 1000 commandes/mois s'avère limitant en pratique.
+    take: auth.role === UserRole.ADMIN || auth.role === UserRole.SUPER_ADMIN ? 1000 : 50,
   });
 
   // rider.currentLat/currentLng sont des Decimal Prisma -> sérialisés en

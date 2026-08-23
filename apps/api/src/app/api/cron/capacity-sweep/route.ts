@@ -6,7 +6,7 @@ import {
   isStuckOrderAlertEnabled,
   isStaleRiderAutoOfflineEnabled,
   STUCK_ORDER_ALERT_THRESHOLD_MINUTES,
-  STALE_RIDER_OFFLINE_THRESHOLD_MINUTES,
+  DEFAULT_RIDER_AUTO_OFFLINE_TIMEOUT_MINUTES,
 } from "@/lib/capacitySettings";
 import { sendStuckOrderAlert } from "@/lib/emails/capacityAlerts";
 
@@ -22,9 +22,11 @@ import { sendStuckOrderAlert } from "@/lib/emails/capacityAlerts";
  *     plus de STUCK_ORDER_ALERT_THRESHOLD_MINUTES — le "délai + escalade"
  *     du 20/08/2026. Une seule alerte par commande (riderSearchAlertSent).
  *  2. Repasse hors ligne tout livreur resté "en ligne" sans mise à jour de
- *     position depuis plus de STALE_RIDER_OFFLINE_THRESHOLD_MINUTES —
- *     protège la fiabilité du garde-fou de capacité contre un livreur qui
- *     a simplement oublié de se déconnecter.
+ *     position depuis plus longtemps que SON PROPRE délai configuré
+ *     (Rider.autoOfflineTimeoutMinutes, réglable par le livreur lui-même
+ *     depuis son profil — 1h par défaut) — protège la fiabilité du
+ *     garde-fou de capacité contre un livreur qui a simplement oublié de se
+ *     déconnecter.
  *
  * Protégé par CRON_SECRET (variable d'env Vercel) : Vercel Cron ajoute
  * automatiquement `Authorization: Bearer <CRON_SECRET>` à ses appels. Tant
@@ -76,16 +78,34 @@ async function getHandler(req: NextRequest) {
   }
 
   if (await isStaleRiderAutoOfflineEnabled()) {
-    const threshold = new Date(Date.now() - STALE_RIDER_OFFLINE_THRESHOLD_MINUTES * 60_000);
-
-    const staleRiders = await prisma.rider.updateMany({
-      where: {
-        isOnline: true,
-        OR: [{ currentLocationUpdatedAt: { lt: threshold } }, { currentLocationUpdatedAt: null }],
-      },
-      data: { isOnline: false },
+    // Le délai est propre à chaque livreur (autoOfflineTimeoutMinutes) --
+    // Prisma updateMany ne sait pas comparer une colonne date à
+    // "maintenant moins une AUTRE colonne du même enregistrement", donc on
+    // récupère d'abord les livreurs en ligne avec leur délai respectif, on
+    // calcule la fraîcheur en JS, puis on ne met à jour QUE les ids
+    // effectivement dépassés -- volume toujours faible (nombre de livreurs
+    // en ligne à un instant donné), sans impact de perf réel.
+    const onlineRiders = await prisma.rider.findMany({
+      where: { isOnline: true },
+      select: { id: true, currentLocationUpdatedAt: true, autoOfflineTimeoutMinutes: true },
     });
-    result.staleRidersOffline = staleRiders.count;
+
+    const now = Date.now();
+    const staleRiderIds = onlineRiders
+      .filter((rider) => {
+        const timeoutMinutes = rider.autoOfflineTimeoutMinutes ?? DEFAULT_RIDER_AUTO_OFFLINE_TIMEOUT_MINUTES;
+        if (!rider.currentLocationUpdatedAt) return true;
+        return now - new Date(rider.currentLocationUpdatedAt).getTime() > timeoutMinutes * 60_000;
+      })
+      .map((rider) => rider.id);
+
+    if (staleRiderIds.length > 0) {
+      await prisma.rider.updateMany({
+        where: { id: { in: staleRiderIds } },
+        data: { isOnline: false },
+      });
+    }
+    result.staleRidersOffline = staleRiderIds.length;
   }
 
   return NextResponse.json({ ok: true, ...result });

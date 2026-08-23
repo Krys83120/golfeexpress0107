@@ -76,6 +76,19 @@ export function CapacityPage() {
   const [addingCity, setAddingCity] = useState(false);
   const [cityActionId, setCityActionId] = useState<string | null>(null);
 
+  // SEO (23/08/2026) — panneau dépliable par ville pour piloter seoIndexable
+  // / seoSlug / seoIntro / lat / lng, indépendamment d'isActive ci-dessus.
+  // Alimente /livraison/[ville] côté site vitrine (voir apps/www).
+  const [seoOpenCityId, setSeoOpenCityId] = useState<string | null>(null);
+  const [seoDraft, setSeoDraft] = useState<{
+    seoIndexable: boolean;
+    seoSlug: string;
+    seoIntro: string;
+    lat: string;
+    lng: string;
+  } | null>(null);
+  const [seoSaving, setSeoSaving] = useState(false);
+
   useEffect(() => {
     fetchCapacityFlags()
       .then(
@@ -194,6 +207,53 @@ export function CapacityPage() {
     }
   }
 
+  function handleOpenSeo(city: ServiceCity) {
+    if (seoOpenCityId === city.id) {
+      setSeoOpenCityId(null);
+      setSeoDraft(null);
+      return;
+    }
+    setSeoOpenCityId(city.id);
+    setSeoDraft({
+      seoIndexable: city.seoIndexable,
+      seoSlug: city.seoSlug ?? "",
+      seoIntro: city.seoIntro ?? "",
+      lat: city.lat !== null ? String(city.lat) : "",
+      lng: city.lng !== null ? String(city.lng) : "",
+    });
+  }
+
+  async function handleSaveSeo(city: ServiceCity) {
+    if (!seoDraft) return;
+    const lat = seoDraft.lat.trim() ? Number(seoDraft.lat) : undefined;
+    const lng = seoDraft.lng.trim() ? Number(seoDraft.lng) : undefined;
+    if (seoDraft.lat.trim() && Number.isNaN(lat)) {
+      alert("Latitude invalide.");
+      return;
+    }
+    if (seoDraft.lng.trim() && Number.isNaN(lng)) {
+      alert("Longitude invalide.");
+      return;
+    }
+    setSeoSaving(true);
+    try {
+      const updated = await updateServiceCity(city.id, {
+        seoIndexable: seoDraft.seoIndexable,
+        ...(seoDraft.seoSlug.trim() ? { seoSlug: seoDraft.seoSlug.trim() } : {}),
+        seoIntro: seoDraft.seoIntro,
+        ...(lat !== undefined ? { lat } : {}),
+        ...(lng !== undefined ? { lng } : {}),
+      });
+      setCities((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      setSeoOpenCityId(null);
+      setSeoDraft(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Impossible d'enregistrer les réglages SEO de cette ville.");
+    } finally {
+      setSeoSaving(false);
+    }
+  }
+
   async function handleDeleteCity(city: ServiceCity) {
     if (!confirm(`Retirer "${city.name}" de la liste ?`)) return;
     setCityActionId(city.id);
@@ -272,10 +332,12 @@ export function CapacityPage() {
           <div>
             <p className="text-sm font-semibold text-nuit">Déconnexion auto. des livreurs inactifs</p>
             <p className="mt-1 text-xs text-gris">
-              Une fois activé : un livreur resté "en ligne" sans mise à jour de position depuis plus de 30 minutes
-              (oubli de désactivation) est automatiquement repassé hors ligne — évite qu'il compte comme
-              "disponible" dans le garde-fou ci-dessus alors qu'il ne travaille plus vraiment. Même dépendance au
-              cron Vercel que ci-dessus.
+              Une fois activé : un livreur resté "en ligne" sans mise à jour de position (oubli de déconnexion) est
+              automatiquement repassé hors ligne — évite qu'il compte comme "disponible" dans le garde-fou
+              ci-dessus alors qu'il ne travaille plus vraiment. Le délai n'est plus fixé ici : chaque livreur règle
+              le sien (entre 15 min et 4h, 1h par défaut) depuis son profil dans l'app Livreur — ce réglage-ci
+              n'active/désactive que le principe pour toute la plateforme. Même dépendance au cron Vercel que
+              ci-dessus.
             </p>
           </div>
           <Toggle
@@ -325,31 +387,129 @@ export function CapacityPage() {
         ) : (
           <div className="mb-4 flex flex-col gap-2">
             {cities.map((city) => (
-              <div key={city.id} className="flex items-center justify-between gap-3 rounded-sm border border-gris-light px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Toggle
-                    checked={city.isActive}
-                    onChange={() => handleToggleCityActive(city)}
-                    disabled={cityActionId === city.id}
-                  />
-                  <span className="text-sm font-semibold text-nuit">{city.name}</span>
-                  <span
-                    className="rounded-full px-2 py-0.5 text-[11px] font-bold"
-                    style={{
-                      backgroundColor: city.isActive ? "#E8F5E9" : "#F3F4F6",
-                      color: city.isActive ? "#1E8E4A" : "#6B7280",
-                    }}
-                  >
-                    {city.isActive ? "Active" : "Inactive"}
-                  </span>
+              <div key={city.id} className="rounded-sm border border-gris-light">
+                <div className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Toggle
+                      checked={city.isActive}
+                      onChange={() => handleToggleCityActive(city)}
+                      disabled={cityActionId === city.id}
+                    />
+                    <span className="text-sm font-semibold text-nuit">{city.name}</span>
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11px] font-bold"
+                      style={{
+                        backgroundColor: city.isActive ? "#E8F5E9" : "#F3F4F6",
+                        color: city.isActive ? "#1E8E4A" : "#6B7280",
+                      }}
+                    >
+                      {city.isActive ? "Active" : "Inactive"}
+                    </span>
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11px] font-bold"
+                      style={{
+                        backgroundColor: city.seoIndexable ? "#E8F0FE" : "#F3F4F6",
+                        color: city.seoIndexable ? "#1A56DB" : "#6B7280",
+                      }}
+                      title="Indépendant de la prise de commande — voir panneau SEO"
+                    >
+                      {city.seoIndexable ? "Page SEO indexable" : "Page SEO masquée"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleOpenSeo(city)}
+                      className="text-xs font-semibold text-golfe-green hover:underline"
+                    >
+                      {seoOpenCityId === city.id ? "Fermer" : "SEO"}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCity(city)}
+                      disabled={cityActionId === city.id}
+                      className="text-xs font-semibold text-gris hover:text-corail disabled:opacity-50"
+                    >
+                      Retirer
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteCity(city)}
-                  disabled={cityActionId === city.id}
-                  className="text-xs font-semibold text-gris hover:text-corail disabled:opacity-50"
-                >
-                  Retirer
-                </button>
+
+                {seoOpenCityId === city.id && seoDraft && (
+                  <div className="space-y-3 border-t border-gris-light bg-sable/40 px-4 py-4">
+                    <p className="text-xs text-gris">
+                      Ces réglages contrôlent uniquement la page de contenu <code>/livraison/[ville]</code> du site
+                      vitrine et son indexation — ils n'ouvrent jamais la prise de commande (voir interrupteur
+                      "Active" ci-dessus) et n'ouvrent pas non plus l'indexation globale du site (voir Admin &gt;
+                      SEO/GEO).
+                    </p>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-xs font-semibold text-nuit">Page indexable par les moteurs de recherche</span>
+                      <Toggle
+                        checked={seoDraft.seoIndexable}
+                        onChange={(v) => setSeoDraft((d) => (d ? { ...d, seoIndexable: v } : d))}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-nuit">
+                        Slug URL (ex: sainte-maxime)
+                      </label>
+                      <input
+                        value={seoDraft.seoSlug}
+                        onChange={(e) => setSeoDraft((d) => (d ? { ...d, seoSlug: e.target.value } : d))}
+                        placeholder="sainte-maxime"
+                        className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm focus:border-golfe-green focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-nuit">
+                        Texte d'intro (contenu réel affiché en haut de la page — pas de remplissage automatique)
+                      </label>
+                      <textarea
+                        value={seoDraft.seoIntro}
+                        onChange={(e) => setSeoDraft((d) => (d ? { ...d, seoIntro: e.target.value } : d))}
+                        rows={4}
+                        className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm focus:border-golfe-green focus:outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-nuit">Latitude</label>
+                        <input
+                          value={seoDraft.lat}
+                          onChange={(e) => setSeoDraft((d) => (d ? { ...d, lat: e.target.value } : d))}
+                          placeholder="43.3084"
+                          className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm focus:border-golfe-green focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-nuit">Longitude</label>
+                        <input
+                          value={seoDraft.lng}
+                          onChange={(e) => setSeoDraft((d) => (d ? { ...d, lng: e.target.value } : d))}
+                          placeholder="6.6389"
+                          className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm focus:border-golfe-green focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          setSeoOpenCityId(null);
+                          setSeoDraft(null);
+                        }}
+                        className="rounded-sm px-3 py-2 text-xs font-semibold text-gris hover:text-nuit"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        onClick={() => handleSaveSeo(city)}
+                        disabled={seoSaving}
+                        className="rounded-sm bg-golfe-green px-4 py-2 text-xs font-bold text-nuit disabled:opacity-50"
+                      >
+                        {seoSaving ? "Enregistrement..." : "Enregistrer"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

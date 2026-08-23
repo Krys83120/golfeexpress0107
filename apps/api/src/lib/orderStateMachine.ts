@@ -28,16 +28,34 @@ const CANCELLABLE_FROM: OrderStatus[] = [
   OrderStatus.READY,
 ];
 
-/** Qui a le droit de déclencher quelle transition. */
+/**
+ * Qui a le droit de déclencher quelle transition. PRO_EMPLOYEE a
+ * volontairement les mêmes droits que PRO ici -- un employé traite les
+ * commandes de sa boutique exactement comme le patron (démarrer la
+ * préparation, marquer prête, annuler). La restriction employé porte sur
+ * les DONNÉES qu'il peut voir/faire ailleurs (Finances, Réglages...), pas
+ * sur le traitement des commandes elles-mêmes -- voir ProEmployee dans
+ * prisma/schema.prisma.
+ *
+ * PENDING -> CONFIRMED n'est PAS ouvert au Pro/employé (23/08/2026) : cette
+ * transition ne doit être déclenchée QUE par la confirmation d'un paiement
+ * Stripe réel (voir webhooks/stripe/route.ts, event
+ * payment_intent.succeeded), jamais manuellement -- un Pro qui pouvait
+ * "Confirmer" une commande à la main pouvait par erreur (ou abus) faire
+ * avancer une commande jamais payée. Seul Admin/Super Admin garde cette
+ * transition, réservée aux interventions de support exceptionnelles (ex:
+ * paiement vérifié manuellement côté Stripe Dashboard suite à un webhook en
+ * échec).
+ */
 const TRANSITION_OWNERS: Partial<Record<OrderStatus, UserRole[]>> = {
-  [OrderStatus.CONFIRMED]: [UserRole.PRO],
-  [OrderStatus.PREPARING]: [UserRole.PRO],
-  [OrderStatus.READY]: [UserRole.PRO],
+  [OrderStatus.CONFIRMED]: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+  [OrderStatus.PREPARING]: [UserRole.PRO, UserRole.PRO_EMPLOYEE],
+  [OrderStatus.READY]: [UserRole.PRO, UserRole.PRO_EMPLOYEE],
   [OrderStatus.RIDER_ASSIGNED]: [UserRole.RIDER, UserRole.ADMIN, UserRole.SUPER_ADMIN],
   [OrderStatus.PICKED_UP]: [UserRole.RIDER],
   [OrderStatus.IN_DELIVERY]: [UserRole.RIDER],
   [OrderStatus.DELIVERED]: [UserRole.RIDER],
-  [OrderStatus.CANCELLED]: [UserRole.CLIENT, UserRole.PRO, UserRole.ADMIN, UserRole.SUPER_ADMIN],
+  [OrderStatus.CANCELLED]: [UserRole.CLIENT, UserRole.PRO, UserRole.PRO_EMPLOYEE, UserRole.ADMIN, UserRole.SUPER_ADMIN],
 };
 
 export function canTransition(current: OrderStatus, next: OrderStatus): boolean {

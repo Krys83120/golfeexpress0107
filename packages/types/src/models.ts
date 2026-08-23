@@ -15,6 +15,7 @@ import {
   ManualClosureReason,
   OrderReportCategory,
   OrderReportStatus,
+  AppSource,
 } from "./enums";
 
 /**
@@ -34,6 +35,8 @@ export interface User {
   status: UserStatus;
   createdAt: string;
   updatedAt: string;
+  /** Non-null uniquement si role === PRO_EMPLOYEE — voir ProEmployee. */
+  employeeOfPro?: ProEmployee | null;
 }
 
 export interface Client {
@@ -106,6 +109,27 @@ export interface Pro {
   products?: Product[];
   openingHours?: OpeningHours[];
   deliveryZones?: DeliveryZone[];
+  /** Comptes employés créés par ce Pro (voir ProEmployee ci-dessous). */
+  employees?: ProEmployee[];
+}
+
+/**
+ * Compte employé rattaché à une boutique (Pro) — voir prisma/schema.prisma
+ * model ProEmployee. Créé uniquement par le Pro "patron" lui-même (POST
+ * /api/pros/me/employees), avec son propre login mais un accès volontairement
+ * restreint côté app Pro : commandes en cours, notifications, impression des
+ * tickets — jamais Finances/Paramètres/Abonnement/Avis (voir
+ * apps/pro/src/App.tsx et Sidebar.tsx côté client, ET
+ * requireProOrEmployee() côté serveur dans apps/api/src/middleware/auth.ts —
+ * la restriction visuelle seule ne suffit jamais).
+ */
+export interface ProEmployee {
+  id: string;
+  proId: string;
+  userId: string;
+  createdAt: string;
+  pro?: Pro;
+  user?: User;
 }
 
 /**
@@ -148,6 +172,8 @@ export interface Rider {
   currentLat?: number | null;
   currentLng?: number | null;
   currentLocationUpdatedAt?: string | null;
+  /** Délai (minutes) sans position avant déconnexion auto -- réglable par le livreur, 60 par défaut. */
+  autoOfflineTimeoutMinutes: number;
   rating?: number | null;
   ratingCount: number;
   totalDeliveries: number;
@@ -265,6 +291,10 @@ export interface Order {
 
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  /** Marque de la carte utilisée (ex: "visa"), voir prisma/schema.prisma. */
+  cardBrand?: string | null;
+  /** 4 derniers chiffres de la carte utilisée. */
+  cardLast4?: string | null;
 
   subtotal: number;
   deliveryFee: number;
@@ -278,6 +308,8 @@ export interface Order {
 
   placedAt: string;
   acceptedAt?: string | null;
+  /** Moment où le livreur a accepté/pris en charge la commande (-> RIDER_ASSIGNED). */
+  riderAssignedAt?: string | null;
   estimatedPrepMinutes?: number | null;
   preparingStartedAt?: string | null;
   readyAt?: string | null;
@@ -334,12 +366,22 @@ export interface ContactMessage {
   updatedAt: string;
 }
 
-/** Voir ServiceCity côté Prisma — interrupteur global d'ouverture par commune. */
+/**
+ * Voir ServiceCity côté Prisma — interrupteur global d'ouverture par
+ * commune. isActive (prise de commande) et seoIndexable (page de contenu
+ * /livraison/[ville] indexable) sont volontairement indépendants — voir le
+ * commentaire sur PATCH /api/admin/service-cities/[cityId].
+ */
 export interface ServiceCity {
   id: string;
   name: string;
   isActive: boolean;
   sortOrder: number;
+  seoIndexable: boolean;
+  seoSlug: string | null;
+  seoIntro: string | null;
+  lat: number | null;
+  lng: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -466,6 +508,22 @@ export interface PartnerPack {
 export interface AdminPartnerPack extends PartnerPack {
   stripeProductId: string | null;
   stripePriceId: string | null;
+}
+
+/**
+ * Événement de visite anonyme -- voir prisma/schema.prisma model AppVisit
+ * pour le détail complet. Utilisé côté admin uniquement pour typer les
+ * réponses agrégées de GET /api/admin/analytics/visits ; la table brute
+ * n'est jamais exposée telle quelle (voir cette route pour le pourquoi).
+ */
+export interface AppVisit {
+  id: string;
+  app: AppSource;
+  sessionId: string;
+  path?: string | null;
+  deviceType?: string | null;
+  referrer?: string | null;
+  createdAt: string;
 }
 
 /**

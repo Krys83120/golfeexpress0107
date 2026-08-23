@@ -13,6 +13,12 @@ datasource db {
 enum UserRole {
   CLIENT
   PRO
+  /// Compte employé créé par un Pro (le "patron") pour son équipe — voir
+  /// model ProEmployee. Accès volontairement restreint : commandes en
+  /// cours, notifications, impression des tickets. Jamais les données
+  /// sensibles (finances détaillées, paramètres, abonnement...) — voir
+  /// requireProOrEmployee() dans middleware/auth.ts.
+  PRO_EMPLOYEE
   RIDER
   ADMIN
   SUPER_ADMIN
@@ -154,6 +160,15 @@ enum OrderReportStatus {
   REJECTED
 }
 
+/// Application source d'une visite trackée -- voir model AppVisit. WWW =
+/// site vitrine (apps/www), les 3 autres = les apps authentifiées.
+enum AppSource {
+  WWW
+  CLIENT
+  PRO
+  LIVREUR
+}
+
 // ==================== UTILISATEURS ====================
 
 // NOTE IMPORTANT — Intégration Supabase Auth :
@@ -182,10 +197,33 @@ model User {
   proProfile      Pro?
   riderProfile    Rider?
   adminProfile    Admin?
+  /// Non-null uniquement pour un compte role=PRO_EMPLOYEE -- donne accès au
+  /// Pro (boutique) pour lequel cet employé travaille. Voir model ProEmployee.
+  employeeOfPro   ProEmployee?
   addresses       Address[]
   notifications   Notification[]
   passwordResetTokens PasswordResetToken[]
   orderReports    OrderReport[]
+}
+
+/// Compte employé rattaché à une boutique (Pro) -- créé uniquement par le
+/// Pro "patron" lui-même (voir POST /api/pros/me/employees, qui utilise
+/// supabaseAdmin pour créer le compte Auth au nom de l'employé). Un
+/// employé a son propre login (email/mot de passe) mais un accès
+/// volontairement restreint côté app Pro : commandes en cours,
+/// notifications, impression des tickets -- jamais Finances/Paramètres/
+/// Abonnement/Avis (voir apps/pro/src/App.tsx et Sidebar.tsx, qui masquent
+/// ces sections dès que profile.isEmployee est vrai côté client, ET
+/// requireProOrEmployee() qui refuse ces routes côté serveur -- la
+/// restriction visuelle seule ne suffit jamais).
+model ProEmployee {
+  id        String   @id @default(uuid())
+  proId     String   @map("pro_id")
+  userId    String   @unique @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pro       Pro      @relation(fields: [proId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 // ==================== RÉINITIALISATION DE MOT DE PASSE ====================
@@ -366,6 +404,8 @@ model Pro {
   deliveryZones     DeliveryZone[]
   orders            Order[]
   reviews           Review[]
+  /// Comptes employés créés par ce Pro (voir model ProEmployee).
+  employees         ProEmployee[]
 }
 
 // ==================== LIVREUR (RIDER) ====================
@@ -421,6 +461,15 @@ model Rider {
   currentLat      Decimal?     @db.Decimal(10,8) @map("current_lat")
   currentLng      Decimal?     @db.Decimal(11,8) @map("current_lng")
   currentLocationUpdatedAt DateTime? @map("current_location_updated_at")
+  /// Délai (en minutes) sans mise à jour de position au-delà duquel ce
+  /// livreur est automatiquement repassé hors ligne s'il a oublié de se
+  /// déconnecter -- réglable par le livreur lui-même depuis son profil
+  /// (voir apps/livreur/src/screens/RiderProfileScreen.tsx), n'a d'effet
+  /// que si l'admin a activé le mécanisme globalement (voir
+  /// capacitySettings.ts -- isStaleRiderAutoOfflineEnabled). Par défaut 1h
+  /// (échange produit du 23/08/2026 -- était fixé à 30 min pour tout le
+  /// monde, désormais configurable, valeur par défaut portée à 60).
+  autoOfflineTimeoutMinutes Int @default(60) @map("auto_offline_timeout_minutes")
   rating          Decimal?     @db.Decimal(2,1)
   ratingCount     Int          @default(0) @map("rating_count")
   totalDeliveries Int          @default(0) @map("total_deliveries")
@@ -539,7 +588,18 @@ model Order {
   
   status          OrderStatus @default(PENDING)
   paymentStatus   PaymentStatus @default(PENDING) @map("payment_status")
-  
+  /// Marque de la carte utilisée pour le paiement (ex: "visa", "mastercard"),
+  /// récupérée depuis Stripe (PaymentMethod.card.brand) au moment où le
+  /// paiement est capturé -- voir webhooks/stripe/route.ts. null tant que
+  /// le paiement n'a pas encore abouti (ou si Stripe échoue à la fournir).
+  cardBrand       String?     @map("card_brand")
+  /// 4 derniers chiffres de la carte -- même origine/moment que cardBrand.
+  /// Affiché sur le ticket imprimé (ex: "Visa •••• 4242", voir
+  /// apps/pro/src/services/printLabel.ts) pour aider le pro/livreur en cas
+  /// de litige. Stripe ne transmet jamais le numéro complet, uniquement
+  /// marque + 4 derniers chiffres.
+  cardLast4       String?     @map("card_last_4")
+
   subtotal        Decimal     @db.Decimal(10,2)
   deliveryFee     Decimal     @db.Decimal(6,2) @map("delivery_fee")
   serviceFee      Decimal     @db.Decimal(6,2) @map("service_fee")
@@ -560,6 +620,14 @@ model Order {
   
   placedAt        DateTime    @default(now()) @map("placed_at")
   acceptedAt      DateTime?   @map("accepted_at")
+  /// Horodatage dédié au moment où LE LIVREUR accepte/prend en charge la
+  /// commande (transition -> RIDER_ASSIGNED, voir orders/[orderId]/accept/
+  /// route.ts) -- distinct de acceptedAt ci-dessus qui ne reflète que la
+  /// confirmation du PRO (transition -> CONFIRMED, voir status/route.ts) et
+  /// ne bougeait donc jamais à l'acceptation du livreur. Sert de point de
+  /// départ au chrono de livraison (app Livreur + dashboard Admin, voir
+  /// CurrentDeliveryCard.tsx / ActiveDeliveriesCard.tsx).
+  riderAssignedAt DateTime?   @map("rider_assigned_at")
   estimatedPrepMinutes Int?   @map("estimated_prep_minutes")
   preparingStartedAt  DateTime? @map("preparing_started_at")
   readyAt         DateTime?   @map("ready_at")
@@ -730,6 +798,42 @@ model ContactMessage {
   @@map("contact_messages")
 }
 
+// ==================== VISITES / STATISTIQUES DE FRÉQUENTATION ====================
+
+/// Un événement de visite -- une ligne par "ouverture" d'app (WWW: une par
+/// page vue, pour permettre le calcul des pages les plus visitées ; CLIENT/
+/// PRO/LIVREUR: une par lancement de l'app, ces apps étant à page unique
+/// côté navigation) -- voir POST /api/analytics/visit (public, pas d'auth)
+/// et GET /api/admin/analytics/visits (agrégation admin). Entièrement
+/// anonyme par conception (voir la question posée à l'utilisateur lors de
+/// la conception de cette fonctionnalité) : aucun lien vers un compte
+/// Client/Pro/Rider, `sessionId` est un identifiant aléatoire généré
+/// côté client (sessionStorage pour WWW, un identifiant par lancement pour
+/// les apps mobiles), jamais un identifiant utilisateur.
+///
+/// "Visite" = COUNT(DISTINCT sessionId) sur la période (voir la réponse
+/// "par session" donnée à la question posée lors de la conception) --
+/// distinct du nombre de lignes ici, qui correspond aux pages vues pour WWW.
+model AppVisit {
+  id         String    @id @default(uuid())
+  app        AppSource
+  sessionId  String    @map("session_id")
+  /// Chemin de la page vue -- uniquement significatif pour WWW (site
+  /// multi-pages) ; les 3 apps authentifiées envoient un chemin logique fixe
+  /// (ex: "app_open") plutôt que null, pour rester cohérent dans les
+  /// agrégations sans cas particulier.
+  path       String?
+  /// "mobile" | "desktop" | "unknown" -- déduit du User-Agent côté serveur
+  /// si non fourni par le client (voir POST /api/analytics/visit).
+  deviceType String?   @map("device_type")
+  referrer   String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([app, createdAt])
+  @@index([sessionId])
+  @@map("app_visits")
+}
+
 // ==================== VILLES ACTIVÉES (LANCEMENT PROGRESSIF) ====================
 
 /// Villes/communes sur lesquelles la plateforme accepte des commandes.
@@ -749,6 +853,29 @@ model ServiceCity {
   name      String   @unique
   isActive  Boolean  @default(false) @map("is_active")
   sortOrder Int      @default(0) @map("sort_order")
+
+  /// Extension SEO (23/08/2026, audit SEO/GEO) : distincte d'isActive à
+  /// dessein. isActive pilote l'ouverture des COMMANDES (voir le commentaire
+  /// au-dessus du modèle) ; seoIndexable pilote uniquement si la page
+  /// /livraison/[slug] correspondante est indexable par les moteurs. Une
+  /// ville peut avoir sa page publiée en "bientôt disponible" (donc
+  /// seoIndexable=false) avant même d'être active, ou être active en
+  /// interne sans encore avoir de contenu suffisant pour mériter d'être
+  /// indexée -- les deux réglages doivent pouvoir varier indépendamment.
+  seoIndexable  Boolean @default(false) @map("seo_indexable")
+  /// Slug d'URL (/livraison/[seoSlug]) -- distinct de `name` pour ne jamais
+  /// casser un lien déjà indexé si le nom affiché change (ex: correction
+  /// d'accent) ; normalisé une seule fois à la création, jamais recalculé
+  /// automatiquement depuis `name`.
+  seoSlug       String? @unique @map("seo_slug")
+  /// Paragraphe d'intro affiché en haut de la page ville -- texte réel
+  /// rédigé pour cette commune, jamais généré automatiquement à partir d'un
+  /// gabarit (voir la mise en garde dans le cadrage SEO/GEO contre le
+  /// contenu quasi dupliqué d'une ville à l'autre).
+  seoIntro      String? @map("seo_intro")
+  lat           Decimal? @db.Decimal(9, 6)
+  lng           Decimal? @db.Decimal(9, 6)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

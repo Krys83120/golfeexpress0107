@@ -24,6 +24,7 @@ export interface UpdateRiderProfileInput {
   siret?: string | null;
   insuranceProvider?: string | null;
   insurancePolicyNumber?: string | null;
+  autoOfflineTimeoutMinutes?: number;
   acceptTerms?: boolean;
   termsVersion?: string;
 }

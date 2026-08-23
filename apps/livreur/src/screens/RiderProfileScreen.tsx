@@ -6,9 +6,23 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { uploadAvatar, withCacheBust } from "@/services/uploadsApi";
 import { updateMyUserProfile } from "@/services/userApi";
+import { updateMyRiderProfile } from "@/services/riderProfileApi";
 import { deleteMyAccount } from "@/services/accountApi";
 import { ApiRequestError } from "@/services/apiClient";
 import { RiderKycScreen } from "@/screens/RiderKycScreen";
+
+// Choix proposés pour le délai de déconnexion automatique en cas
+// d'inactivité (aucune mise à jour de position) -- 1h coché par défaut côté
+// serveur (voir Rider.autoOfflineTimeoutMinutes), le livreur reste libre de
+// le régler entre 15 min et 4h (échange produit du 23/08/2026 : c'était fixé
+// à 30 min pour tout le monde, désormais réglable par chacun).
+const AUTO_OFFLINE_TIMEOUT_CHOICES: { minutes: number; label: string }[] = [
+  { minutes: 15, label: "15 min" },
+  { minutes: 30, label: "30 min" },
+  { minutes: 60, label: "1h" },
+  { minutes: 120, label: "2h" },
+  { minutes: 240, label: "4h" },
+];
 
 interface MenuRow {
   emoji: string;
@@ -44,8 +58,10 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
   const setUser = useAuthStore((s) => s.setUser);
+  const setProfile = useAuthStore((s) => s.setProfile);
   const [showKyc, setShowKyc] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [savingTimeout, setSavingTimeout] = useState(false);
 
   const firstName = user?.firstName ?? "Livreur";
   const lastName = user?.lastName ?? "";
@@ -57,6 +73,19 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
     const url = await uploadAvatar(user.id, localUri);
     const updated = await updateMyUserProfile({ avatar: withCacheBust(url) });
     setUser(updated);
+  }
+
+  async function handleSelectAutoOfflineTimeout(minutes: number) {
+    if (!profile || savingTimeout || profile.autoOfflineTimeoutMinutes === minutes) return;
+    setSavingTimeout(true);
+    try {
+      const updated = await updateMyRiderProfile({ autoOfflineTimeoutMinutes: minutes });
+      setProfile(updated);
+    } catch {
+      Alert.alert("Erreur", "Impossible de mettre à jour ce réglage pour le moment.");
+    } finally {
+      setSavingTimeout(false);
+    }
   }
 
   function handleDeleteAccount() {
@@ -127,6 +156,43 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
         </Pressable>
 
         <MenuSection title="Mon compte" rows={ACCOUNT_ROWS} onOpenKyc={() => setShowKyc(true)} />
+
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <Text style={styles.sectionTitle}>Préférences</Text>
+          <View style={{ borderRadius: 8, backgroundColor: "#F3F4F6", padding: 16 }}>
+            <Text style={styles.infoTitle}>Déconnexion auto. si inactif</Text>
+            <Text style={[styles.subtle, { marginTop: 4 }]}>
+              Si vous restez "en ligne" sans que votre position ne bouge, votre statut repasse automatiquement hors
+              ligne après ce délai.
+            </Text>
+            <View style={{ marginTop: 12, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {AUTO_OFFLINE_TIMEOUT_CHOICES.map((choice) => {
+                const selected = (profile?.autoOfflineTimeoutMinutes ?? 60) === choice.minutes;
+                return (
+                  <Pressable
+                    key={choice.minutes}
+                    onPress={() => handleSelectAutoOfflineTimeout(choice.minutes)}
+                    disabled={savingTimeout}
+                    style={{
+                      borderRadius: 999,
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      backgroundColor: selected ? "#2ECC71" : "white",
+                      borderWidth: selected ? 0 : 1,
+                      borderColor: "#E5E7EB",
+                      opacity: savingTimeout ? 0.6 : 1,
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: selected ? "white" : "#1A1A2E" }}>
+                      {choice.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
         <MenuSection title="Aide & support" rows={SUPPORT_ROWS} onOpenKyc={() => setShowKyc(true)} />
 
         <View style={{ marginTop: 24, paddingHorizontal: 20 }}>

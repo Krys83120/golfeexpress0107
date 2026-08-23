@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Download } from "lucide-react";
 import { OrderStatus, type Order } from "@golfeexpress/types";
 import { useAdminOrdersStore } from "@/store/useAdminOrdersStore";
 import { ORDER_STATUS_LABELS } from "@/services/orderStatusLabels";
+import { PaymentStatusBadge } from "@/components/PaymentStatusBadge";
+import { OrderDetailModal } from "@/components/OrderDetailModal";
+import { downloadCsv } from "@/services/csvExport";
+import { buildTraceSteps, formatDuration, totalDurationMs, clientDisplayName, riderDisplayName, deliveryAddressLabel } from "@/services/orderTraceability";
 
 interface KanbanColumn {
   title: string;
@@ -12,6 +17,13 @@ interface KanbanColumn {
 // Mêmes colonnes que le Kanban de apps/pro/src/pages/OrdersPage.tsx, mais
 // ici toutes boutiques confondues (vue plateforme) et en lecture seule --
 // l'admin observe le flux, la gestion (avancer/annuler) reste au Pro/Rider.
+//
+// CANCELLED volontairement absent de "Terminées" (23/08/2026) : les
+// commandes annulées (notamment celles auto-annulées faute de paiement sous
+// 5 min, voir cancelStalePendingOrders côté API) n'ont ni action ni bouton
+// de suppression -- les laisser dans le kanban principal "pollue la vue".
+// Elles restent consultables dans la section repliable "Commandes annulées"
+// plus bas, hors du flux actif.
 const COLUMNS: KanbanColumn[] = [
   { title: "Nouvelles", emoji: "🆕", statuses: [OrderStatus.PENDING, OrderStatus.CONFIRMED] },
   { title: "En préparation", emoji: "👨‍🍳", statuses: [OrderStatus.PREPARING] },
@@ -21,7 +33,7 @@ const COLUMNS: KanbanColumn[] = [
     emoji: "🛵",
     statuses: [OrderStatus.RIDER_ASSIGNED, OrderStatus.PICKED_UP, OrderStatus.IN_DELIVERY],
   },
-  { title: "Terminées", emoji: "🏁", statuses: [OrderStatus.DELIVERED, OrderStatus.CANCELLED] },
+  { title: "Terminées", emoji: "🏁", statuses: [OrderStatus.DELIVERED] },
 ];
 
 const ALL = "all";
@@ -54,6 +66,48 @@ function formatDayLabel(key: string): string {
   return date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 }
 
+/** Carte commande du kanban Admin -- utilisée à la fois dans les colonnes
+ * actives et dans la section repliable "Commandes annulées" plus bas, pour
+ * garder un rendu identique aux deux endroits. */
+function AdminOrderCard({ order, onClick, dimmed }: { order: Order; onClick: () => void; dimmed?: boolean }) {
+  const statusMeta = ORDER_STATUS_LABELS[order.status];
+  const clientName = order.client?.user
+    ? `${order.client.user.firstName} ${order.client.user.lastName}`
+    : "—";
+  return (
+    <div
+      onClick={onClick}
+      className={
+        "cursor-pointer rounded bg-white p-3 shadow-sm transition-shadow hover:shadow-md" +
+        (dimmed ? " opacity-70 hover:opacity-100" : "")
+      }
+      style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}
+    >
+      <div className="mb-1 flex items-start justify-between gap-2">
+        <span className="text-sm font-semibold text-nuit">{order.orderNumber}</span>
+        <div className="flex flex-col items-end gap-1">
+          <span
+            className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+            style={{ backgroundColor: statusMeta.bg, color: statusMeta.text }}
+          >
+            {statusMeta.label}
+          </span>
+          <PaymentStatusBadge order={order} />
+        </div>
+      </div>
+      <p className="truncate text-xs text-gris">{order.pro?.businessName ?? "Commerçant inconnu"}</p>
+      <p className="truncate text-xs text-gris">
+        {clientName}
+        {order.toAddress?.city ? ` · ${order.toAddress.city}` : ""}
+      </p>
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-sm font-bold text-nuit">{Number(order.total).toFixed(2)} €</span>
+        <span className="text-[11px] text-gris">{formatPlacedAt(order.placedAt)}</span>
+      </div>
+    </div>
+  );
+}
+
 export function OrdersPage() {
   const orders = useAdminOrdersStore((s) => s.orders);
   const status = useAdminOrdersStore((s) => s.status);
@@ -67,6 +121,10 @@ export function OrdersPage() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string>(ALL);
   const [selectedProId, setSelectedProId] = useState<string>(ALL);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  // Section "Commandes annulées" repliée par défaut -- voir COLUMNS plus
+  // haut, ces commandes ne sont plus affichées dans le kanban principal.
+  const [showCancelled, setShowCancelled] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -116,6 +174,62 @@ export function OrdersPage() {
       return true;
     });
   }, [orders, selectedDay, selectedCity, selectedProId]);
+
+  const cancelledOrders = useMemo(
+    () => filteredOrders.filter((o) => o.status === OrderStatus.CANCELLED),
+    [filteredOrders]
+  );
+
+  /**
+   * Export CSV de traçabilité : une ligne par commande actuellement
+   * affichée (donc déjà filtrée par jour/ville/commerçant ci-dessus), avec
+   * qui a commandé/préparé/livré, l'adresse et l'horodatage de chaque étape
+   * -- voir orderTraceability.ts pour le détail des champs source.
+   */
+  function handleExportCsv() {
+    const headers = [
+      "Numéro",
+      "Statut",
+      "Client",
+      "Commerçant",
+      "Livreur",
+      "Adresse de livraison",
+      "Total (€)",
+      "Commande passée",
+      "Confirmée",
+      "Préparation démarrée",
+      "Prête",
+      "Livreur assigné",
+      "Récupérée",
+      "Livrée",
+      "Durée totale",
+    ];
+    const rows = filteredOrders.map((order) => {
+      const steps = buildTraceSteps(order);
+      const stepAt = (label: string) => {
+        const step = steps.find((s) => s.label === label);
+        return step?.at ? new Date(step.at).toLocaleString("fr-FR") : "";
+      };
+      return [
+        order.orderNumber,
+        ORDER_STATUS_LABELS[order.status].label,
+        clientDisplayName(order),
+        order.pro?.businessName ?? "",
+        riderDisplayName(order),
+        deliveryAddressLabel(order),
+        Number(order.total).toFixed(2),
+        stepAt("Commande passée"),
+        stepAt("Confirmée par le commerçant"),
+        stepAt("Préparation démarrée"),
+        stepAt("Prête"),
+        stepAt("Livreur assigné"),
+        stepAt("Récupérée par le livreur"),
+        stepAt("Livrée"),
+        formatDuration(totalDurationMs(order)),
+      ];
+    });
+    downloadCsv(`commandes-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  }
 
   const selectClass =
     "rounded-sm border border-gris-light bg-white px-3 py-2 text-sm text-nuit focus:border-golfe-green focus:outline-none";
@@ -177,6 +291,15 @@ export function OrdersPage() {
           </button>
         )}
 
+        <button
+          onClick={handleExportCsv}
+          disabled={filteredOrders.length === 0}
+          className="flex items-center gap-1.5 rounded-sm border border-gris-light bg-white px-3 py-2 text-xs font-semibold text-nuit transition-colors hover:bg-gris-light disabled:opacity-50"
+        >
+          <Download size={14} />
+          Exporter CSV
+        </button>
+
         <span className="ml-auto text-xs text-gris">
           {filteredOrders.length} commande{filteredOrders.length > 1 ? "s" : ""} affichée
           {filteredOrders.length > 1 ? "s" : ""}
@@ -215,38 +338,9 @@ export function OrdersPage() {
                       Aucune commande
                     </div>
                   ) : (
-                    columnOrders.map((order) => {
-                      const statusMeta = ORDER_STATUS_LABELS[order.status];
-                      const clientName = order.client?.user
-                        ? `${order.client.user.firstName} ${order.client.user.lastName}`
-                        : "—";
-                      return (
-                        <div
-                          key={order.id}
-                          className="rounded bg-white p-3 shadow-sm"
-                          style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}
-                        >
-                          <div className="mb-1 flex items-center justify-between">
-                            <span className="text-sm font-semibold text-nuit">{order.orderNumber}</span>
-                            <span
-                              className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                              style={{ backgroundColor: statusMeta.bg, color: statusMeta.text }}
-                            >
-                              {statusMeta.label}
-                            </span>
-                          </div>
-                          <p className="truncate text-xs text-gris">{order.pro?.businessName ?? "Commerçant inconnu"}</p>
-                          <p className="truncate text-xs text-gris">
-                            {clientName}
-                            {order.toAddress?.city ? ` · ${order.toAddress.city}` : ""}
-                          </p>
-                          <div className="mt-2 flex items-center justify-between">
-                            <span className="text-sm font-bold text-nuit">{Number(order.total).toFixed(2)} €</span>
-                            <span className="text-[11px] text-gris">{formatPlacedAt(order.placedAt)}</span>
-                          </div>
-                        </div>
-                      );
-                    })
+                    columnOrders.map((order) => (
+                      <AdminOrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
+                    ))
                   )}
                 </div>
               </div>
@@ -254,6 +348,31 @@ export function OrdersPage() {
           })}
         </div>
       )}
+
+      {/* Commandes annulées -- hors du kanban actif, repliées par défaut
+          (voir COLUMNS) pour ne pas polluer la vue alors qu'il n'existe
+          aucun bouton pour les supprimer. */}
+      {cancelledOrders.length > 0 && (
+        <div className="mt-6 border-t border-gris-light pt-4">
+          <button
+            onClick={() => setShowCancelled((v) => !v)}
+            className="flex items-center gap-2 text-sm font-semibold text-gris hover:text-nuit"
+          >
+            <span>{showCancelled ? "▾" : "▸"}</span>
+            🗑️ Commandes annulées ({cancelledOrders.length})
+          </button>
+
+          {showCancelled && (
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {cancelledOrders.map((order) => (
+                <AdminOrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} dimmed />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {selectedOrder && <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
     </div>
   );
 }

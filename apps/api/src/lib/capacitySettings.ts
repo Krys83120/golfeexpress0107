@@ -28,7 +28,23 @@ export const STUCK_ORDER_ALERT_THRESHOLD_MINUTES = 15;
 // livreur resté "en ligne" par oubli est automatiquement repassé hors
 // ligne — évite qu'il compte comme "disponible" dans le garde-fou de
 // capacité alors qu'il n'est en réalité plus en train de travailler.
-export const STALE_RIDER_OFFLINE_THRESHOLD_MINUTES = 30;
+//
+// Ce délai est PROPRE À CHAQUE LIVREUR (Rider.autoOfflineTimeoutMinutes,
+// voir prisma/schema.prisma), pas un réglage global unique — chaque livreur
+// choisit sa valeur parmi RIDER_AUTO_OFFLINE_TIMEOUT_CHOICES_MINUTES depuis
+// son profil (apps/livreur, RiderProfileScreen.tsx). Ce qui reste global ici
+// est le simple interrupteur marche/arrêt du mécanisme lui-même (voir
+// isStaleRiderAutoOfflineEnabled ci-dessous) — l'admin active ou non le
+// principe, chaque livreur règle le délai qui lui convient une fois activé
+// (échange produit du 23/08/2026, était fixé à 30 min pour tout le monde).
+export const DEFAULT_RIDER_AUTO_OFFLINE_TIMEOUT_MINUTES = 60;
+
+// Choix proposés au livreur pour son délai personnel (apps/livreur) --
+// bornes réutilisées aussi côté validation (voir validation/riderProfile.ts)
+// pour rejeter toute valeur farfelue envoyée directement à l'API.
+export const RIDER_AUTO_OFFLINE_TIMEOUT_CHOICES_MINUTES = [15, 30, 60, 120, 240] as const;
+export const RIDER_AUTO_OFFLINE_TIMEOUT_MIN_MINUTES = 15;
+export const RIDER_AUTO_OFFLINE_TIMEOUT_MAX_MINUTES = 240;
 
 async function readBooleanSetting(key: string): Promise<boolean> {
   const setting = await prisma.globalSetting.findUnique({ where: { key } });
