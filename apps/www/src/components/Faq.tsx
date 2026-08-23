@@ -1,3 +1,5 @@
+import { PLATFORM_COMMISSION, COMPETITOR_COMMISSION_SOURCE } from "@/lib/economics";
+
 const FAQS = [
   {
     q: "Dans quelles villes Do You Geckoo livre-t-il ?",
@@ -9,7 +11,7 @@ const FAQS = [
   },
   {
     q: "En quoi Do You Geckoo est-il différent d'Uber Eats ?",
-    a: "Do You Geckoo applique une commission commerçant nettement plus basse (à partir de 12%, contre des taux qui peuvent atteindre 30% sur les grandes plateformes) et reverse une part plus importante de chaque course au livreur. C'est une plateforme locale, pensée pour le Golfe de Saint-Tropez, pas un acteur mondial.",
+    a: `Do You Geckoo applique une commission commerçant nettement plus basse (${PLATFORM_COMMISSION.fromLabel}, contre des taux qui peuvent atteindre ${COMPETITOR_COMMISSION_SOURCE.maxPct}% sur les grandes plateformes) et reverse une part plus importante de chaque course au livreur. C'est une plateforme locale, pensée pour le Golfe de Saint-Tropez, pas un acteur mondial.`,
   },
   {
     q: "Comment devenir livreur chez Do You Geckoo ?",
@@ -17,7 +19,7 @@ const FAQS = [
   },
   {
     q: "Combien coûte l'inscription pour un commerçant ?",
-    a: "L'inscription est gratuite. Do You Geckoo se rémunère uniquement via une commission sur les commandes effectivement livrées, à partir de 12% selon la formule choisie — sans abonnement fixe obligatoire.",
+    a: `L'inscription est gratuite. Do You Geckoo se rémunère uniquement via une commission sur les commandes effectivement livrées, ${PLATFORM_COMMISSION.fromLabel} selon la formule choisie — sans abonnement fixe obligatoire.`,
   },
   {
     q: "Les applications mobiles sont-elles disponibles ?",

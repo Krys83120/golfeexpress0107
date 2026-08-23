@@ -4,6 +4,8 @@ import { Sidebar } from "./components/Sidebar";
 import { SplashLoader } from "./components/SplashLoader";
 import { DashboardPage } from "./pages/DashboardPage";
 import { OrdersPage } from "./pages/OrdersPage";
+import { StatsPage } from "./pages/StatsPage";
+import { VisitsPage } from "./pages/VisitsPage";
 import { ValidationsPage } from "./pages/ValidationsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { ProsPage } from "./pages/ProsPage";
@@ -48,6 +50,10 @@ function MainApp() {
         return <DashboardPage onNavigate={setActivePage} />;
       case "orders":
         return <OrdersPage />;
+      case "stats":
+        return <StatsPage />;
+      case "visits":
+        return <VisitsPage />;
       case "validations":
         return <ValidationsPage />;
       case "users":

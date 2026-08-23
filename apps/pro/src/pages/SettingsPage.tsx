@@ -25,6 +25,14 @@ const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi
 // commerçant, jamais utilisée pour calculer le timing d'une commande réelle.
 const PREP_TIME_PRESETS = [10, 15, 20, 30];
 
+// Réglage affiché en heures (au choix du Pro, voir prepTimeUnit ci-dessous)
+// -- stocké en minutes côté serveur dans les deux cas (Pro.defaultPrepTimeMinutes),
+// seule la présentation change. Utile pour les préparations longues
+// (fermentation, marinade, cuisson lente...) où saisir "180" minutes est
+// moins lisible que "3" heures.
+const PREP_TIME_PRESETS_HOURS = [1, 2, 3, 4];
+type PrepTimeUnit = "min" | "h";
+
 export function SettingsPage() {
   const [pro, setPro] = useState<Pro | null>(null);
   const [hours, setHours] = useState<OpeningHours[]>([]);
@@ -40,6 +48,9 @@ export function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [emailContact, setEmailContact] = useState("");
   const [defaultPrepTimeMinutes, setDefaultPrepTimeMinutes] = useState(15);
+  // Unité d'affichage/saisie uniquement -- defaultPrepTimeMinutes ci-dessus
+  // reste toujours la valeur envoyée au serveur, en minutes.
+  const [prepTimeUnit, setPrepTimeUnit] = useState<PrepTimeUnit>("min");
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingHours, setSavingHours] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -388,12 +399,12 @@ export function SettingsPage() {
   }
 
   if (status === "loading") {
-    return <p className="p-8 text-center text-sm text-gris">Chargement des paramètres...</p>;
+    return <p className="p-4 text-center text-sm text-gris sm:p-6 lg:p-8">Chargement des paramètres...</p>;
   }
 
   if (status === "error") {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <div className="rounded-sm bg-red-50 p-4 text-sm text-red-500">
           {error}{" "}
           <button onClick={load} className="font-semibold underline">
@@ -405,7 +416,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 p-8">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8">
       <div className="mb-6">
         <h1 className="font-heading text-2xl font-extrabold text-nuit">Paramètres</h1>
         <p className="text-sm text-gris">Informations de votre boutique</p>
@@ -416,7 +427,7 @@ export function SettingsPage() {
       <form onSubmit={handleSaveProfile} className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
         <h3 className="mb-4 font-heading text-base font-bold text-nuit">🏪 Informations générales</h3>
 
-        <div className="mb-5 flex items-start gap-6">
+        <div className="mb-5 flex flex-col gap-6 sm:flex-row sm:items-start">
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-gris">Logo</label>
             <ImageUploadField
@@ -437,7 +448,7 @@ export function SettingsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Nom commercial" value={businessName} onChange={setBusinessName} />
           <div>
             <label className="mb-1 block text-xs font-semibold text-gris">Catégorie d'activité</label>
@@ -456,7 +467,7 @@ export function SettingsPage() {
           <Field label="SIRET" value={pro?.siret ?? ""} disabled />
           <Field label="Téléphone" value={phone} onChange={setPhone} />
           <Field label="Email de contact" value={emailContact} onChange={setEmailContact} />
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold text-gris">Description</label>
             <textarea
               value={description}
@@ -465,37 +476,85 @@ export function SettingsPage() {
               className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
             />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="mb-1.5 block text-xs font-semibold text-gris">Temps de préparation habituel</label>
             <p className="mb-2 text-xs text-gris">
               Indication affichée sur votre fiche commerçant côté Client — n'affecte pas le délai que vous
               choisissez pour chaque commande au moment de démarrer sa préparation.
             </p>
-            <div className="flex flex-wrap items-center gap-2">
-              {PREP_TIME_PRESETS.map((minutes) => (
+            <div className="mb-2 inline-flex rounded-full bg-gris-light p-0.5">
+              {(["min", "h"] as PrepTimeUnit[]).map((unit) => (
                 <button
-                  key={minutes}
+                  key={unit}
                   type="button"
-                  onClick={() => setDefaultPrepTimeMinutes(minutes)}
+                  onClick={() => setPrepTimeUnit(unit)}
                   className={
-                    "rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm " +
-                    (defaultPrepTimeMinutes === minutes
-                      ? "bg-golfe-green text-white"
-                      : "bg-gris-light text-nuit hover:bg-golfe-green/20")
+                    "rounded-full px-3 py-1 text-xs font-semibold transition-colors " +
+                    (prepTimeUnit === unit ? "bg-white text-nuit shadow-sm" : "text-gris")
                   }
                 >
-                  {minutes} min
+                  {unit === "min" ? "Minutes" : "Heures"}
                 </button>
               ))}
-              <input
-                type="number"
-                min={1}
-                max={180}
-                value={defaultPrepTimeMinutes}
-                onChange={(e) => setDefaultPrepTimeMinutes(Number(e.target.value) || 1)}
-                className="w-24 rounded-sm border border-gris-light px-2 py-1.5 text-xs"
-              />
-              <span className="text-xs text-gris">min</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {prepTimeUnit === "min"
+                ? PREP_TIME_PRESETS.map((minutes) => (
+                    <button
+                      key={minutes}
+                      type="button"
+                      onClick={() => setDefaultPrepTimeMinutes(minutes)}
+                      className={
+                        "rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm " +
+                        (defaultPrepTimeMinutes === minutes
+                          ? "bg-golfe-green text-white"
+                          : "bg-gris-light text-nuit hover:bg-golfe-green/20")
+                      }
+                    >
+                      {minutes} min
+                    </button>
+                  ))
+                : PREP_TIME_PRESETS_HOURS.map((hours) => (
+                    <button
+                      key={hours}
+                      type="button"
+                      onClick={() => setDefaultPrepTimeMinutes(hours * 60)}
+                      className={
+                        "rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm " +
+                        (defaultPrepTimeMinutes === hours * 60
+                          ? "bg-golfe-green text-white"
+                          : "bg-gris-light text-nuit hover:bg-golfe-green/20")
+                      }
+                    >
+                      {hours} h
+                    </button>
+                  ))}
+              {prepTimeUnit === "min" ? (
+                <>
+                  <input
+                    type="number"
+                    min={1}
+                    max={720}
+                    value={defaultPrepTimeMinutes}
+                    onChange={(e) => setDefaultPrepTimeMinutes(Number(e.target.value) || 1)}
+                    className="w-24 rounded-sm border border-gris-light px-2 py-1.5 text-xs"
+                  />
+                  <span className="text-xs text-gris">min</span>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="number"
+                    min={0.5}
+                    max={12}
+                    step={0.5}
+                    value={Math.round((defaultPrepTimeMinutes / 60) * 10) / 10}
+                    onChange={(e) => setDefaultPrepTimeMinutes(Math.round((Number(e.target.value) || 0.5) * 60))}
+                    className="w-24 rounded-sm border border-gris-light px-2 py-1.5 text-xs"
+                  />
+                  <span className="text-xs text-gris">h</span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -515,8 +574,8 @@ export function SettingsPage() {
           Client et Admin — elle est localisée automatiquement lors de l'enregistrement.
         </p>
 
-        <div className="mb-4 grid grid-cols-2 gap-4">
-          <div className="col-span-2">
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold text-gris">Rue</label>
             <input
               value={street}
@@ -526,7 +585,7 @@ export function SettingsPage() {
               className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
             />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold text-gris">Complément d'adresse (optionnel)</label>
             <input
               value={complement}
@@ -617,7 +676,7 @@ export function SettingsPage() {
           {siretMessage && <p className="mt-1.5 text-xs">{siretMessage}</p>}
         </div>
 
-        <div className="mb-4 grid grid-cols-2 gap-4">
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-semibold text-gris">Raison sociale</label>
             <input
@@ -661,7 +720,7 @@ export function SettingsPage() {
               className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
             />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold text-gris">N° TVA intracommunautaire (si applicable)</label>
             <input
               value={vatNumber}
@@ -764,7 +823,7 @@ export function SettingsPage() {
       <form onSubmit={handleSaveSocial} className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
         <h3 className="mb-4 font-heading text-base font-bold text-nuit">🌐 Réseaux sociaux & Avis Google</h3>
 
-        <div className="mb-4 grid grid-cols-2 gap-4">
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-semibold text-gris">Instagram</label>
             <input
@@ -835,7 +894,7 @@ export function SettingsPage() {
           </details>
 
           {pro?.googleRating !== null && pro?.googleRating !== undefined && (
-            <div className="mt-3 flex items-center gap-2 rounded-sm bg-gris-light px-3 py-2 text-sm">
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-sm bg-gris-light px-3 py-2 text-sm">
               <span className="font-bold text-nuit">⭐ {pro.googleRating}</span>
               <span className="text-gris">({pro.googleRatingCount} avis Google)</span>
               {pro.googleRatingSyncedAt && (
@@ -849,7 +908,7 @@ export function SettingsPage() {
 
         {socialMessage && <p className="mb-4 text-sm">{socialMessage}</p>}
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             type="submit"
             disabled={savingSocial}
@@ -948,7 +1007,7 @@ export function SettingsPage() {
         <h3 className="mb-4 font-heading text-base font-bold text-nuit">🕐 Horaires d'ouverture</h3>
         <div className="flex flex-col gap-2">
           {hours.map((day) => (
-            <div key={day.dayOfWeek} className="flex items-center gap-4 border-b border-gris-light py-2 last:border-0">
+            <div key={day.dayOfWeek} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-gris-light py-2 last:border-0">
               <span className="w-24 text-sm font-medium text-nuit">{DAY_LABELS[day.dayOfWeek]}</span>
               <label className="flex items-center gap-1.5 text-xs text-gris">
                 <input

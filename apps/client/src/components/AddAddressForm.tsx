@@ -7,6 +7,37 @@ interface AddAddressFormProps {
   onCreated: () => void;
 }
 
+/**
+ * Géocodage rue/ville -> lat/lng (22/08/2026) via l'API Adresse du
+ * gouvernement français (api-adresse.data.gouv.fr) — gratuite, sans clé,
+ * déjà utilisée ailleurs dans l'app pour le géocodage inverse (voir
+ * AddressPickerScreen.tsx -> handleUseCurrentLocation, GPS -> adresse).
+ *
+ * Corrige un bug important : jusqu'ici, TOUTE adresse ajoutée via ce
+ * formulaire était enregistrée avec des coordonnées FIXES codées en dur
+ * (centre de Sainte-Maxime), quelle que soit la rue/ville réellement
+ * saisie. Resté invisible tant que les frais de livraison étaient un
+ * montant fixe, ce bug faussait complètement le calcul dès que le
+ * supplément par distance a été activé (22/08/2026) : deux adresses
+ * différentes tapées ici tombaient toujours exactement à la même distance
+ * du commerçant, donnant l'impression que le tarif restait figé quelle que
+ * soit l'adresse choisie.
+ */
+async function geocodeAddress(street: string, zipCode: string, city: string): Promise<{ lat: number; lng: number } | null> {
+  const params = new URLSearchParams({ q: `${street} ${city}`.trim(), limit: "1" });
+  if (zipCode) params.set("postcode", zipCode);
+
+  const response = await fetch(`https://api-adresse.data.gouv.fr/search/?${params.toString()}`);
+  const data = await response.json();
+  const feature = data?.features?.[0];
+  if (!feature?.geometry?.coordinates) return null;
+
+  // Format GeoJSON : [longitude, latitude], dans cet ordre — inversé par
+  // rapport à ce qu'attend le reste de l'app (lat, lng).
+  const [lng, lat] = feature.geometry.coordinates;
+  return { lat, lng };
+}
+
 export function AddAddressForm({ onClose, onCreated }: AddAddressFormProps) {
   const addAddress = useAddressStore((s) => s.addAddress);
 
@@ -27,18 +58,22 @@ export function AddAddressForm({ onClose, onCreated }: AddAddressFormProps) {
     setSubmitting(true);
     setError(null);
     try {
-      // NOTE: pas de géocodage automatique implémenté ici — on retombe sur
-      // les coordonnées approximatives de Sainte-Maxime tant qu'aucun
-      // service de géocodage (ex: Mapbox Geocoding API) n'est branché.
-      // TODO: remplacer par un vrai géocodage à partir de street+city.
+      const coords = await geocodeAddress(street.trim(), zipCode.trim(), city.trim());
+      if (!coords) {
+        setError(
+          "Adresse introuvable — vérifiez l'orthographe de la rue et de la ville (ou utilisez plutôt \"Utiliser ma position actuelle\")."
+        );
+        return;
+      }
+
       await addAddress({
         label: label.trim(),
         street: street.trim(),
         complement: complement.trim() || null,
         zipCode: zipCode.trim(),
         city: city.trim(),
-        lat: 43.3084,
-        lng: 6.6391,
+        lat: coords.lat,
+        lng: coords.lng,
       });
       onCreated();
     } catch (err) {

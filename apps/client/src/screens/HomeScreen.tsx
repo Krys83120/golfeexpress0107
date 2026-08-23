@@ -85,17 +85,25 @@ export function HomeScreen({ onOpenPro, onOpenCart, onOpenAddressPicker, onOpenM
               <Text style={{ fontSize: 18 }}>🔔</Text>
               <Text style={{ fontSize: 20 }}>👤</Text>
             </View>
-            <View className="items-center">
+            <View className="flex-row items-center justify-center gap-3">
+              {/* Mascotte — image réglable en direct depuis Admin > Branding
+                  (logoUrl), repli emoji tant qu'elle n'est pas encore
+                  chargée. */}
               {logoUrl ? (
-                // Le logo contient déjà le nom "Do You Geckoo" — pas de
-                // texte redondant à côté. Nettement plus grand.
-                <Image source={{ uri: logoUrl }} style={{ height: 200, width: 200 }} resizeMode="contain" />
+                <Image source={{ uri: logoUrl }} style={{ height: 110, width: 110 }} resizeMode="contain" />
               ) : (
-                <View className="flex-row items-center gap-2">
-                  <Text style={{ fontSize: 50 }}>🦎</Text>
-                  <Text className="notranslate font-heading text-[20px] font-extrabold text-white">Do You Geckoo</Text>
-                </View>
+                <Text style={{ fontSize: 50 }}>🦎</Text>
               )}
+              {/* Logo texte "Do You Geckoo" (22/08/2026) — image bundlée
+                  fixe, pas pilotée depuis Admin > Branding contrairement à
+                  la mascotte ci-dessus : demandé à côté de la mascotte en
+                  haut du Client ET du Livreur (voir OnlineToggleHeader.tsx),
+                  toujours affichée même si logoUrl n'est pas encore chargée. */}
+              <Image
+                source={require("../../assets/wordmark-logo.png")}
+                style={{ height: 54, width: 153 }}
+                resizeMode="contain"
+              />
             </View>
 
             <Pressable

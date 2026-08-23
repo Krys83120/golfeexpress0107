@@ -47,19 +47,19 @@ export function DashboardPage({ onViewAllOrders }: DashboardPageProps) {
   const avgRating = profile?.rating ? Number(profile.rating) : null;
 
   return (
-    <div className="flex-1 p-8">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8">
       {/* TOP BAR */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-extrabold text-nuit">Dashboard</h1>
           <p className="text-sm text-gris">Bienvenue, {profile?.businessName ?? "Commerçant"} 👋</p>
         </div>
-        <div className="flex gap-2 rounded-sm bg-gris-light p-1">
+        <div className="flex gap-2 self-start rounded-sm bg-gris-light p-1">
           {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((key) => (
             <button
               key={key}
               onClick={() => setPeriod(key)}
-              className="rounded-sm px-4 py-2 text-sm font-semibold transition-colors"
+              className="rounded-sm px-3 py-2 text-xs font-semibold transition-colors sm:px-4 sm:text-sm"
               style={{
                 backgroundColor: period === key ? "white" : "transparent",
                 color: period === key ? "#1A1A2E" : "#6B7280",
@@ -82,7 +82,7 @@ export function DashboardPage({ onViewAllOrders }: DashboardPageProps) {
       )}
 
       {/* STATS */}
-      <div className="mb-6 grid grid-cols-4 gap-4">
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard icon="💰" label="Chiffre d'affaires" value={`${stats.revenueTotal.toFixed(2)} €`} />
         <StatCard icon="🧾" label="Commandes" value={String(stats.orderCount)} accentColor="#2196F3" />
         <StatCard
@@ -100,8 +100,8 @@ export function DashboardPage({ onViewAllOrders }: DashboardPageProps) {
       </div>
 
       {/* CHART + TOP PRODUCTS */}
-      <div className="mb-6 grid grid-cols-3 gap-4">
-        <div className="col-span-2">
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
           <RevenueChart data={weeklyRevenue} />
         </div>
         <TopProductsCard products={topProducts} />

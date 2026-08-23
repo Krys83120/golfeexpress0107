@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { UserRole } from "@golfeexpress/types";
-import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
+import { requireProOrEmployee, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { computeZReportRange, buildZReportData, type ZReportPeriod } from "@/lib/zReport";
 import { buildZReportPdf } from "@/lib/pdf/zReport";
@@ -10,14 +9,21 @@ const VALID_PERIODS: ZReportPeriod[] = ["day", "week", "month"];
 /**
  * GET /api/pros/me/z-report?period=day|week|month&date=YYYY-MM-DD
  *
- * Rapport Z (clôture de caisse) du Pro connecté, en PDF — `date` est le
- * jour de référence (défaut : aujourd'hui) ; pour "week"/"month", on
+ * Rapport Z (clôture de caisse) de la boutique connectée, en PDF — `date`
+ * est le jour de référence (défaut : aujourd'hui) ; pour "week"/"month", on
  * calcule la semaine/le mois qui le contient. Sert de justificatif
  * comptable téléchargeable pour la traçabilité/archivage du Pro.
+ *
+ * Accessible au patron ET à un employé (voir requireProOrEmployee() dans
+ * middleware/auth.ts) -- volontairement, contrairement au reste de
+ * Finances (commissions détaillées, historique des versements Stripe...)
+ * qui reste réservé au patron : faire le Z en fin de service est une tâche
+ * opérationnelle normale pour l'équipe qui ferme la boutique, pas une
+ * donnée financière sensible au même titre que le reste.
  */
 async function getHandler(req: NextRequest) {
-  const auth = await requireAuth(req, [UserRole.PRO]);
-  const pro = await prisma.pro.findUnique({ where: { userId: auth.userId } });
+  const auth = await requireProOrEmployee(req);
+  const pro = await prisma.pro.findUnique({ where: { id: auth.proId } });
   if (!pro) throw new ApiError(404, "Profil commerçant introuvable.");
 
   const periodParam = req.nextUrl.searchParams.get("period") ?? "day";

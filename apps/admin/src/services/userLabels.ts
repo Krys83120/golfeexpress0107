@@ -3,6 +3,7 @@ import { UserRole, UserStatus } from "@golfeexpress/types";
 export const ROLE_LABELS: Record<UserRole, { label: string; emoji: string }> = {
   [UserRole.CLIENT]: { label: "Client", emoji: "🧑" },
   [UserRole.PRO]: { label: "Commerçant", emoji: "🏪" },
+  [UserRole.PRO_EMPLOYEE]: { label: "Employé commerçant", emoji: "🧑‍💼" },
   [UserRole.RIDER]: { label: "Livreur", emoji: "🛵" },
   [UserRole.ADMIN]: { label: "Admin", emoji: "🛡️" },
   [UserRole.SUPER_ADMIN]: { label: "Super Admin", emoji: "👑" },

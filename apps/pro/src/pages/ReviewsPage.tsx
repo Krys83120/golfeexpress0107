@@ -58,7 +58,7 @@ export function ReviewsPage() {
   for (const r of reviews) if (r.proRating) distribution[r.proRating] = (distribution[r.proRating] ?? 0) + 1;
 
   return (
-    <div className="flex-1 p-8">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8">
       <div className="mb-6">
         <h1 className="font-heading text-2xl font-extrabold text-nuit">Avis clients</h1>
         <p className="text-sm text-gris">Ce que vos clients pensent de vous</p>
@@ -77,14 +77,14 @@ export function ReviewsPage() {
         <p className="py-12 text-center text-sm text-gris">Chargement des avis...</p>
       ) : (
         <>
-          <div className="mb-6 grid grid-cols-3 gap-4">
-            <div className="col-span-1 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="sm:col-span-1 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
               <p className="font-heading text-4xl font-extrabold text-nuit">{average.toFixed(1)}</p>
               <Stars rating={Math.round(average)} />
               <p className="mt-1 text-sm text-gris">{reviews.length} avis</p>
             </div>
 
-            <div className="col-span-2 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+            <div className="sm:col-span-2 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
               {[5, 4, 3, 2, 1].map((star) => {
                 const count = distribution[star] ?? 0;
                 const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0;

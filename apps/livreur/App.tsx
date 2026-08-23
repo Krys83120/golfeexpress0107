@@ -21,6 +21,7 @@ import { HomeScreen } from "@/screens/HomeScreen";
 import { EarningsScreen } from "@/screens/EarningsScreen";
 import { StatsScreen } from "@/screens/StatsScreen";
 import { RiderProfileScreen } from "@/screens/RiderProfileScreen";
+import { trackAppOpen } from "@/services/analyticsApi";
 
 type Tab = "home" | "earnings" | "stats" | "profile";
 
@@ -122,6 +123,7 @@ export default function App() {
       if (cached) setSplashRunnerUrl(cached);
     });
     fetchBrandingSplashRunnerUrl().then(setSplashRunnerUrl);
+    trackAppOpen();
   }, []);
 
   // Resynchronise le statut "en ligne" affiché avec la valeur réelle

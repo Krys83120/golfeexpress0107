@@ -1,3 +1,5 @@
+import { PLATFORM_COMMISSION, RIDER_PAY, COMPETITOR_COMMISSION_SOURCE } from "@/lib/economics";
+
 export function EconomicsComparison() {
   return (
     <section className="bg-nuit py-16 text-white sm:py-24">
@@ -9,9 +11,9 @@ export function EconomicsComparison() {
           Sur une course à 20 €, où va vraiment l'argent ?
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-sm text-white/70 sm:text-base">
-          Les grandes plateformes prélèvent des commissions qui peuvent atteindre 30% sur les commerçants, et ne
-          reversent souvent qu'une part réduite au livreur qui fait le trajet. On a construit Do You Geckoo pour
-          inverser ce rapport.
+          Les grandes plateformes prélèvent des commissions qui peuvent atteindre {COMPETITOR_COMMISSION_SOURCE.maxPct}% sur les
+          commerçants, et ne reversent souvent qu'une part réduite au livreur qui fait le trajet. On a construit Do
+          You Geckoo pour inverser ce rapport.
         </p>
 
         <div className="mt-10 grid gap-6 sm:mt-14 sm:grid-cols-2">
@@ -20,12 +22,23 @@ export function EconomicsComparison() {
             <p className="mb-1 text-xs font-bold uppercase tracking-wide text-white/50">Plateforme classique</p>
             <p className="mb-6 font-heading text-xl font-bold text-white/90">Uber Eats & similaires</p>
 
-            <EarningsBar label="Commission plateforme" amountLabel="jusqu'à 30%" widthPct={30} color="#4B5563" />
+            <EarningsBar
+              label="Commission plateforme"
+              amountLabel={`jusqu'à ${COMPETITOR_COMMISSION_SOURCE.maxPct}%`}
+              widthPct={COMPETITOR_COMMISSION_SOURCE.maxPct}
+              color="#4B5563"
+            />
             <EarningsBar label="Le livreur touche" amountLabel="≈ 4-5 €" widthPct={22} color="#6B7280" />
 
-            <p className="mt-6 text-sm text-white/50">
-              Commissions largement documentées dans la presse économique française sur les plateformes de livraison
-              à la demande.
+            {/* Source/Date/Lien -- obligatoire pour tout chiffre concurrent
+                (règle fixée dans le cadrage SEO/GEO). Voir lib/economics.ts. */}
+            <p className="mt-6 text-xs text-white/40">
+              Source : {COMPETITOR_COMMISSION_SOURCE.platform}, {COMPETITOR_COMMISSION_SOURCE.sourceLabel}, consulté le{" "}
+              {COMPETITOR_COMMISSION_SOURCE.accessedDate} —{" "}
+              <a href={COMPETITOR_COMMISSION_SOURCE.sourceUrl} target="_blank" rel="noreferrer" className="underline hover:text-white">
+                voir la source
+              </a>
+              . {COMPETITOR_COMMISSION_SOURCE.caveat}
             </p>
           </div>
 
@@ -34,8 +47,13 @@ export function EconomicsComparison() {
             <p className="mb-1 text-xs font-bold uppercase tracking-wide text-golfe-green">Notre modèle</p>
             <p className="notranslate mb-6 font-heading text-xl font-bold text-white" translate="no">Do You Geckoo</p>
 
-            <EarningsBar label="Commission plateforme" amountLabel="12 à 18%" widthPct={18} color="#2ECC71" />
-            <EarningsBar label="Le livreur touche" amountLabel="≈ 5-10 €" widthPct={38} color="#2ECC71" />
+            <EarningsBar
+              label="Commission plateforme"
+              amountLabel={`${PLATFORM_COMMISSION.minPct} à ${PLATFORM_COMMISSION.maxPct}%`}
+              widthPct={PLATFORM_COMMISSION.maxPct}
+              color="#2ECC71"
+            />
+            <EarningsBar label="Le livreur touche" amountLabel={RIDER_PAY.typicalLabel} widthPct={38} color="#2ECC71" />
 
             <p className="mt-6 text-sm text-white/70">
               Le taux exact dépend du forfait du commerçant (voir nos offres) — toujours pensé pour rester

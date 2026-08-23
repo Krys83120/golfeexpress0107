@@ -80,13 +80,13 @@ export function MenuPage() {
   }));
 
   return (
-    <div className="flex-1 p-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-extrabold text-nuit">Produits</h1>
           <p className="text-sm text-gris">{products.length} produits · {categories.length} catégories</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowCategoryManager(true)}
             className="flex items-center gap-2 rounded-sm border border-gris-light px-4 py-2.5 text-sm font-semibold text-nuit hover:bg-gris-light"
@@ -142,7 +142,7 @@ export function MenuPage() {
         return (
           <div key={category} className="mb-6">
             <h3 className="mb-3 font-heading text-base font-bold text-nuit">{category}</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {categoryProducts.map((product) => (
                 <div
                   key={product.id}

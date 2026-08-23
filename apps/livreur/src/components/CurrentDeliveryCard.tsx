@@ -65,6 +65,22 @@ function formatCountdown(estimatedDelivery: string): { label: string; isLate: bo
   return { label: `⚠️ En retard de ${Math.abs(remainingMin)} min`, isLate: true };
 }
 
+/**
+ * Chrono "mm:ss" (ou "h:mm:ss" au-delà d'une heure) écoulé depuis
+ * riderAssignedAt — le moment où CE livreur a pris la commande, pas la
+ * confirmation du Pro (voir Order.riderAssignedAt côté schéma). Recalculé
+ * chaque seconde par le useEffect ci-dessous, pour un vrai effet "chrono"
+ * qui tourne sous les yeux du livreur.
+ */
+function formatElapsed(riderAssignedAt: string): string {
+  const elapsedSec = Math.max(0, Math.floor((Date.now() - new Date(riderAssignedAt).getTime()) / 1000));
+  const h = Math.floor(elapsedSec / 3600);
+  const m = Math.floor((elapsedSec % 3600) / 60);
+  const s = elapsedSec % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+}
+
 export function CurrentDeliveryCard() {
   const activeDelivery = useRiderSessionStore((s) => s.activeDelivery);
   const advanceDeliveryStep = useRiderSessionStore((s) => s.advanceDeliveryStep);
@@ -88,9 +104,13 @@ export function CurrentDeliveryCard() {
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
 
-  // Recalcule l'affichage du compte à rebours toutes les 15s — un simple
-  // compteur de rendu suffit, formatCountdown relit l'heure actuelle à
-  // chaque appel.
+  // Recalcule l'affichage du compte à rebours ET du chrono de livraison
+  // chaque seconde — un simple compteur de rendu suffit, formatCountdown /
+  // formatElapsed relisent l'heure actuelle à chaque appel. Le chrono
+  // démarre dès que riderAssignedAt existe, donc dès l'acceptation de la
+  // commande (voir formatElapsed ci-dessus) — avant, seul le compte à
+  // rebours (15s) était recalculé, ce qui fait qu'aucun chrono ne
+  // s'affichait tant que la livraison n'était pas récupérée.
   const [, forceTick] = useState(0);
 
   // Tant qu'une livraison est en cours, on empêche l'écran de s'éteindre —
@@ -99,10 +119,10 @@ export function CurrentDeliveryCard() {
   useKeepAwake();
 
   useEffect(() => {
-    if (!activeDelivery?.estimatedDelivery) return;
-    const interval = setInterval(() => forceTick((t) => t + 1), 15000);
+    if (!activeDelivery?.estimatedDelivery && !activeDelivery?.riderAssignedAt) return;
+    const interval = setInterval(() => forceTick((t) => t + 1), 1000);
     return () => clearInterval(interval);
-  }, [activeDelivery?.estimatedDelivery]);
+  }, [activeDelivery?.estimatedDelivery, activeDelivery?.riderAssignedAt]);
 
   if (!activeDelivery) return null;
 
@@ -299,6 +319,17 @@ export function CurrentDeliveryCard() {
         </View>
       </View>
 
+      {/* Chrono de livraison — démarre dès l'acceptation de la commande
+          (riderAssignedAt), pas seulement une fois récupérée. Toujours
+          visible tant qu'une livraison est en cours ; sert aussi de base à
+          la fiabilité livreur affichée côté Admin (voir
+          ActiveDeliveriesCard.tsx). */}
+      {activeDelivery.riderAssignedAt && (
+        <View style={styles.chronoBox}>
+          <Text style={styles.chronoText}>🕐 Chrono : {formatElapsed(activeDelivery.riderAssignedAt)}</Text>
+        </View>
+      )}
+
       {countdown && (
         <View style={[styles.countdownBox, countdown.isLate && styles.countdownBoxLate]}>
           <Text style={[styles.countdownText, countdown.isLate && styles.countdownTextLate]}>{countdown.label}</Text>
@@ -412,6 +443,14 @@ const styles = StyleSheet.create({
   countdownBoxLate: { backgroundColor: "rgba(239,68,68,0.15)" },
   countdownText: { fontSize: 13, fontWeight: "700", color: "#2ECC71" },
   countdownTextLate: { color: "#FCA5A5" },
+  chronoBox: {
+    marginBottom: 12,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  chronoText: { fontSize: 13, fontWeight: "700", color: "white" },
   directionsBtn: {
     marginBottom: 12,
     flexDirection: "row",

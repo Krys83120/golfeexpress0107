@@ -72,6 +72,16 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
     if (!pro || pro.id !== order.proId) {
       throw new ApiError(403, "Cette commande n'appartient pas à votre boutique.");
     }
+  } else if (auth.role === UserRole.PRO_EMPLOYEE) {
+    // Même vérification que PRO ci-dessus, mais en résolvant la boutique via
+    // ProEmployee -- un employé ne peut agir que sur les commandes de SA
+    // boutique, jamais une autre (voir isTransitionAllowedForRole dans
+    // orderStateMachine.ts pour les transitions qu'il a par ailleurs le
+    // droit de déclencher).
+    const employee = await prisma.proEmployee.findUnique({ where: { userId: auth.userId } });
+    if (!employee || employee.proId !== order.proId) {
+      throw new ApiError(403, "Cette commande n'appartient pas à votre boutique.");
+    }
   } else if (auth.role === UserRole.RIDER) {
     const rider = await prisma.rider.findUnique({ where: { userId: auth.userId } });
     if (!rider || rider.id !== order.riderId) {
@@ -395,7 +405,12 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
           console.error("[order status] Échec email livrée:", err)
         );
       } else if (nextStatus === OrderStatus.CANCELLED) {
-        const cancelledBy = auth.role === UserRole.CLIENT ? "client" : auth.role === UserRole.PRO ? "pro" : "system";
+        const cancelledBy =
+          auth.role === UserRole.CLIENT
+            ? "client"
+            : auth.role === UserRole.PRO || auth.role === UserRole.PRO_EMPLOYEE
+              ? "pro"
+              : "system";
         sendOrderCancelledEmail(client.user.email, emailData, cancelledBy).catch((err) =>
           console.error("[order status] Échec email annulation:", err)
         );

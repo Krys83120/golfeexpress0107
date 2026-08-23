@@ -8,6 +8,13 @@ const updateCitySchema = z.object({
   name: z.string().trim().min(1).optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
+  // Extension SEO (23/08/2026) -- voir le commentaire sur le modèle
+  // ServiceCity : indépendant d'isActive.
+  seoIndexable: z.boolean().optional(),
+  seoSlug: z.string().trim().min(1).optional(),
+  seoIntro: z.string().trim().optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
 });
 
 /**
@@ -40,7 +47,16 @@ async function patchHandler(req: NextRequest, ctx: { params: { cityId: string } 
     data: parsed.data,
   });
 
-  return NextResponse.json({ city, updatedBy: auth.userId });
+  // Decimal Prisma (lat/lng) -> nombres JS, même raison que partout
+  // ailleurs dans l'API (sinon sérialisés en texte côté JSON).
+  return NextResponse.json({
+    city: {
+      ...city,
+      lat: city.lat !== null ? Number(city.lat) : null,
+      lng: city.lng !== null ? Number(city.lng) : null,
+    },
+    updatedBy: auth.userId,
+  });
 }
 
 /** DELETE /api/admin/service-cities/[cityId] */

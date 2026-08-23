@@ -50,15 +50,45 @@ async function getHandler(req: NextRequest) {
     take: 50,
   });
 
-  // Decimal Prisma (rating, commissionRate, addresses[].lat/lng) -> nombres
-  // JS, sinon sérialisés en texte côté JSON — cassait silencieusement le
-  // calcul de distance (haversine) et l'affichage de la carte côté Client.
+  // Sérialisation en LISTE BLANCHE explicite (corrigé le 23/08/2026, audit
+  // SEO/GEO) -- avant, un "...p" renvoyait l'objet Prisma complet sur cette
+  // route PUBLIQUE sans authentification, exposant siret, kbisUrl,
+  // managerFirstName/LastName, vatNumber, termsAcceptedAt/Version,
+  // rejectionReason, commissionRate exact, et tous les identifiants Stripe
+  // (compte, abonnement, statut) à n'importe quel visiteur non connecté.
+  // Le type partagé `Pro` (@golfeexpress/types) sert AUSSI à la vue privée
+  // authentifiée du commerçant sur lui-même (GET /api/pros/me), qui a
+  // légitimement besoin de ces champs -- cette route-ci ne doit renvoyer que
+  // ce qui est vérifié comme réellement consommé par les apps Client/www
+  // (voir apps/client/src/services/prosApi.ts, BusinessInfoCard.tsx,
+  // ProDetailScreen.tsx) : aucun des champs exclus ci-dessous n'y est lu.
   const serialized = pros.map((p) => ({
-    ...p,
+    id: p.id,
+    businessName: p.businessName,
+    description: p.description,
+    category: p.category,
+    logo: p.logo,
+    coverImage: p.coverImage,
+    phone: p.phone,
+    emailContact: p.emailContact,
+    status: p.status,
+    subscriptionType: p.subscriptionType,
     rating: p.rating !== null ? Number(p.rating) : null,
+    ratingCount: p.ratingCount,
     googleRating: p.googleRating !== null ? Number(p.googleRating) : null,
-    commissionRate: Number(p.commissionRate),
+    googleRatingCount: p.googleRatingCount,
+    instagramUrl: p.instagramUrl,
+    facebookUrl: p.facebookUrl,
+    tiktokUrl: p.tiktokUrl,
+    websiteUrl: p.websiteUrl,
+    defaultPrepTimeMinutes: p.defaultPrepTimeMinutes,
+    pickupAddressId: p.pickupAddressId,
+    isManuallyClosed: p.isManuallyClosed,
+    manualClosureReason: p.manualClosureReason,
+    manualClosureUntil: p.manualClosureUntil,
+    manualClosureNote: p.manualClosureNote,
     addresses: p.addresses.map((a) => ({ ...a, lat: Number(a.lat), lng: Number(a.lng) })),
+    openingHours: p.openingHours,
     // Calculé côté serveur (jamais côté client, pour éviter tout décalage de
     // fuseau horaire) — alimente le badge Ouvert/Fermé/En vacances côté
     // Client (voir apps/client/src/services/prosApi.ts).

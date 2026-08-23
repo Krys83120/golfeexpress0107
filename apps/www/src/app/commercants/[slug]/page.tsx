@@ -3,13 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { buildMetadata } from "@/lib/seo";
 import {
   fetchPublicProBySlug,
   fetchPublicProProducts,
   fetchPublicProReviews,
+  buildProSlug,
   CATEGORY_LABELS,
   CATEGORY_LABELS_PLAIN,
+  CATEGORY_SCHEMA_TYPE,
 } from "@/lib/publicApi";
+import { SITE_URL } from "@/lib/seo";
 
 interface PageProps {
   params: { slug: string };
@@ -25,15 +29,27 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // par les moteurs de recherche pour des requêtes du type
   // "[catégorie] [ville]" (ex: "restaurant Sainte-Maxime").
   const title = city ? `${pro.businessName} — ${category} à ${city}` : `${pro.businessName} — ${category}`;
-  return {
-    title,
-    description:
-      pro.description ??
-      `${pro.businessName}, ${category.toLowerCase()} ${city ? `à ${city} ` : ""}livré par Do You Geckoo dans tout le Golfe de Saint-Tropez.`,
-  };
+  const description =
+    pro.description ??
+    `${pro.businessName}, ${category.toLowerCase()} ${city ? `à ${city} ` : ""}livré par Do You Geckoo dans tout le Golfe de Saint-Tropez.`;
+  // Canonical construit à partir du MÊME slug que buildProSlug (pas
+  // params.slug directement) : si un jour deux slugs différents résolvent
+  // vers le même Pro (ex: ancien lien partagé après renommage), la
+  // canonical pointe toujours vers l'URL courante plutôt que de dupliquer
+  // le signal SEO entre les deux variantes.
+  return buildMetadata({ title, description, path: `/commercants/${buildProSlug(pro)}`, image: pro.coverImage ?? undefined });
 }
 
 const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const SCHEMA_DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 const ORDER_URL = "https://commander.doyougeckoo.fr";
 
 export default async function CommercantDetailPage({ params }: PageProps) {
@@ -45,9 +61,62 @@ export default async function CommercantDetailPage({ params }: PageProps) {
   const categories = Array.from(new Set(products.map((p) => p.category)));
   const city = pro.addresses?.[0]?.city;
   const categoryLabel = CATEGORY_LABELS_PLAIN[pro.category] ?? pro.category;
+  const slug = buildProSlug(pro);
+  const pageUrl = `${SITE_URL}/commercants/${slug}`;
+  const address = pro.addresses?.[0];
+
+  // JSON-LD commerçant -- type le plus précis disponible (voir
+  // CATEGORY_SCHEMA_TYPE), uniquement les champs réellement connus.
+  // Volontairement PAS d'AggregateRating tant que ratingCount est trop
+  // faible pour être représentatif (seuil arbitraire mais défendable : sous
+  // 3 avis, une moyenne peut être entièrement portée par un seul avis).
+  const proJsonLd = {
+    "@context": "https://schema.org",
+    "@type": CATEGORY_SCHEMA_TYPE[pro.category] ?? "Store",
+    "@id": `${pageUrl}#business`,
+    name: pro.businessName,
+    url: pageUrl,
+    ...(pro.description ? { description: pro.description } : {}),
+    ...(pro.coverImage ? { image: pro.coverImage } : {}),
+    ...(pro.phone ? { telephone: pro.phone } : {}),
+    ...(address
+      ? {
+          address: { "@type": "PostalAddress", addressLocality: address.city, addressCountry: "FR" },
+          geo: { "@type": "GeoCoordinates", latitude: address.lat, longitude: address.lng },
+        }
+      : {}),
+    ...(pro.openingHours && pro.openingHours.length > 0
+      ? {
+          openingHoursSpecification: pro.openingHours
+            .filter((h) => !h.isClosed)
+            .map((h) => ({
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: `https://schema.org/${SCHEMA_DAY_NAMES[h.dayOfWeek]}`,
+              opens: h.openTime,
+              closes: h.closeTime,
+            })),
+        }
+      : {}),
+    ...(pro.rating && pro.ratingCount >= 3
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue: Number(pro.rating), reviewCount: pro.ratingCount } }
+      : {}),
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Accueil", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Commerçants", item: `${SITE_URL}/commercants` },
+      ...(city ? [{ "@type": "ListItem", position: 3, name: city, item: `${SITE_URL}/commercants?city=${encodeURIComponent(city)}` }] : []),
+      { "@type": "ListItem", position: city ? 4 : 3, name: pro.businessName, item: pageUrl },
+    ],
+  };
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(proJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <Nav />
       <main className="bg-white">
         {/* Bandeau couverture */}

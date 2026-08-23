@@ -4,6 +4,8 @@
 export enum UserRole {
   CLIENT = "CLIENT",
   PRO = "PRO",
+  /** Compte employé rattaché à un Pro, accès restreint — voir ProEmployee. */
+  PRO_EMPLOYEE = "PRO_EMPLOYEE",
   RIDER = "RIDER",
   ADMIN = "ADMIN",
   SUPER_ADMIN = "SUPER_ADMIN",
@@ -132,4 +134,12 @@ export enum OrderReportStatus {
   IN_PROGRESS = "IN_PROGRESS",
   RESOLVED = "RESOLVED",
   REJECTED = "REJECTED",
+}
+
+/** Application source d'une visite trackée -- voir model AppVisit. */
+export enum AppSource {
+  WWW = "WWW",
+  CLIENT = "CLIENT",
+  PRO = "PRO",
+  LIVREUR = "LIVREUR",
 }

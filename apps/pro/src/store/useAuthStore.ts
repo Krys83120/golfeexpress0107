@@ -37,6 +37,8 @@ interface AuthState {
   refreshToken: string | null;
   user: User | null;
   profile: Pro | null;
+  /** true si le compte connecté est un employé (accès restreint) plutôt que le patron -- voir GET /api/auth/me. */
+  isEmployee: boolean;
   error: string | null;
 
   restoreSession: () => Promise<void>;
@@ -61,6 +63,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   refreshToken: null,
   user: null,
   profile: null,
+  isEmployee: false,
   error: null,
 
   restoreSession: async () => {
@@ -80,13 +83,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       if (!res.ok) throw new Error("Session invalide");
       const data = await res.json();
-      if (data.user.role !== "PRO") throw new Error("Ce compte n'est pas un compte commerçant.");
-      set({ status: "authenticated", user: data.user, profile: data.profile });
+      // PRO_EMPLOYEE = compte employé créé par un Pro, accès restreint côté
+      // UI (voir App.tsx / Sidebar.tsx qui lisent `isEmployee` ci-dessous) --
+      // voir prisma/schema.prisma model ProEmployee.
+      if (data.user.role !== "PRO" && data.user.role !== "PRO_EMPLOYEE") {
+        throw new Error("Ce compte n'est pas un compte commerçant.");
+      }
+      set({ status: "authenticated", user: data.user, profile: data.profile, isEmployee: !!data.isEmployee });
     } catch {
       const refreshed = await get().refreshSession();
       if (!refreshed) {
         persistSession(null);
-        set({ status: "unauthenticated", accessToken: null, refreshToken: null, user: null, profile: null });
+        set({ status: "unauthenticated", accessToken: null, refreshToken: null, user: null, profile: null, isEmployee: false });
       }
     }
   },
@@ -110,7 +118,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Connexion impossible.");
 
-      if (data.user.role !== "PRO") {
+      // PRO_EMPLOYEE = compte employé créé par un Pro, accès restreint côté
+      // UI -- voir prisma/schema.prisma model ProEmployee et le commentaire
+      // équivalent dans restoreSession() ci-dessus.
+      if (data.user.role !== "PRO" && data.user.role !== "PRO_EMPLOYEE") {
         throw new Error("Ce compte n'est pas un compte commerçant.");
       }
 
@@ -200,7 +211,7 @@ async function fetchAndSetProfile(accessToken: string, set: (partial: Partial<Au
     });
     if (res.ok) {
       const data = await res.json();
-      set({ profile: data.profile });
+      set({ profile: data.profile, isEmployee: !!data.isEmployee });
     }
   } catch {
     // Non bloquant.

@@ -72,7 +72,13 @@ export function ProCard({ pro, onPress }: ProCardProps) {
 
         <View className="mt-3 flex-row items-center justify-between border-t border-gris-light pt-3">
           <Text className="text-[13px] text-gris">
-            Livraison <Text className="font-bold text-golfe-green">{pro.deliveryFeeDisplay.toFixed(2)}€</Text>
+            {/* "à partir de" seulement quand la distance est une estimation
+                (pas encore d'adresse de livraison connue) — dès qu'on
+                connaît la vraie adresse active, ce montant EST le tarif
+                réel pour cette adresse, plus la peine de le présenter comme
+                un plancher (22/08/2026). */}
+            {pro.deliveryFeeIsEstimate ? "Livraison à partir de" : "Livraison"}{" "}
+            <Text className="font-bold text-golfe-green">{pro.deliveryFeeDisplay.toFixed(2)}€</Text>
           </Text>
           <Text className="text-xs text-gris">Min. {pro.minOrder}€</Text>
         </View>

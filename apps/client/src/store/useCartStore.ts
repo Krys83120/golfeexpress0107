@@ -17,13 +17,24 @@ interface CartState {
   proName: string | null;
   /** Adresse de retrait du Pro — nécessaire pour fromAddressId à la commande. */
   pickupAddressId: string | null;
+  /**
+   * Coordonnées de cette même adresse de retrait (22/08/2026) — permettent à
+   * CartScreen de recalculer la distance réelle jusqu'à l'adresse de
+   * livraison choisie par le client, et donc d'afficher le vrai tarif de
+   * livraison (identique à celui que le serveur facturera), au lieu d'un
+   * montant fixe qui restait figé même après changement d'adresse.
+   */
+  pickupLat: number | null;
+  pickupLng: number | null;
   items: CartItem[];
 
   addItem: (
     item: Omit<CartItem, "quantity"> & { quantity?: number },
     proId: string,
     proName: string,
-    pickupAddressId: string | null
+    pickupAddressId: string | null,
+    pickupLat?: number | null,
+    pickupLng?: number | null
   ) => void;
   updateQuantity: (itemId: string, delta: number) => void;
   removeItem: (itemId: string) => void;
@@ -38,9 +49,11 @@ export const useCartStore = create<CartState>((set, get) => ({
   proId: null,
   proName: null,
   pickupAddressId: null,
+  pickupLat: null,
+  pickupLng: null,
   items: [],
 
-  addItem: (item, proId, proName, pickupAddressId) =>
+  addItem: (item, proId, proName, pickupAddressId, pickupLat = null, pickupLng = null) =>
     set((state) => {
       // Si on change de commerçant, on vide le panier (un panier = un seul pro, comme dans la maquette)
       const sameProCart = state.proId === null || state.proId === proId;
@@ -57,6 +70,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         proId,
         proName,
         pickupAddressId,
+        pickupLat,
+        pickupLng,
         items: nextItems,
       };
     }),
@@ -73,7 +88,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       items: state.items.filter((i) => i.id !== itemId),
     })),
 
-  clear: () => set({ proId: null, proName: null, pickupAddressId: null, items: [] }),
+  clear: () => set({ proId: null, proName: null, pickupAddressId: null, pickupLat: null, pickupLng: null, items: [] }),
 
   subtotal: () => get().items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
   itemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),

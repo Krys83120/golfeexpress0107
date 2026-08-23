@@ -19,7 +19,17 @@ export async function createServiceCity(name: string): Promise<ServiceCity> {
 /** PATCH /api/admin/service-cities/[cityId] */
 export async function updateServiceCity(
   cityId: string,
-  data: { name?: string; isActive?: boolean; sortOrder?: number }
+  data: {
+    name?: string;
+    isActive?: boolean;
+    sortOrder?: number;
+    // Extension SEO (23/08/2026) — indépendante d'isActive, voir route.ts.
+    seoIndexable?: boolean;
+    seoSlug?: string;
+    seoIntro?: string;
+    lat?: number;
+    lng?: number;
+  }
 ): Promise<ServiceCity> {
   const result = await apiFetch<{ city: ServiceCity }>(`/api/admin/service-cities/${cityId}`, {
     method: "PATCH",

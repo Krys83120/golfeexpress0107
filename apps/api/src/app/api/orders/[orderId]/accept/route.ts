@@ -54,9 +54,15 @@ async function postHandler(req: NextRequest, ctx: { params: { orderId: string } 
   // Postgres. Si un autre rider a accepté entre notre `findUnique`
   // ci-dessus et cet appel, `count` sera 0 et on renvoie 409 plutôt que de
   // désassigner par erreur.
+  //
+  // riderAssignedAt : horodatage dédié au moment où LE LIVREUR prend la
+  // commande — distinct de `acceptedAt` (mis à jour uniquement quand le
+  // PRO confirme la commande, voir status/route.ts) qui ne reflète donc
+  // pas ce moment. Sans ce champ, aucun chrono de livraison ne peut
+  // démarrer côté app Livreur/Admin.
   const result = await prisma.order.updateMany({
     where: { id: order.id, riderId: null, status: order.status },
-    data: { status: OrderStatus.RIDER_ASSIGNED, riderId: rider.id },
+    data: { status: OrderStatus.RIDER_ASSIGNED, riderId: rider.id, riderAssignedAt: new Date() },
   });
 
   if (result.count === 0) {

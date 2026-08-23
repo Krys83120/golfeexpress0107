@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchWwwLogoUrl } from "@/lib/brandingApi";
+import { fetchPublicServiceCities } from "@/lib/publicApi";
 import { CookiePreferencesLink } from "@/components/CookiePreferencesLink";
 
 /**
@@ -10,7 +11,13 @@ import { CookiePreferencesLink } from "@/components/CookiePreferencesLink";
  * footer gardait l'emoji codé en dur.
  */
 export async function Footer() {
-  const logoUrl = await fetchWwwLogoUrl();
+  const [logoUrl, cities] = await Promise.all([fetchWwwLogoUrl(), fetchPublicServiceCities()]);
+  // Maillage interne /livraison/[ville] (23/08/2026, mission SEO/GEO) --
+  // uniquement les villes réellement indexables ET dotées d'un slug, jamais
+  // une liste statique codée en dur qui listerait des communes sans page
+  // réelle derrière (voir consigne "ne jamais affirmer une couverture non
+  // réelle").
+  const indexableCities = cities.filter((c) => c.seoIndexable && c.seoSlug);
 
   return (
     <footer className="bg-nuit py-12 text-white/60 sm:py-16">
@@ -45,14 +52,31 @@ export async function Footer() {
           <div>
             <p className="notranslate mb-4 text-xs font-bold uppercase tracking-wide text-white/40" translate="no">Do You Geckoo</p>
             <ul className="space-y-2.5 text-sm">
+              <li><Link href="/a-propos" className="hover:text-white">À propos</Link></li>
+              <li><Link href="/notre-modele" className="hover:text-white">Notre modèle économique</Link></li>
               <li><Link href="/comment-ca-marche" className="hover:text-white">Comment ça marche</Link></li>
               <li><Link href="/devenir-partenaire" className="hover:text-white">Devenir partenaire</Link></li>
-              <li><Link href="/devenir-partenaire#livreurs" className="hover:text-white">Devenir livreur</Link></li>
+              <li><Link href="/devenir-livreur" className="hover:text-white">Devenir livreur</Link></li>
               <li><Link href="/conditions-generales" className="hover:text-white">Conditions générales</Link></li>
               <li><Link href="/confidentialite" className="hover:text-white">Confidentialité</Link></li>
               <li><CookiePreferencesLink /></li>
             </ul>
           </div>
+
+          {indexableCities.length > 0 && (
+            <div>
+              <p className="mb-4 text-xs font-bold uppercase tracking-wide text-white/40">Livraison par ville</p>
+              <ul className="space-y-2.5 text-sm">
+                {indexableCities.map((city) => (
+                  <li key={city.id}>
+                    <Link href={`/livraison/${city.seoSlug}`} className="hover:text-white">
+                      Livraison {city.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-xs sm:flex-row">

@@ -15,6 +15,8 @@ export const PRICING_KEYS = {
   riderPayMinimum: "pricing.rider_pay_minimum",
   deliveryFeeByDistance: "pricing.delivery_fee_by_distance_enabled",
   deliveryFeeTiers: "pricing.delivery_fee_tiers",
+  freeDeliveryThresholdEnabled: "pricing.free_delivery_threshold_enabled",
+  freeDeliveryThresholdAmount: "pricing.free_delivery_threshold_amount",
 } as const;
 
 // Doivent rester identiques aux DEFAULT_* côté API
@@ -205,4 +207,38 @@ export async function saveDeliveryFeeTiers(tiers: DeliveryFeeTier[]): Promise<vo
       description: "Grille de frais de livraison par distance (Admin > Tarification).",
     },
   });
+}
+
+/**
+ * Livraison gratuite au-dessus d'un panier minimum (échange produit du
+ * 22/08/2026) — désactivé par défaut. Voir pricingSettings.ts côté API pour
+ * le détail : le livreur reste payé normalement même quand le client ne
+ * paie plus de frais de livraison, donc ce n'est pas neutre pour la marge —
+ * une simulation chiffrée a été faite avant d'ajouter ce réglage (voir le
+ * fichier de simulation financière, onglet "Scénarios").
+ */
+export const DEFAULT_FREE_DELIVERY_THRESHOLD = 50;
+
+export async function fetchFreeDeliveryThresholdEnabled(): Promise<boolean> {
+  return fetchFlag(PRICING_KEYS.freeDeliveryThresholdEnabled);
+}
+
+export async function setFreeDeliveryThresholdEnabled(enabled: boolean): Promise<void> {
+  await setFlag(
+    PRICING_KEYS.freeDeliveryThresholdEnabled,
+    enabled,
+    "Offre la livraison gratuite dès qu'un panier atteint le seuil configuré ci-dessous."
+  );
+}
+
+export async function fetchFreeDeliveryThresholdAmount(): Promise<number> {
+  return fetchNumber(PRICING_KEYS.freeDeliveryThresholdAmount, DEFAULT_FREE_DELIVERY_THRESHOLD);
+}
+
+export async function setFreeDeliveryThresholdAmount(value: number): Promise<void> {
+  await setNumber(
+    PRICING_KEYS.freeDeliveryThresholdAmount,
+    value,
+    "Panier minimum (€) à partir duquel la livraison devient gratuite."
+  );
 }

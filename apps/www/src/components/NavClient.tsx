@@ -6,7 +6,7 @@ import Link from "next/link";
 const NAV_LINKS = [
   { label: "Comment ça marche", href: "/comment-ca-marche" },
   { label: "Nos commerçants", href: "/commercants" },
-  { label: "Devenir livreur", href: "/devenir-partenaire#livreurs" },
+  { label: "Devenir livreur", href: "/devenir-livreur" },
   { label: "Devenir partenaire", href: "/devenir-partenaire" },
 ];
 

@@ -387,3 +387,27 @@ export async function saveWwwOgText(title: string, description: string): Promise
     body: { value: { title, description } },
   });
 }
+
+/**
+ * Garde-fou d'indexation publique du site vitrine (seo.public_launch) --
+ * relit la même route publique que robots.ts/layout.tsx consomment
+ * réellement, pour que le toggle Admin affiche toujours l'état réel plutôt
+ * qu'un état potentiellement désynchronisé. Volontairement `false` en cas
+ * d'échec réseau : même comportement "fermé par défaut" que côté www.
+ */
+export async function fetchSeoPublicLaunch(): Promise<boolean> {
+  try {
+    const data = await apiFetch<{ seoPublicLaunch?: boolean }>("/api/settings/branding");
+    return data.seoPublicLaunch === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Active/désactive l'indexation publique du site vitrine (robots.txt + meta robots). */
+export async function saveSeoPublicLaunch(enabled: boolean): Promise<void> {
+  await apiFetch("/api/admin/settings/seo.public_launch", {
+    method: "PUT",
+    body: { value: { enabled } },
+  });
+}

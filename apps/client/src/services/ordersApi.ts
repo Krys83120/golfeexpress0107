@@ -1,4 +1,5 @@
 import { apiFetch } from "@/services/apiClient";
+import { OrderStatus } from "@golfeexpress/types";
 import type { Order } from "@golfeexpress/types";
 import type { CartItem } from "@/store/useCartStore";
 
@@ -35,6 +36,20 @@ export async function createPaymentIntent(orderId: string): Promise<string> {
     method: "POST",
   });
   return data.clientSecret;
+}
+
+/**
+ * PATCH /api/orders/[orderId]/status — annule une commande tout juste créée
+ * mais jamais payée (le client a fermé le formulaire de paiement carte sans
+ * aller au bout). Le rôle CLIENT n'a le droit de déclencher que cette seule
+ * transition côté serveur (voir orders/[orderId]/status/route.ts) — jamais
+ * les autres statuts.
+ */
+export async function cancelOrder(orderId: string): Promise<void> {
+  await apiFetch<{ order: Order }>(`/api/orders/${orderId}/status`, {
+    method: "PATCH",
+    body: { status: OrderStatus.CANCELLED },
+  });
 }
 
 /** GET /api/orders — historique des commandes du client connecté. */

@@ -19,27 +19,26 @@ export function OnlineToggleHeader() {
 
   return (
     <View style={{ backgroundColor: "#1A1A2E" }}>
-      {logoUrl ? (
-        // Logo sur sa propre ligne (bien plus grand, contient déjà le nom
-        // "Do You Geckoo") — le toggle en ligne/hors ligne passe en
-        // dessous plutôt qu'à côté, pour ne pas être écrasé.
-        <View style={{ alignItems: "center", paddingTop: 8 }}>
-          <Image source={{ uri: logoUrl }} style={{ height: 200, width: 200 }} resizeMode="contain" />
-          <Text style={[styles.brandSub, { marginTop: -8, marginBottom: 4 }]}>Espace Livreur</Text>
-        </View>
-      ) : null}
-
-      <View style={[styles.row, logoUrl ? { justifyContent: "flex-end" } : null]}>
-        {!logoUrl && (
-          <View style={styles.brand}>
-            <Text style={{ fontSize: 50 }}>🦎</Text>
-            <View>
-              <Text style={styles.brandName} className="notranslate">Do You Geckoo</Text>
-              <Text style={styles.brandSub}>Espace Livreur</Text>
-            </View>
-          </View>
+      {/* Mascotte (logoUrl, réglable depuis Admin > Branding) + logo texte
+          "Do You Geckoo" (image bundlée fixe, 22/08/2026 — voir
+          HomeScreen.tsx côté Client pour le même ajout) côte à côte —
+          le toggle en ligne/hors ligne passe en dessous plutôt qu'à côté,
+          pour ne pas être écrasé. */}
+      <View style={{ alignItems: "center", paddingTop: 8, flexDirection: "row", justifyContent: "center", gap: 12 }}>
+        {logoUrl ? (
+          <Image source={{ uri: logoUrl }} style={{ height: 110, width: 110 }} resizeMode="contain" />
+        ) : (
+          <Text style={{ fontSize: 50 }}>🦎</Text>
         )}
+        <Image
+          source={require("../../assets/wordmark-logo.png")}
+          style={{ height: 54, width: 153 }}
+          resizeMode="contain"
+        />
+      </View>
+      <Text style={[styles.brandSub, { textAlign: "center", marginTop: 4, marginBottom: 4 }]}>Espace Livreur</Text>
 
+      <View style={[styles.row, { justifyContent: "flex-end" }]}>
         <Pressable
           onPress={toggleOnline}
           disabled={isTogglingOnline}
@@ -82,8 +81,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingTop: 8,
   },
-  brand: { flexDirection: "row", alignItems: "center", gap: 8 },
-  brandName: { fontSize: 16, fontWeight: "800", color: "white" },
   brandSub: { fontSize: 11, color: "rgba(255,255,255,0.6)" },
   toggle: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
   dot: { height: 8, width: 8, borderRadius: 999 },

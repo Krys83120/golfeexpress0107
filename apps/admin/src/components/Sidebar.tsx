@@ -16,6 +16,8 @@ import {
   Mail,
   MapPinned,
   Euro,
+  BarChart3,
+  Eye,
   LogOut,
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
@@ -54,6 +56,8 @@ export function Sidebar({
   const navItems: NavItem[] = [
     { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
     { key: "orders", label: "Commandes", icon: <Package size={18} /> },
+    { key: "stats", label: "Statistiques", icon: <BarChart3 size={18} /> },
+    { key: "visits", label: "Visites", icon: <Eye size={18} /> },
     { key: "validations", label: "Validations KYC", icon: <ShieldCheck size={18} />, badge: pendingCount },
     { key: "reports", label: "Réclamations", icon: <AlertTriangle size={18} />, badge: openReportsCount },
     { key: "contact-messages", label: "Messages", icon: <Mail size={18} />, badge: openContactMessagesCount },
@@ -83,6 +87,9 @@ export function Sidebar({
             <p className="notranslate font-heading text-base font-extrabold text-white" translate="no">Do You Geckoo</p>
           </div>
         )}
+        {/* Logo texte "Do You Geckoo" (image statique, 22/08/2026) — affiché
+            en dessous de la mascotte réglable depuis Admin > Branding. */}
+        <img src="/wordmark-logo.png" alt="Do You Geckoo" className="h-9 w-auto object-contain" />
         <p className="text-xs text-white/50">
           {user ? `${user.firstName} ${user.lastName}` : "Super Admin"}
         </p>

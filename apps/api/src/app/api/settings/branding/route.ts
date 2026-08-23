@@ -70,6 +70,7 @@ export async function GET() {
     proSplashRunnerSetting,
     commanderSplashRunnerSetting,
     livreurSplashRunnerSetting,
+    seoPublicLaunchSetting,
   ] = await Promise.all([
     prisma.globalSetting.findUnique({ where: { key: "branding.logo_url_pro" } }),
     prisma.globalSetting.findUnique({ where: { key: "branding.logo_url_commander" } }),
@@ -82,6 +83,12 @@ export async function GET() {
     prisma.globalSetting.findUnique({ where: { key: "branding.splash_runner_url_pro" } }),
     prisma.globalSetting.findUnique({ where: { key: "branding.splash_runner_url_commander" } }),
     prisma.globalSetting.findUnique({ where: { key: "branding.splash_runner_url_livreur" } }),
+    // Garde-fou indexation publique (voir robots.ts + layout.tsx côté www) --
+    // volontairement FERMÉ (false) par défaut tant qu'Admin > SEO/GEO ne l'a
+    // jamais activé explicitement : un GlobalSetting absent ne doit jamais
+    // se comporter comme "ouvert", sans quoi une base de données jamais
+    // configurée ouvrirait l'indexation par accident.
+    prisma.globalSetting.findUnique({ where: { key: "seo.public_launch" } }),
   ]);
 
   function extractUrl(setting: typeof wwwLogoSetting): string | null {
@@ -113,6 +120,14 @@ export async function GET() {
       ? (wwwOgTextSetting.value as { title: string; description: string })
       : null;
 
+  const seoPublicLaunch =
+    seoPublicLaunchSetting &&
+    typeof seoPublicLaunchSetting.value === "object" &&
+    seoPublicLaunchSetting.value !== null &&
+    "enabled" in (seoPublicLaunchSetting.value as any)
+      ? Boolean((seoPublicLaunchSetting.value as { enabled: boolean }).enabled)
+      : false;
+
   return NextResponse.json(
     {
       proLogoUrl,
@@ -126,6 +141,7 @@ export async function GET() {
       proSplashRunnerUrl,
       commanderSplashRunnerUrl,
       livreurSplashRunnerUrl,
+      seoPublicLaunch,
     },
     // Cache court côté CDN/navigateur — le logo ne change pas souvent,
     // mais on veut qu'une mise à jour depuis l'Admin se propage sans

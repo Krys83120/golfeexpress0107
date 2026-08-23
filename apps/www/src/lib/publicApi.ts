@@ -43,6 +43,14 @@ export interface PublicPro {
   googleRatingCount?: number | null;
   addresses?: PublicAddress[];
   openingHours?: PublicOpeningHour[];
+  /**
+   * Ligne de contact PUBLIQUE du commerce (distincte des champs légaux
+   * internes -- siret/kbisUrl/managerFirstName -- que GET /api/pros
+   * renvoie aussi aujourd'hui sans les filtrer : à traiter séparément,
+   * hors périmètre SEO, voir le rapport de fin de lot). Utilisée ici pour
+   * le JSON-LD (telephone) sur la fiche commerçant.
+   */
+  phone?: string | null;
 }
 
 export interface PublicOptionChoice {
@@ -183,6 +191,38 @@ export async function fetchPlatformReviewStats(): Promise<PlatformReviewStats> {
   }
 }
 
+export interface PublicServiceCity {
+  id: string;
+  name: string;
+  isActive: boolean;
+  seoIndexable: boolean;
+  seoSlug: string | null;
+  seoIntro: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
+/**
+ * Villes/communes connues du système d'activation progressive (voir
+ * GET /api/service-cities, route publique). Consommé par les pages
+ * /livraison/[ville], le sitemap et le maillage interne (Footer).
+ *
+ * isActive et seoIndexable sont VOLONTAIREMENT indépendants : une ville
+ * peut avoir une page de contenu SEO ("bientôt disponible à Grimaud")
+ * sans que la prise de commande y soit ouverte, mais jamais l'inverse
+ * n'est affirmé côté contenu (voir /livraison/[ville]/page.tsx).
+ */
+export async function fetchPublicServiceCities(): Promise<PublicServiceCity[]> {
+  try {
+    const res = await fetchWithTimeout(`${API_URL}/api/service-cities`, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.cities ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /** Distance à vol d'oiseau en km (formule haversine) — suffisante pour trier/afficher une estimation. */
 export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -217,6 +257,24 @@ export const CATEGORY_LABELS_PLAIN: Record<string, string> = {
   LIBRAIRIE: "Librairie",
   PARFUMERIE: "Parfumerie",
   AUTRE: "Commerce",
+};
+
+/**
+ * Type schema.org le plus précis disponible pour chaque catégorie -- utilisé
+ * pour le JSON-LD de la fiche commerçant. "Store" en repli quand
+ * schema.org n'a pas de type dédié (boucherie, parfumerie) plutôt que
+ * d'inventer un type non standard.
+ */
+export const CATEGORY_SCHEMA_TYPE: Record<string, string> = {
+  RESTAURANT: "Restaurant",
+  BOULANGERIE: "Bakery",
+  BOUCHERIE: "Store",
+  EPICERIE: "GroceryStore",
+  PHARMACIE: "Pharmacy",
+  FLEURISTE: "Florist",
+  LIBRAIRIE: "BookStore",
+  PARFUMERIE: "Store",
+  AUTRE: "Store",
 };
 
 function slugify(text: string): string {

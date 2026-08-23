@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDeliveryFee, isDeliveryFeeByDistanceEnabled, getDeliveryFeeTiers } from "@/lib/pricingSettings";
+import {
+  getDeliveryFee,
+  isDeliveryFeeByDistanceEnabled,
+  getDeliveryFeeTiers,
+  isFreeDeliveryThresholdEnabled,
+  getFreeDeliveryThresholdAmount,
+} from "@/lib/pricingSettings";
 
 // Voir apps/api/src/app/api/settings/branding/route.ts pour le détail du
 // raisonnement (identique ici) : sans "force-dynamic", Next.js fige cette
@@ -39,16 +45,27 @@ export const dynamic = "force-dynamic";
  * par défaut. Exposés ici pour que le Client calcule lui-même le tarif
  * exact par commerçant (chaque fiche a sa propre distance jusqu'au
  * client) plutôt que d'appeler cette route une fois par commerçant.
+ *
+ * freeDeliveryThresholdEnabled/freeDeliveryThresholdAmount (22/08/2026) :
+ * livraison gratuite au-dessus d'un panier minimum (voir pricingSettings.ts
+ * -> getEffectiveDeliveryFee(), utilisé par POST /api/orders), désactivé par
+ * défaut. Exposés pour que CartScreen.tsx (le seul endroit où le panier du
+ * client est connu avant la commande) puisse afficher le VRAI tarif — y
+ * compris "0 €" une fois le seuil atteint — sans attendre la création de la
+ * commande.
  */
 export async function GET() {
-  const [deliveryFee, deliveryFeeByDistanceEnabled, deliveryFeeTiers] = await Promise.all([
-    getDeliveryFee(),
-    isDeliveryFeeByDistanceEnabled(),
-    getDeliveryFeeTiers(),
-  ]);
+  const [deliveryFee, deliveryFeeByDistanceEnabled, deliveryFeeTiers, freeDeliveryThresholdEnabled, freeDeliveryThresholdAmount] =
+    await Promise.all([
+      getDeliveryFee(),
+      isDeliveryFeeByDistanceEnabled(),
+      getDeliveryFeeTiers(),
+      isFreeDeliveryThresholdEnabled(),
+      getFreeDeliveryThresholdAmount(),
+    ]);
 
   return NextResponse.json(
-    { deliveryFee, deliveryFeeByDistanceEnabled, deliveryFeeTiers },
+    { deliveryFee, deliveryFeeByDistanceEnabled, deliveryFeeTiers, freeDeliveryThresholdEnabled, freeDeliveryThresholdAmount },
     // Cache court — le tarif ne change pas souvent, mais une mise à jour
     // depuis Admin > Tarification doit se propager sans attendre trop
     // longtemps côté clients qui parcourent déjà l'app.

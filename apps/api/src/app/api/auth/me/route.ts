@@ -23,6 +23,12 @@ async function getHandler(req: NextRequest) {
       proProfile: true,
       riderProfile: true,
       adminProfile: true,
+      // Non-null uniquement pour un compte role=PRO_EMPLOYEE -- voir
+      // requireProOrEmployee() dans middleware/auth.ts. On inclut la
+      // boutique (pro) pour que le profil renvoyé ci-dessous ressemble à un
+      // Pro classique côté apps/pro, qui n'a pas à distinguer patron/employé
+      // pour son affichage de base (nom de la boutique, logo...).
+      employeeOfPro: { include: { pro: true } },
     },
   });
 
@@ -30,8 +36,8 @@ async function getHandler(req: NextRequest) {
     throw new ApiError(404, "Utilisateur introuvable.");
   }
 
-  const { clientProfile, proProfile, riderProfile, adminProfile, ...userBase } = user;
-  const rawProfile = clientProfile ?? proProfile ?? riderProfile ?? adminProfile ?? null;
+  const { clientProfile, proProfile, riderProfile, adminProfile, employeeOfPro, ...userBase } = user;
+  const rawProfile = clientProfile ?? proProfile ?? riderProfile ?? employeeOfPro?.pro ?? adminProfile ?? null;
 
   // Decimal Prisma (rating, commissionRate, totalEarnings, balance,
   // currentLat/Lng, googleRating...) -> nombres JS, sinon sérialisés en
@@ -39,7 +45,14 @@ async function getHandler(req: NextRequest) {
   // les 4 apps qui consomment cette route à la connexion.
   const profile = rawProfile ? serializeDecimalFields(rawProfile) : null;
 
-  return NextResponse.json({ user: userBase, profile });
+  // true uniquement pour un compte employé (role PRO_EMPLOYEE) -- apps/pro
+  // s'en sert pour masquer Finances/Paramètres/Abonnement/Avis côté client
+  // (voir App.tsx / Sidebar.tsx). Ce flag seul ne protège rien : chaque
+  // route sensible côté API doit rester filtrée sur le rôle réel via
+  // requireAuth(req, [UserRole.PRO]), jamais sur ce booléen.
+  const isEmployee = !!employeeOfPro;
+
+  return NextResponse.json({ user: userBase, profile, isEmployee });
 }
 
 /**

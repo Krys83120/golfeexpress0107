@@ -5,7 +5,9 @@ import { SplashLoader } from "@/components/SplashLoader";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ContactWidget } from "@/components/ContactWidget";
 import { VerifiedReviewsBadge } from "@/components/VerifiedReviewsBadge";
+import { VisitTracker } from "@/components/VisitTracker";
 import { fetchWwwOgText } from "@/lib/brandingApi";
+import { isSeoPublicLaunchEnabled } from "@/lib/seoSettings";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -25,7 +27,9 @@ const SITE_URL = "https://www.doyougeckoo.fr";
 
 // Valeurs par défaut de l'aperçu de partage (WhatsApp/iMessage/Facebook...)
 // — utilisées tant que rien n'a été configuré depuis Admin > SEO/GEO.
-const DEFAULT_OG_TITLE = "Do You Geckoo — La livraison locale du Golfe de Saint-Tropez, en juste";
+// Corrigé le 23/08/2026 (audit SEO/GEO) : l'ancien titre par défaut
+// ("...en juste") était une phrase tronquée, jamais terminée.
+const DEFAULT_OG_TITLE = "Do You Geckoo — La livraison locale du Golfe de Saint-Tropez";
 const DEFAULT_OG_DESCRIPTION =
   "Livraison de vos commerces préférés en 20-30 minutes. Des livreurs mieux payés, des commerçants moins taxés, un service 100% local.";
 
@@ -46,24 +50,32 @@ const OG_IMAGE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
  * redéploiement, exactement comme pour l'image.
  */
 export async function generateMetadata(): Promise<Metadata> {
-  const ogText = await fetchWwwOgText();
+  const [ogText, publicLaunch] = await Promise.all([fetchWwwOgText(), isSeoPublicLaunchEnabled()]);
   const ogTitle = ogText?.title || DEFAULT_OG_TITLE;
   const ogDescription = ogText?.description || DEFAULT_OG_DESCRIPTION;
 
   return {
     metadataBase: new URL(SITE_URL),
     title: {
-      default: "Do You Geckoo — La livraison locale du Golfe de Saint-Tropez, en juste",
+      // Corrigé le 23/08/2026 (audit SEO/GEO) : title tronqué ("...en
+      // juste") remplacé par une formulation complète et plus courte,
+      // pensée pour la SERP plutôt que pour caser un maximum de villes.
+      default: "Livraison Golfe de Saint-Tropez | Do You Geckoo",
       template: "%s | Do You Geckoo",
     },
+    // Raccourcie et recentrée le 23/08/2026 : l'ancienne version (~200
+    // caractères, au-delà du raisonnable pour une SERP) affirmait aussi
+    // "jusqu'à 40% de plus [pour les livreurs] que sur les plateformes
+    // classiques" sans aucune donnée dans le code pour l'étayer -- retiré
+    // plutôt que laissé en l'état (voir lib/economics.ts pour la règle
+    // suivie sur les chiffres comparatifs).
     description:
-      "Do You Geckoo livre les commerces de Sainte-Maxime et du Golfe de Saint-Tropez en 20-30 minutes. Nos livreurs gagnent jusqu'à 40% de plus que sur les plateformes classiques, pour le même prix client.",
+      "Commandez auprès des restaurants et commerces du Golfe de Saint-Tropez avec Do You Geckoo, la plateforme locale qui valorise commerces et livreurs.",
     keywords: [
       "livraison Sainte-Maxime",
+      "livraison Saint-Tropez",
       "livraison Golfe de Saint-Tropez",
       "livraison locale",
-      "alternative Uber Eats",
-      "devenir livreur Sainte-Maxime",
       "commerçants livraison Var",
     ],
     authors: [{ name: "Do You Geckoo" }],
@@ -82,22 +94,29 @@ export async function generateMetadata(): Promise<Metadata> {
       description: ogDescription,
       images: [OG_IMAGE_URL],
     },
-    robots: { index: true, follow: true },
+    // Garde-fou pré-lancement (voir lib/seoSettings.ts + robots.ts) : tant
+    // que seo.public_launch n'est pas activé depuis Admin > SEO/GEO, la
+    // page se déclare elle-même non indexable, en plus du blocage robots.txt.
+    robots: publicLaunch ? { index: true, follow: true } : { index: false, follow: false },
     alternates: { canonical: SITE_URL },
   };
 }
 
+// Organization / WebSite / Service séparés (au lieu d'un unique bloc
+// LocalBusiness fusionné) et liés par @id -- structure recommandée par
+// schema.org pour qu'un moteur IA puisse résoudre "qui édite ce site" et
+// "quel service est proposé" comme deux entités distinctes mais reliées.
+// sameAs reste vide tant qu'aucun compte social officiel n'est confirmé --
+// jamais un lien inventé ou deviné.
 const organizationJsonLd = {
   "@context": "https://schema.org",
-  "@type": "LocalBusiness",
+  "@type": "Organization",
+  "@id": `${SITE_URL}/#organization`,
   name: "Do You Geckoo",
+  url: SITE_URL,
+  logo: `${SITE_URL}/icon.png`,
   description:
     "Plateforme de livraison locale connectant commerçants, clients et livreurs indépendants sur le Golfe de Saint-Tropez.",
-  url: SITE_URL,
-  areaServed: {
-    "@type": "Place",
-    name: "Golfe de Saint-Tropez",
-  },
   address: {
     "@type": "PostalAddress",
     addressLocality: "Sainte-Maxime",
@@ -105,6 +124,33 @@ const organizationJsonLd = {
     addressCountry: "FR",
   },
   sameAs: [] as string[],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${SITE_URL}/#website`,
+  url: SITE_URL,
+  name: "Do You Geckoo",
+  inLanguage: "fr-FR",
+  publisher: { "@id": `${SITE_URL}/#organization` },
+};
+
+// Sainte-Maxime : seule commune où le service est réellement actif
+// aujourd'hui (voir modèle Prisma ServiceCity). "Golfe de Saint-Tropez" est
+// gardé comme aire d'ambition déclarée (cohérent avec le contenu visible du
+// site : "s'étend progressivement...", voir Faq.tsx) -- mais on ne liste
+// PAS les autres communes individuellement ici tant qu'elles ne sont pas
+// actives, pour ne jamais affirmer un service disponible là où il ne l'est pas.
+const serviceJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Service",
+  serviceType: "Livraison locale de repas et commerces",
+  provider: { "@id": `${SITE_URL}/#organization` },
+  areaServed: [
+    { "@type": "City", name: "Sainte-Maxime", containedInPlace: { "@type": "Place", name: "Golfe de Saint-Tropez" } },
+    { "@type": "Place", name: "Golfe de Saint-Tropez" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -115,12 +161,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
       </head>
       <body className="font-body bg-white text-nuit antialiased">
         <SplashLoader>{children}</SplashLoader>
         <CookieConsent />
         <ContactWidget />
         <VerifiedReviewsBadge />
+        <VisitTracker />
       </body>
     </html>
   );

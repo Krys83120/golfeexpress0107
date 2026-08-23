@@ -10,6 +10,7 @@ import { useAdminDashboardStore } from "@/store/useAdminDashboardStore";
 import { useAdminSettingsStore } from "@/store/useAdminSettingsStore";
 import { useAdminOrdersStore } from "@/store/useAdminOrdersStore";
 import { OrderStatusSummary } from "@/components/OrderStatusSummary";
+import { ActiveDeliveriesCard } from "@/components/ActiveDeliveriesCard";
 import { fetchAdminStats, fetchSupportedCities, fetchLiveRiders, type AdminStats, type SupportedCity, type LiveRiderPosition } from "@/services/adminDashboardApi";
 
 interface DashboardPageProps {
@@ -99,6 +100,9 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
       {/* COMMANDES PAR STATUT */}
       <OrderStatusSummary orders={orders} onViewAll={() => onNavigate?.("orders")} />
+
+      {/* LIVRAISONS EN COURS — CHRONOS LIVREURS (fiabilité) */}
+      <ActiveDeliveriesCard orders={orders} />
 
       {/* CHART + LIVE MAP */}
       <div className="mb-6 grid grid-cols-2 gap-4">

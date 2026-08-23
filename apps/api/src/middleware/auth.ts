@@ -55,6 +55,53 @@ export async function requireAuth(req: NextRequest, allowedRoles?: UserRole[]): 
   return { userId: user.id, email: user.email, role: user.role as UserRole };
 }
 
+export interface ProAuthContext extends AuthContext {
+  /** Boutique concernée -- Pro.id, résolu que le compte connecté soit le patron ou un employé. */
+  proId: string;
+  /** true si le compte connecté est un employé (accès restreint côté route appelante). */
+  isEmployee: boolean;
+}
+
+/**
+ * Authentifie la requête ET résout le `proId` concerné, que le compte
+ * connecté soit le Pro "patron" (role PRO, via Pro.userId) ou un compte
+ * employé (role PRO_EMPLOYEE, via ProEmployee.userId -> proId) -- voir
+ * prisma/schema.prisma model ProEmployee.
+ *
+ * A utiliser dans les routes Pro qui doivent rester accessibles aux
+ * employés (commandes, notifications, impression des tickets...) :
+ *   const { proId, isEmployee } = await requireProOrEmployee(req);
+ *
+ * Pour une route réservée au patron (Finances, Paramètres, abonnement,
+ * gestion des employés eux-mêmes...), utiliser plutôt
+ * `requireAuth(req, [UserRole.PRO])` -- ne jamais s'appuyer uniquement sur
+ * le flag `isEmployee` retourné ici pour restreindre une route sensible, au
+ * cas où l'appelant oublierait de le vérifier.
+ */
+export async function requireProOrEmployee(req: NextRequest): Promise<ProAuthContext> {
+  const auth = await requireAuth(req, [UserRole.PRO, UserRole.PRO_EMPLOYEE]);
+
+  if (auth.role === UserRole.PRO) {
+    const pro = await prisma.pro.findUnique({
+      where: { userId: auth.userId },
+      select: { id: true },
+    });
+    if (!pro) {
+      throw new ApiError(404, "Profil commerçant introuvable.");
+    }
+    return { ...auth, proId: pro.id, isEmployee: false };
+  }
+
+  const employee = await prisma.proEmployee.findUnique({
+    where: { userId: auth.userId },
+    select: { proId: true },
+  });
+  if (!employee) {
+    throw new ApiError(404, "Compte employé introuvable ou détaché de sa boutique.");
+  }
+  return { ...auth, proId: employee.proId, isEmployee: true };
+}
+
 /**
  * Wrapper standard pour les route handlers : centralise la gestion des
  * ApiError (401/403/...) et des erreurs inattendues (500), pour ne pas

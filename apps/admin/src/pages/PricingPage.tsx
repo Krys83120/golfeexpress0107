@@ -13,11 +13,16 @@ import {
   setDeliveryFeeByDistanceEnabled,
   fetchDeliveryFeeTiers,
   saveDeliveryFeeTiers,
+  fetchFreeDeliveryThresholdEnabled,
+  setFreeDeliveryThresholdEnabled,
+  fetchFreeDeliveryThresholdAmount,
+  setFreeDeliveryThresholdAmount,
   DEFAULT_DELIVERY_FEE,
   DEFAULT_RIDER_PAY_BASE,
   DEFAULT_RIDER_PAY_PER_KM,
   DEFAULT_RIDER_PAY_MINIMUM,
   DEFAULT_DELIVERY_FEE_TIERS,
+  DEFAULT_FREE_DELIVERY_THRESHOLD,
   type MinOrderTier,
   type RiderPayRates,
   type DeliveryFeeTier,
@@ -90,6 +95,19 @@ export function PricingPage() {
   const [feeTiersSaving, setFeeTiersSaving] = useState(false);
   const [feeTiersDirty, setFeeTiersDirty] = useState(false);
 
+  // Livraison gratuite au-dessus d'un panier minimum (échange produit du
+  // 22/08/2026) — désactivé par défaut. Le montant est un réglage à part
+  // (pas un toggle) car il se pilote en continu, comme "Frais de livraison
+  // (client)" ci-dessus.
+  const [freeDeliveryEnabled, setFreeDeliveryEnabledState] = useState(false);
+  const [freeDeliveryFlagLoading, setFreeDeliveryFlagLoading] = useState(true);
+  const [freeDeliveryFlagSaving, setFreeDeliveryFlagSaving] = useState(false);
+
+  const [freeDeliveryThreshold, setFreeDeliveryThresholdState] = useState(DEFAULT_FREE_DELIVERY_THRESHOLD);
+  const [freeDeliveryAmountStatus, setFreeDeliveryAmountStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [freeDeliveryAmountSaving, setFreeDeliveryAmountSaving] = useState(false);
+  const [freeDeliveryAmountDirty, setFreeDeliveryAmountDirty] = useState(false);
+
   useEffect(() => {
     Promise.all([fetchDeliveryFee(), fetchRiderPayRates()])
       .then(([fee, rates]) => {
@@ -116,6 +134,15 @@ export function PricingPage() {
         setFeeTiersStatus("loaded");
       })
       .catch(() => setFeeTiersStatus("error"));
+    fetchFreeDeliveryThresholdEnabled()
+      .then(setFreeDeliveryEnabledState)
+      .finally(() => setFreeDeliveryFlagLoading(false));
+    fetchFreeDeliveryThresholdAmount()
+      .then((amount) => {
+        setFreeDeliveryThresholdState(amount);
+        setFreeDeliveryAmountStatus("loaded");
+      })
+      .catch(() => setFreeDeliveryAmountStatus("error"));
   }, []);
 
   async function handleSaveRates() {
@@ -233,6 +260,30 @@ export function PricingPage() {
     if (feeTiers.length === 0) return deliveryFee;
     const match = feeTiers.find((t) => km <= t.maxDistanceKm);
     return match ? match.fee : feeTiers[feeTiers.length - 1].fee;
+  }
+
+  async function handleToggleFreeDelivery(next: boolean) {
+    setFreeDeliveryFlagSaving(true);
+    try {
+      await setFreeDeliveryThresholdEnabled(next);
+      setFreeDeliveryEnabledState(next);
+    } catch {
+      alert("Impossible de mettre à jour ce réglage pour le moment.");
+    } finally {
+      setFreeDeliveryFlagSaving(false);
+    }
+  }
+
+  async function handleSaveFreeDeliveryThreshold() {
+    setFreeDeliveryAmountSaving(true);
+    try {
+      await setFreeDeliveryThresholdAmount(freeDeliveryThreshold);
+      setFreeDeliveryAmountDirty(false);
+    } catch {
+      alert("Impossible d'enregistrer ce montant pour le moment.");
+    } finally {
+      setFreeDeliveryAmountSaving(false);
+    }
   }
 
   return (
@@ -420,6 +471,61 @@ export function PricingPage() {
               ))}
             </div>
           </>
+        )}
+      </div>
+
+      <div className="mb-8 rounded-lg border border-gris-light bg-white p-5" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-nuit">Livraison gratuite au-dessus d'un panier</p>
+            <p className="mt-1 text-xs text-gris">
+              Une fois activé : un client dont le panier atteint le montant ci-dessous ne paie plus de frais de
+              livraison (0 €), quelle que soit la distance. Attention : le livreur reste rémunéré normalement — ce
+              n'est donc pas un cadeau neutre pour la marge. Avec un seuil à 50 €, la marge par commande reste
+              positive pour un commerçant au pack Découverte mais peut devenir négative pour un pack Premium+ ; un
+              seuil autour de 65-90 € reste rentable en continu selon le pack. 50 € en promo de lancement limitée
+              dans le temps est raisonnable — désactivez ou remontez le seuil ensuite. Désactivé, toutes les
+              commandes payent les frais de livraison habituels comme aujourd'hui.
+            </p>
+          </div>
+          <Toggle
+            checked={freeDeliveryEnabled}
+            onChange={handleToggleFreeDelivery}
+            disabled={freeDeliveryFlagLoading || freeDeliveryFlagSaving}
+          />
+        </div>
+
+        {freeDeliveryAmountStatus === "loading" ? (
+          <p className="py-4 text-center text-sm text-gris">Chargement...</p>
+        ) : freeDeliveryAmountStatus === "error" ? (
+          <p className="py-4 text-sm text-red-500">Impossible de charger ce montant pour le moment.</p>
+        ) : (
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-gris">Panier minimum pour la livraison gratuite</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={freeDeliveryThreshold}
+                  onChange={(e) => {
+                    setFreeDeliveryThresholdState(Number(e.target.value));
+                    setFreeDeliveryAmountDirty(true);
+                  }}
+                  className="w-24 rounded-sm border border-gris-light px-2 py-1.5 text-sm"
+                />
+                <span className="text-sm text-gris">€</span>
+              </div>
+            </div>
+            <button
+              onClick={handleSaveFreeDeliveryThreshold}
+              disabled={!freeDeliveryAmountDirty || freeDeliveryAmountSaving}
+              className="rounded-sm bg-nuit px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              {freeDeliveryAmountSaving ? "Enregistrement..." : "Enregistrer"}
+            </button>
+          </div>
         )}
       </div>
 

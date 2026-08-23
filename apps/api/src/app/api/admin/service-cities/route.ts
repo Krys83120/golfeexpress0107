@@ -17,7 +17,13 @@ async function getHandler(req: NextRequest) {
   const cities = await prisma.serviceCity.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
   });
-  return NextResponse.json({ cities });
+  // Decimal Prisma (lat/lng) -> nombres JS -- même raison que dans le PATCH.
+  const serialized = cities.map((c) => ({
+    ...c,
+    lat: c.lat !== null ? Number(c.lat) : null,
+    lng: c.lng !== null ? Number(c.lng) : null,
+  }));
+  return NextResponse.json({ cities: serialized });
 }
 
 const createCitySchema = z.object({

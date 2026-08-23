@@ -1,4 +1,5 @@
 import { TypewriterSlogan } from "@/components/TypewriterSlogan";
+import { PLATFORM_COMMISSION } from "@/lib/economics";
 
 export function Hero() {
   return (
@@ -22,8 +23,19 @@ export function Hero() {
           100% local — Sainte-Maxime & Golfe de Saint-Tropez
         </div>
 
-        {/* Slogan signature — animation type machine à écrire, en boucle */}
-        <div className="flex min-h-[3.5rem] items-center justify-center sm:min-h-[4.5rem] md:min-h-[5.5rem]">
+        {/* H1 réel, statique, toujours présent dans le HTML servi -- corrigé
+            le 23/08/2026 (audit SEO/GEO). Avant, le seul <h1> de la page
+            était écrit lettre par lettre par TypewriterSlogan.tsx (composant
+            client) : au premier rendu, un crawler qui n'exécute pas le JS
+            n'y trouvait qu'un curseur clignotant vide. L'animation reste
+            inchangée visuellement juste en dessous, elle porte maintenant un
+            <p aria-hidden> plutôt que le <h1>. */}
+        <h1 className="font-heading text-2xl font-extrabold leading-tight sm:text-4xl md:text-5xl">
+          Livraison locale dans le Golfe de Saint-Tropez
+        </h1>
+
+        {/* Slogan signature — animation type machine à écrire, en boucle. Purement décorative (voir TypewriterSlogan.tsx). */}
+        <div className="mt-3 flex min-h-[3.5rem] items-center justify-center sm:min-h-[4.5rem] md:min-h-[5.5rem]">
           <TypewriterSlogan />
         </div>
 
@@ -68,7 +80,7 @@ export function Hero() {
 
         <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-white/50 sm:mt-16 sm:gap-x-10 sm:text-sm">
           <span>🛵 Livraison en 20-30 min</span>
-          <span>🏪 Commerçants dès 12% de commission</span>
+          <span>🏪 Commerçants {PLATFORM_COMMISSION.fromLabel} de commission</span>
           <span>💚 Livreurs mieux rémunérés</span>
         </div>
       </div>

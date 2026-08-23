@@ -3,6 +3,7 @@ import { Phone, MapPin, Clock, Printer, Receipt, Flag } from "lucide-react";
 import { OrderStatus, OrderReportCategory, type Order } from "@golfeexpress/types";
 import { getNextStatus, NEXT_ACTION_LABELS } from "@/services/orderStatusFlow";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { PaymentStatusBadge } from "@/components/PaymentStatusBadge";
 import { printOrderLabel } from "@/services/printLabel";
 import { apiFetchBlob } from "@/services/apiClient";
 import { createReport } from "@/services/reportsApi";
@@ -127,7 +128,10 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
             {order.client?.user?.firstName} {order.client?.user?.lastName}
           </p>
         </div>
-        <OrderStatusBadge status={order.status} />
+        <div className="flex flex-col items-end gap-1">
+          <OrderStatusBadge status={order.status} />
+          <PaymentStatusBadge order={order} />
+        </div>
       </div>
 
       <div className="mb-3 flex flex-col gap-1">

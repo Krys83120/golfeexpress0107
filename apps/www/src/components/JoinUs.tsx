@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchPublicPartnerPacks } from "@/lib/publicApi";
+import { PLATFORM_COMMISSION, RIDER_PAY } from "@/lib/economics";
 
 const TIER_ORDER = ["FREE", "PREMIUM", "PREMIUM_PLUS"];
 
@@ -26,7 +27,7 @@ export async function JoinUs() {
             visibilité auprès des habitants et vacanciers du Golfe.
           </p>
           <ul className="mt-6 space-y-2 text-sm text-white/90">
-            <li>✓ Commission dès 12%, sans engagement</li>
+            <li>✓ Commission {PLATFORM_COMMISSION.fromLabel}, sans engagement</li>
             <li>✓ Tableau de bord commandes en temps réel</li>
             <li>✓ Impression d'étiquette et notifications sonores</li>
           </ul>
@@ -51,7 +52,7 @@ export async function JoinUs() {
           </p>
           <ul className="mt-6 space-y-2 text-sm text-white/80">
             <li>✓ Aucun horaire imposé</li>
-            <li>✓ Jusqu'à 40% de gains en plus qu'ailleurs*</li>
+            <li>✓ {RIDER_PAY.typicalLabel}, affiché avant chaque course</li>
             <li>✓ Retraits de gains flexibles</li>
           </ul>
           <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -61,14 +62,10 @@ export async function JoinUs() {
             >
               Devenir livreur
             </a>
-            <Link href="/devenir-partenaire#livreurs" className="text-sm font-semibold text-white underline underline-offset-4 hover:text-white/80">
+            <Link href="/devenir-livreur" className="text-sm font-semibold text-white underline underline-offset-4 hover:text-white/80">
               En savoir plus →
             </Link>
           </div>
-          <p className="mt-3 text-[11px] text-white/40">
-            *Estimation comparée aux commissions moyennes constatées sur les plateformes de livraison classiques,
-            selon le type de course.
-          </p>
         </div>
       </div>
 

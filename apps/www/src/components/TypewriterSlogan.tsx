@@ -53,8 +53,17 @@ export function TypewriterSlogan() {
   const showAnswer = phase === "answer-in" || phase === "hold" || phase === "zoom-out";
   const answerVisible = phase === "hold" || phase === "zoom-out";
 
+  // Corrigé le 23/08/2026 (audit SEO/GEO) : ce composant "use client" ne
+  // rend son texte que lettre par lettre à partir d'un useState initialisé
+  // à vide -- au rendu serveur (et pour tout robot qui n'exécute pas le
+  // JS), le contenu réel était donc absent. C'était le SEUL <h1> de la
+  // page. Il porte maintenant le tag <p> (purement décoratif/animation),
+  // et le vrai <h1> statique et toujours présent a été ajouté dans
+  // Hero.tsx -- la sémantique ne dépend plus de l'animation, qui peut donc
+  // rester inchangée visuellement.
   return (
-    <h1
+    <p
+      aria-hidden="true"
       className="font-heading text-2xl font-extrabold leading-tight transition-all ease-out sm:text-4xl md:text-5xl"
       style={{
         transitionDuration: `${ZOOM_TRANSITION_MS}ms`,
@@ -81,6 +90,6 @@ export function TypewriterSlogan() {
           )}
         </>
       )}
-    </h1>
+    </p>
   );
 }

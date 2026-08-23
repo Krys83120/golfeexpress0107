@@ -141,7 +141,7 @@ export function SubscriptionPage() {
   const isPaidSubscription = subscription && subscription.tier !== SubscriptionType.FREE && subscription.hasActiveSubscription;
 
   return (
-    <div className="flex-1 p-8">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8">
       <div className="mb-6">
         <h1 className="font-heading text-2xl font-extrabold text-nuit">Abonnement</h1>
         <p className="text-sm text-gris">
@@ -171,7 +171,7 @@ export function SubscriptionPage() {
           ci-dessous qui servent surtout à changer de pack. */}
       {isPaidSubscription && currentPack && (
         <div className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-sm text-gris">Pack actuel</p>
               <p className="font-heading text-lg font-bold text-nuit">{currentPack.name}</p>
@@ -188,7 +188,7 @@ export function SubscriptionPage() {
               </div>
             </div>
 
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col items-start gap-2 sm:items-end">
               {subscription.cancelAtPeriodEnd ? (
                 <button
                   onClick={handleReactivate}
@@ -311,6 +311,7 @@ export function SubscriptionPage() {
           <p className="text-sm text-gris">Aucune facture pour le moment — apparaît ici dès votre première souscription payante.</p>
         )}
         {invoicesStatus === "loaded" && invoices.length > 0 && (
+          <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gris-light text-xs uppercase tracking-wide text-gris">
@@ -344,6 +345,7 @@ export function SubscriptionPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

@@ -51,7 +51,7 @@ export function NotificationsPage() {
   const setAutoPrint = useNotificationSettingsStore((s) => s.setAutoPrint);
 
   return (
-    <div className="flex-1 p-8">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8">
       <div className="mb-6">
         <h1 className="font-heading text-2xl font-extrabold text-nuit">Notifications</h1>
         <p className="text-sm text-gris">

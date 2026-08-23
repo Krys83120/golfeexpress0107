@@ -6,11 +6,19 @@ import { useProsStore } from "@/store/useProsStore";
 import { useCartStore } from "@/store/useCartStore";
 import { ProductOptionsModal } from "@/components/ProductOptionsModal";
 import { BusinessInfoCard } from "@/components/BusinessInfoCard";
+import { FloatingCart } from "@/components/FloatingCart";
 import type { Product } from "@golfeexpress/types";
 
 interface ProDetailScreenProps {
   pro: ProWithUi;
   onClose: () => void;
+  /**
+   * Ouvre la modal panier par-dessus cette fiche (22/08/2026) — jusqu'ici,
+   * seul l'écran d'accueil affichait un bouton panier flottant
+   * (FloatingCart), obligeant à fermer la fiche commerçant pour consulter
+   * un panier qu'on venait pourtant de remplir depuis cette même fiche.
+   */
+  onOpenCart: () => void;
   /** Ouvre automatiquement la fiche de ce produit dès que la liste des
    * produits est chargée — utilisé pour le deep-link depuis le site
    * vitrine (clic sur un produit → arrive directement dessus dans l'app,
@@ -18,7 +26,7 @@ interface ProDetailScreenProps {
   initialProductId?: string;
 }
 
-export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScreenProps) {
+export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: ProDetailScreenProps) {
   const addItem = useCartStore((s) => s.addItem);
   const productsByPro = useProsStore((s) => s.productsByPro);
   const productsStatus = useProsStore((s) => s.productsStatus[pro.id]);
@@ -80,7 +88,9 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
       },
       pro.id,
       pro.businessName,
-      pro.pickupAddressId
+      pro.pickupAddressId,
+      pro.pickupLat,
+      pro.pickupLng
     );
   }
 
@@ -140,7 +150,9 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
       },
       pro.id,
       pro.businessName,
-      pro.pickupAddressId
+      pro.pickupAddressId,
+      pro.pickupLat,
+      pro.pickupLng
     );
     setOptionsModalProduct(null);
   }
@@ -329,6 +341,8 @@ export function ProDetailScreen({ pro, onClose, initialProductId }: ProDetailScr
           ))}
         </View>
       </ScrollView>
+
+      <FloatingCart onPress={onOpenCart} />
 
       {optionsModalProduct && (
         <ProductOptionsModal

@@ -106,7 +106,7 @@ export function FinancesPage() {
   }
 
   return (
-    <div className="flex-1 p-8">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="font-heading text-2xl font-extrabold text-nuit">Finances</h1>
@@ -123,7 +123,7 @@ export function FinancesPage() {
         </div>
       )}
 
-      <div className="mb-6 grid grid-cols-3 gap-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard icon="💰" label="CA brut (mois)" value={`${(summary?.monthGross ?? 0).toFixed(2)} €`} />
         <StatCard icon="📉" label="Commission plateforme" value={`${(summary?.monthCommission ?? 0).toFixed(2)} €`} accentColor="#FF6B35" />
         <StatCard icon="✅" label="Net perçu (mois)" value={`${(summary?.monthNet ?? 0).toFixed(2)} €`} accentColor="#2196F3" />
@@ -133,7 +133,7 @@ export function FinancesPage() {
           nous-mêmes un IBAN : Stripe héberge tout le formulaire (identité +
           banque) et nous notifie via webhook quand c'est validé. */}
       <div className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-gris">Versements bancaires automatiques</p>
             {stripeStatus?.payoutsEnabled ? (
@@ -182,6 +182,7 @@ export function FinancesPage() {
 
       <div className="rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
         <h3 className="mb-4 font-heading text-base font-bold text-nuit">📄 Chiffre d'affaires par semaine</h3>
+        <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-gris-light text-xs uppercase tracking-wide text-gris">
@@ -211,6 +212,7 @@ export function FinancesPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <div className="mt-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>

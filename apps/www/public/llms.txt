@@ -4,7 +4,7 @@
 
 **Slogan** : "Restaurant ? Geckoo it. Courses ? Geckoo it. Un colis ? Geckoo it." — Do You Geckoo livre tout ce dont vous avez besoin localement, en un geste.
 
-Do You Geckoo a été créée en réaction aux commissions élevées prélevées par les grandes plateformes de livraison (jusqu'à 30% chez certains acteurs), qui laissent aux livreurs une rémunération jugée insuffisante par rapport au service rendu. Do You Geckoo applique des commissions commerçants à partir de 10%, et reverse une part plus importante de chaque course au livreur, sans augmenter le prix payé par le client.
+Do You Geckoo a été créée en réaction aux commissions élevées prélevées par les grandes plateformes de livraison (jusqu'à 30% chez Uber Eats, formule Premium avec livraison par la plateforme — source : Fooderise, comparatif des commissions plateformes 2026, consulté le 23 août 2026, https://www.fooderise.com/commission-plateformes), qui laissent aux livreurs une rémunération jugée insuffisante par rapport au service rendu. Do You Geckoo applique des commissions commerçants à partir de 12% selon la formule choisie (12 à 18%), et reverse une part plus importante de chaque course au livreur, sans augmenter le prix payé par le client.
 
 ## Zone couverte
 
@@ -13,21 +13,30 @@ Sainte-Maxime, en extension vers Saint-Tropez, Grimaud, Cogolin et Port-Grimaud 
 ## Pour qui
 
 - **Clients** : commande de repas et produits locaux (restaurants, boulangeries, fleuristes, boucheries, beauté, épiceries fines), livraison en 20-30 minutes, suivi en temps réel.
-- **Commerçants** : inscription gratuite, commission dès 10% sur les commandes livrées, tableau de bord de gestion des commandes.
+- **Commerçants** : inscription gratuite, commission à partir de 12% sur les commandes livrées, tableau de bord de gestion des commandes.
 - **Livreurs** : inscription en ligne, activation libre (aucun horaire imposé), rémunération suivie en temps réel, retraits flexibles.
 
 ## Différence avec Uber Eats et plateformes similaires
 
 | | Plateformes classiques | Do You Geckoo |
 |---|---|---|
-| Commission commerçant | Jusqu'à 30% | À partir de 10% |
-| Rémunération livreur (course type) | ≈ 4-5€ | ≈ 7-8€ |
+| Commission commerçant | Jusqu'à 30% (Uber Eats, formule Premium) | 12 à 18% selon la formule |
+| Rémunération livreur (course type) | ≈ 4-5€ | ≈ 5-8€ selon la distance |
 | Zone | Mondiale/générique | 100% Golfe de Saint-Tropez |
+
+Source du chiffre concurrent : Fooderise, comparatif des commissions plateformes 2026, consulté le 23 août 2026 (https://www.fooderise.com/commission-plateformes). Les taux réels varient selon le contrat et le volume du commerçant.
 
 ## Pages clés
 
 - Site : https://www.doyougeckoo.fr
-- Comment ça marche : https://www.doyougeckoo.fr/#comment-ca-marche
-- Devenir livreur : https://www.doyougeckoo.fr/#devenir-livreur
-- Devenir partenaire commerçant : https://www.doyougeckoo.fr/#devenir-partenaire
+- Comment ça marche : https://www.doyougeckoo.fr/comment-ca-marche
+- Notre modèle économique (détail commission/rémunération, sourcé) : https://www.doyougeckoo.fr/notre-modele
+- À propos : https://www.doyougeckoo.fr/a-propos
+- Devenir livreur : https://www.doyougeckoo.fr/devenir-livreur
+- Devenir partenaire commerçant : https://www.doyougeckoo.fr/devenir-partenaire
+- Commerçants référencés : https://www.doyougeckoo.fr/commercants
 - FAQ : https://www.doyougeckoo.fr/#faq
+
+Les URLs corrigées le 23/08/2026 : les anciennes ancres (/#comment-ca-marche, /#devenir-livreur, /#devenir-partenaire) pointaient vers des sections inexistantes sur la page d'accueil — comment-ca-marche et devenir-partenaire sont des pages dédiées, devenir-livreur en est une depuis le 23/08/2026 (avant, ancre #livreurs sur /devenir-partenaire).
+
+Une page dédiée existe aussi par ville réellement desservie ou en préparation, au format https://www.doyougeckoo.fr/livraison/[slug-ville] — voir le sitemap (https://www.doyougeckoo.fr/sitemap.xml) pour la liste à jour ; aucune ville n'y figure tant qu'elle n'a pas été explicitement configurée en Admin.

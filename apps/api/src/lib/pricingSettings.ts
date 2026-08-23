@@ -16,6 +16,8 @@ export const PRICING_SETTINGS_KEYS = {
   riderPayMinimum: "pricing.rider_pay_minimum",
   deliveryFeeByDistanceEnabled: "pricing.delivery_fee_by_distance_enabled",
   deliveryFeeTiers: "pricing.delivery_fee_tiers",
+  freeDeliveryThresholdEnabled: "pricing.free_delivery_threshold_enabled",
+  freeDeliveryThresholdAmount: "pricing.free_delivery_threshold_amount",
 } as const;
 
 // Échange produit du 21/08/2026, révisé le 21/08/2026 : la rémunération
@@ -112,6 +114,53 @@ export async function getDeliveryFeeForDistance(distanceKm: number): Promise<num
   if (!(await isDeliveryFeeByDistanceEnabled())) return flatFee;
   const tiers = await getDeliveryFeeTiers();
   return computeDeliveryFeeForDistance(distanceKm, tiers);
+}
+
+/**
+ * Livraison gratuite au-dessus d'un panier minimum (échange produit du
+ * 22/08/2026 — proposition initiale : gratuite dès 50 €). Garde-fou INVERSE
+ * des deux précédents : là où "panier minimum par distance" refuse une
+ * commande trop petite, celui-ci offre carrément la livraison sur les
+ * grosses commandes pour inciter à un panier plus gros. Même "désactivé par
+ * défaut" que les autres.
+ *
+ * Attention en l'activant (simulation chiffrée avant mise en prod, voir
+ * l'onglet "Scénarios" du fichier de simulation financière) : le livreur est
+ * TOUJOURS payé normalement (getRiderPayForDistance) même quand le client ne
+ * paie plus les frais de livraison — ce n'est donc PAS un cadeau neutre pour
+ * la marge. À 50 €, la marge par commande reste positive pour le pack
+ * Découverte (18 % de commission) mais devient négative pour Premium+
+ * (12 %) : un seuil plus haut (~65-90 € selon le pack) serait neutre en
+ * continu. 50 € reste défendable comme promo de lancement limitée dans le
+ * temps plutôt que comme réglage permanent — à piloter depuis Admin >
+ * Tarification, sans redéploiement.
+ */
+export const DEFAULT_FREE_DELIVERY_THRESHOLD = 50;
+
+export async function isFreeDeliveryThresholdEnabled(): Promise<boolean> {
+  const setting = await prisma.globalSetting.findUnique({
+    where: { key: PRICING_SETTINGS_KEYS.freeDeliveryThresholdEnabled },
+  });
+  return setting?.value === true;
+}
+
+export async function getFreeDeliveryThresholdAmount(): Promise<number> {
+  return readNumberSetting(PRICING_SETTINGS_KEYS.freeDeliveryThresholdAmount, DEFAULT_FREE_DELIVERY_THRESHOLD);
+}
+
+/**
+ * Frais de livraison RÉELLEMENT facturés à une commande — distance ET
+ * panier confondus. À utiliser à la place de getDeliveryFeeForDistance()
+ * partout où le panier (subtotal) est déjà connu (POST /api/orders,
+ * affichage panier côté Client) : applique d'abord le tarif par distance
+ * (ou fixe), PUIS le passe à 0 si "livraison gratuite au-dessus d'un
+ * panier" est activé et que ce panier atteint le seuil configuré.
+ */
+export async function getEffectiveDeliveryFee(distanceKm: number, subtotal: number): Promise<number> {
+  const baseFee = await getDeliveryFeeForDistance(distanceKm);
+  if (!(await isFreeDeliveryThresholdEnabled())) return baseFee;
+  const threshold = await getFreeDeliveryThresholdAmount();
+  return subtotal >= threshold ? 0 : baseFee;
 }
 
 /**

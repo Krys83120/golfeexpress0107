@@ -30,6 +30,7 @@ import type { ProWithUi } from "@/services/prosApi";
 import { fetchPros } from "@/services/prosApi";
 import { fetchMyOrders } from "@/services/ordersApi";
 import { useCartStore } from "@/store/useCartStore";
+import { trackAppOpen } from "@/services/analyticsApi";
 
 type Tab = "home" | "orders" | "fidelity" | "profile";
 
@@ -259,13 +260,18 @@ function MainApp() {
               setSelectedPro(null);
               setDeepLinkProductId(undefined);
             }}
+            onOpenCart={() => setCartOpen(true)}
           />
         )}
       </Modal>
 
       {/* MODAL: Panier */}
       <Modal visible={cartOpen} animationType="slide" onRequestClose={() => setCartOpen(false)}>
-        <CartScreen onClose={() => setCartOpen(false)} onOrderCreated={handleOrderCreated} />
+        <CartScreen
+          onClose={() => setCartOpen(false)}
+          onOrderCreated={handleOrderCreated}
+          onOpenAddressPicker={() => setAddressPickerOpen(true)}
+        />
       </Modal>
 
       {/* MODAL: Suivi de commande */}
@@ -343,6 +349,7 @@ export default function App() {
       if (cached) setSplashRunnerUrl(cached);
     });
     fetchBrandingSplashRunnerUrl().then(setSplashRunnerUrl);
+    trackAppOpen();
   }, []);
 
   if (resetToken) {
