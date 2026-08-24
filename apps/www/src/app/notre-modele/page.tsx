@@ -40,9 +40,16 @@ export default function NotreModelePage() {
                 nos packs partenaires
               </Link>
               ), et paie une commission {PLATFORM_COMMISSION.shortLabel} sur les commandes effectivement livrées — jamais
-              d'abonnement fixe obligatoire pour vendre. Pas de frais cachés, pas de mise en avant payante déguisée en
-              "featured" : le classement des commerçants dans l'application reste basé sur la pertinence pour le
-              client (ville, catégorie, avis), pas sur le montant payé.
+              d'abonnement fixe obligatoire pour vendre. Le classement des commerçants dans l'application repose
+              d'abord sur la pertinence pour le client (ville, catégorie, avis) ; les commerçants ayant souscrit un
+              pack{" "}
+              <Link href="/devenir-partenaire#commercants" className="font-semibold text-golfe-green hover:underline">
+                Premium ou Premium+
+              </Link>{" "}
+              bénéficient en complément d'une meilleure visibilité dans les résultats de recherche, comme indiqué sur
+              la page de nos packs partenaires. Pas de frais cachés : cette pondération liée au pack est la seule
+              mise en avant payante qui existe sur la plateforme, et elle est annoncée ouvertement ici plutôt que
+              dissimulée derrière un badge générique.
             </p>
           </div>
         </section>

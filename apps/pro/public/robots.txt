@@ -1,0 +1,6 @@
+# Espace de gestion réservé aux commerçants partenaires connectés -- pas de
+# contenu éditorial public, jamais indexé. Voir apps/pro/index.html (meta
+# robots noindex) -- ce fichier est la seconde couche de protection (LOT 1,
+# audit SEO/GEO du 24/08/2026).
+User-agent: *
+Disallow: /

@@ -1,0 +1,5 @@
+# Interface strictement privée (super admin) -- jamais indexée.
+# Voir apps/admin/index.html (meta robots noindex) -- ce fichier est la
+# seconde couche de protection (LOT 1, audit SEO/GEO du 24/08/2026).
+User-agent: *
+Disallow: /

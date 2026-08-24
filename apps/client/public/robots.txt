@@ -1,0 +1,6 @@
+# Application fonctionnelle (commande/panier/compte) -- l'indexation SEO se
+# fait via apps/www (www.doyougeckoo.fr), jamais depuis cette app. Voir
+# apps/client/web/index.html (meta robots noindex) -- ce fichier est la
+# seconde couche de protection (LOT 1, audit SEO/GEO du 24/08/2026).
+User-agent: *
+Disallow: /

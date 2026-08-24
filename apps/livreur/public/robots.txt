@@ -1,0 +1,6 @@
+# Application fonctionnelle réservée aux livreurs connectés, pas de contenu
+# éditorial -- jamais indexée. Voir apps/livreur/web/index.html (meta robots
+# noindex) -- ce fichier est la seconde couche de protection (LOT 1, audit
+# SEO/GEO du 24/08/2026).
+User-agent: *
+Disallow: /
