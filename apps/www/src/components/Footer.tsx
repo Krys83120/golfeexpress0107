@@ -63,23 +63,29 @@ export async function Footer() {
             </ul>
           </div>
 
-          {indexableCities.length > 0 && (
-            <div>
-              <p className="mb-4 text-xs font-bold uppercase tracking-wide text-white/40">Livraison par ville</p>
-              <ul className="space-y-2.5 text-sm">
-                {indexableCities.map((city) => (
-                  <li key={city.id}>
-                    <Link href={`/livraison/${city.seoSlug}`} className="hover:text-white">
-                      Livraison {city.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
 
-        <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-xs sm:flex-row">
+        {/* Villes en ligne propre et compacte (flex-wrap) plutôt qu'une
+            colonne verticale du grid ci-dessus -- une simple liste verticale
+            grandirait sans limite avec le nombre de villes (11 aujourd'hui,
+            potentiellement bien plus demain) et déséquilibrerait la hauteur
+            du footer par rapport aux 3 autres colonnes. Le flex-wrap reste
+            compact quel que soit le nombre de villes : il ajoute des lignes
+            plutôt que d'étirer une colonne verticalement. */}
+        {indexableCities.length > 0 && (
+          <div className="mt-10 border-t border-white/10 pt-8">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-white/40">Livraison par ville</p>
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+              {indexableCities.map((city) => (
+                <Link key={city.id} href={`/livraison/${city.seoSlug}`} className="hover:text-white">
+                  {city.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-xs sm:flex-row">
           <p>© {new Date().getFullYear()} Do You Geckoo — Sainte-Maxime, Golfe de Saint-Tropez</p>
           <p>Fait avec ♥️ dans le Golfe de Saint-Tropez</p>
         </div>

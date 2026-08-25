@@ -117,7 +117,7 @@ export default async function VillePage({ params }: PageProps) {
           <section className="py-14 sm:py-20">
             <div className="mx-auto max-w-6xl px-4 sm:px-6">
               <h2 className="mb-8 font-heading text-xl font-bold text-nuit">
-                {cityPros.length > 0 ? `Commerçants livrés à ${city.name}` : `Bientôt des commerçants à ${city.name}`}
+                {cityPros.length > 0 ? `Commerçants partenaires à ${city.name}` : `Bientôt des commerçants à ${city.name}`}
               </h2>
               {cityPros.length === 0 ? (
                 <p className="text-sm text-gris">
