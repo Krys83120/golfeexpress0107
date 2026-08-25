@@ -133,12 +133,27 @@ export default async function VillePage({ params }: PageProps) {
                     <Link
                       key={pro.id}
                       href={`/commercants/${buildProSlug(pro)}`}
-                      className="rounded-2xl border border-gris-light p-4 transition hover:border-golfe-green"
+                      className="flex items-center gap-3 rounded-2xl border border-gris-light p-4 transition hover:border-golfe-green"
                     >
-                      <p className="text-xs font-semibold text-corail">
-                        {CATEGORY_LABELS_PLAIN[pro.category] ?? pro.category}
-                      </p>
-                      <p className="mt-1 font-heading text-base font-bold text-nuit">{pro.businessName}</p>
+                      {/* Logo commerçant -- même approche que /commercants (page.tsx) : un
+                          simple nom de texte sur ces cartes faisait "pas pro", le logo (avec
+                          repli sur le badge Do You Geckoo si aucun logo réglé) donne un rendu
+                          plus crédible, cohérent avec le reste du site. */}
+                      <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-gris-light bg-white p-1.5">
+                        {pro.logo ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- logo dynamique par commerçant (URL Supabase Storage)
+                          <img src={pro.logo} alt={pro.businessName} className="h-full w-full object-contain" />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element -- asset statique local (public/), pas de bénéfice à next/image ici
+                          <img src="/pro-fallback-badge.png" alt="Do You Geckoo" className="h-full w-full object-contain" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-corail">
+                          {CATEGORY_LABELS_PLAIN[pro.category] ?? pro.category}
+                        </p>
+                        <p className="mt-1 font-heading text-base font-bold text-nuit">{pro.businessName}</p>
+                      </div>
                     </Link>
                   ))}
                 </div>
