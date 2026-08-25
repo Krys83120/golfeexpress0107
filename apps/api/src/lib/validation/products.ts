@@ -25,6 +25,10 @@ export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export const optionChoiceInputSchema = z.object({
   name: z.string().min(1, "Le nom du choix est requis."),
   priceModifier: z.number().default(0),
+  // Rupture sur CE choix précis (ex: "plus de mâche" dans le groupe "La
+  // Base") -- même principe que Product.isAvailable/unavailableUntil.
+  isAvailable: z.boolean().default(true),
+  unavailableUntil: z.string().datetime().nullable().optional(),
 });
 
 export const productOptionInputSchema = z.object({

@@ -6,12 +6,13 @@ import { prisma } from "@/lib/prisma";
  * GET /api/cron/reset-product-availability
  *
  * Déclenché une fois par jour par Vercel Cron (voir vercel.json — "crons").
- * Remet automatiquement disponible tout produit rendu indisponible "pour
- * aujourd'hui seulement" depuis la fiche produit côté Pro
- * (ProductFormModal.tsx, champ Product.unavailableUntil) une fois la date
- * d'indisponibilité dépassée. Un produit rendu indisponible "jusqu'à nouvel
- * ordre" (unavailableUntil = null) n'est jamais touché ici -- seul le Pro
- * peut le réactiver manuellement.
+ * Remet automatiquement disponible tout produit ET tout choix d'option
+ * (ex: "plus de mâche" dans un groupe) rendu indisponible "pour aujourd'hui
+ * seulement" depuis la fiche produit côté Pro (ProductFormModal.tsx, champs
+ * Product.unavailableUntil / OptionChoice.unavailableUntil) une fois la date
+ * d'indisponibilité dépassée. Un produit ou un choix rendu indisponible
+ * "jusqu'à nouvel ordre" (unavailableUntil = null) n'est jamais touché ici
+ * -- seul le Pro peut le réactiver manuellement.
  *
  * Protégé par CRON_SECRET (variable d'env Vercel), même garde-fou que
  * /api/cron/capacity-sweep : Vercel Cron ajoute automatiquement
@@ -29,15 +30,25 @@ async function getHandler(req: NextRequest) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
-  const { count } = await prisma.product.updateMany({
+  const now = new Date();
+
+  const { count: reactivatedProducts } = await prisma.product.updateMany({
     where: {
       isAvailable: false,
-      unavailableUntil: { not: null, lte: new Date() },
+      unavailableUntil: { not: null, lte: now },
     },
     data: { isAvailable: true, unavailableUntil: null },
   });
 
-  return NextResponse.json({ ok: true, reactivatedProducts: count });
+  const { count: reactivatedChoices } = await prisma.optionChoice.updateMany({
+    where: {
+      isAvailable: false,
+      unavailableUntil: { not: null, lte: now },
+    },
+    data: { isAvailable: true, unavailableUntil: null },
+  });
+
+  return NextResponse.json({ ok: true, reactivatedProducts, reactivatedChoices });
 }
 
 export const GET = withErrorHandling(getHandler);

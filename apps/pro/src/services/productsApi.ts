@@ -30,7 +30,13 @@ export async function deleteProductApi(productId: string): Promise<void> {
 }
 
 export type OptionGroupInput = Pick<ProductOption, "name" | "isRequired" | "isMultiple" | "maxChoices"> & {
-  choices: { name: string; priceModifier: number }[];
+  choices: {
+    name: string;
+    priceModifier: number;
+    /** Rupture sur ce choix précis (ex: "plus de mâche"). Voir ProductFormModal.tsx. */
+    isAvailable: boolean;
+    unavailableUntil: string | null;
+  }[];
 };
 
 /**

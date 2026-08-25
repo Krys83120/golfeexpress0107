@@ -52,7 +52,16 @@ export const useProMenuStore = create<ProMenuState>((set, get) => ({
       isAvailable: !product.isAvailable,
       unavailableUntil: null,
     });
-    set((state) => ({ products: state.products.map((p) => (p.id === productId ? updated : p)) }));
+    // PATCH /products/[id] ne renvoie pas les options (route allégée, voir
+    // serializeProductWithoutOptions côté API) -- sans ce fallback, ce toggle
+    // rapide effaçait silencieusement les options du produit en mémoire
+    // (elles restaient intactes en base, mais disparaissaient de l'écran
+    // "Modifier le produit" tant que la page n'était pas rechargée).
+    set((state) => ({
+      products: state.products.map((p) =>
+        p.id === productId ? { ...updated, options: updated.options ?? p.options } : p
+      ),
+    }));
   },
 
   deleteProduct: async (productId) => {
@@ -72,7 +81,14 @@ export const useProMenuStore = create<ProMenuState>((set, get) => ({
 
   updateProduct: async (productId, updates) => {
     const updated = await updateProductApi(productId, updates);
-    set((state) => ({ products: state.products.map((p) => (p.id === productId ? updated : p)) }));
+    // Même raison que dans toggleAvailability ci-dessus : le PATCH ne renvoie
+    // pas les options, on garde donc celles déjà connues en mémoire plutôt
+    // que de les effacer de l'écran.
+    set((state) => ({
+      products: state.products.map((p) =>
+        p.id === productId ? { ...updated, options: updated.options ?? p.options } : p
+      ),
+    }));
   },
 
   duplicateProduct: async (product) => {
@@ -95,7 +111,15 @@ export const useProMenuStore = create<ProMenuState>((set, get) => ({
           isRequired: o.isRequired,
           isMultiple: o.isMultiple,
           maxChoices: o.maxChoices ?? null,
-          choices: o.choices.map((c) => ({ name: c.name, priceModifier: c.priceModifier })),
+          // Une copie repart toujours disponible, même si le choix d'origine
+          // était en rupture -- un "plus de mâche" sur le produit copié n'a
+          // aucune raison de s'appliquer à la nouvelle fiche.
+          choices: o.choices.map((c) => ({
+            name: c.name,
+            priceModifier: c.priceModifier,
+            isAvailable: true,
+            unavailableUntil: null,
+          })),
         }))
       );
     }

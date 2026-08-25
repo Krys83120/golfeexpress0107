@@ -74,6 +74,12 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
   }, [product.id]);
 
   function toggleChoice(group: ProductOption, choiceName: string) {
+    const choice = group.choices.find((c) => c.name === choiceName);
+    // Un choix en rupture (voir ProductFormModal.tsx côté Pro) reste visible
+    // pour info mais ne peut pas être sélectionné -- défense en profondeur en
+    // plus du disabled sur le Pressable ci-dessous (ex: appel direct à cette
+    // fonction, mise à jour partielle du state...).
+    if (choice && choice.isAvailable === false) return;
     setSelection((prev) => {
       const current = new Set(prev[group.name] ?? []);
       if (group.isMultiple) {
@@ -214,26 +220,39 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
 
                   {group.choices.map((choice) => {
                     const isSelected = chosen.has(choice.name);
+                    // isAvailable absent (ancien choix jamais ré-enregistré
+                    // depuis l'ajout du champ) = disponible par défaut.
+                    const isUnavailable = choice.isAvailable === false;
                     return (
                       <Pressable
                         key={choice.id}
                         onPress={() => toggleChoice(group, choice.name)}
-                        style={styles.choiceRow}
+                        disabled={isUnavailable}
+                        style={[styles.choiceRow, isUnavailable && { opacity: 0.45 }]}
                       >
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.choiceName}>{choice.name}</Text>
-                          {Number(choice.priceModifier) > 0 && (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <Text style={styles.choiceName}>{choice.name}</Text>
+                            {isUnavailable && (
+                              <View style={styles.unavailableBadge}>
+                                <Text style={styles.unavailableBadgeText}>Indisponible</Text>
+                              </View>
+                            )}
+                          </View>
+                          {!isUnavailable && Number(choice.priceModifier) > 0 && (
                             <Text style={styles.choicePrice}>+{Number(choice.priceModifier).toFixed(2).replace(".", ",")} €</Text>
                           )}
                         </View>
-                        <View
-                          style={[
-                            group.isMultiple ? styles.checkbox : styles.radio,
-                            isSelected && { backgroundColor: "#2ECC71", borderColor: "#2ECC71" },
-                          ]}
-                        >
-                          {isSelected && <Text style={{ fontSize: 11, color: "white", fontWeight: "700" }}>✓</Text>}
-                        </View>
+                        {!isUnavailable && (
+                          <View
+                            style={[
+                              group.isMultiple ? styles.checkbox : styles.radio,
+                              isSelected && { backgroundColor: "#2ECC71", borderColor: "#2ECC71" },
+                            ]}
+                          >
+                            {isSelected && <Text style={{ fontSize: 11, color: "white", fontWeight: "700" }}>✓</Text>}
+                          </View>
+                        )}
                       </Pressable>
                     );
                   })}
@@ -370,6 +389,8 @@ const styles = StyleSheet.create({
   },
   choiceName: { fontSize: 14, color: "#1A1A2E" },
   choicePrice: { marginTop: 1, fontSize: 12, color: "#6B7280" },
+  unavailableBadge: { borderRadius: 999, backgroundColor: "#F3F4F6", paddingHorizontal: 8, paddingVertical: 2 },
+  unavailableBadgeText: { fontSize: 10, fontWeight: "600", color: "#6B7280" },
   radio: { height: 22, width: 22, alignItems: "center", justifyContent: "center", borderRadius: 999, borderWidth: 2, borderColor: "#D1D5DB" },
   checkbox: { height: 22, width: 22, alignItems: "center", justifyContent: "center", borderRadius: 6, borderWidth: 2, borderColor: "#D1D5DB" },
   footer: { borderTopWidth: 1, borderTopColor: "#F3F4F6", padding: 16 },

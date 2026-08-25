@@ -245,6 +245,28 @@ async function postHandler(req: NextRequest) {
     }
   }
 
+  /**
+   * Revalide côté serveur qu'aucun choix sélectionné n'est en rupture
+   * (OptionChoice.isAvailable=false, voir ProductFormModal.tsx côté Pro) --
+   * même principe de défense en profondeur que assertWithinMaxChoices
+   * ci-dessus : le blocage côté Client (ProductOptionsModal.tsx, choix grisé
+   * et non sélectionnable) peut être contourné.
+   */
+  function assertChoicesAvailable(product: (typeof products)[number], selectedOptions: Record<string, string> | undefined) {
+    if (!selectedOptions) return;
+    for (const [groupName, selectedChoiceNames] of Object.entries(selectedOptions)) {
+      const group = product.options.find((o) => o.name === groupName);
+      if (!group) continue;
+      const chosenNames = selectedChoiceNames.split(",").map((n) => n.trim()).filter(Boolean);
+      for (const choiceName of chosenNames) {
+        const choice = group.choices.find((c) => c.name === choiceName);
+        if (choice && !choice.isAvailable) {
+          throw new ApiError(400, `"${choiceName}" (${group.name}) n'est plus disponible pour "${product.name}".`);
+        }
+      }
+    }
+  }
+
   let subtotal = 0;
   const orderItemsData = items.map((item) => {
     const product = productById.get(item.productId);
@@ -255,6 +277,7 @@ async function postHandler(req: NextRequest) {
       throw new ApiError(400, `"${product.name}" n'est plus disponible.`);
     }
     assertWithinMaxChoices(product, item.options);
+    assertChoicesAvailable(product, item.options);
 
     const unitPrice = Number(product.price) + computeOptionsSurcharge(product, item.options);
     const totalPrice = unitPrice * item.quantity;

@@ -598,7 +598,14 @@ model OptionChoice {
   optionId      String        @map("option_id")
   name          String
   priceModifier Decimal       @default(0) @db.Decimal(6,2) @map("price_modifier")
-  
+  /// Même principe que Product.isAvailable / unavailableUntil (rupture d'un
+  /// choix précis dans un groupe, ex: "plus de mâche" dans "La Base") --
+  /// voir ProductFormModal.tsx (réglage par choix) et le job Cron quotidien
+  /// /api/cron/reset-product-availability qui remet aussi ces choix-ci
+  /// disponibles une fois unavailableUntil dépassée.
+  isAvailable       Boolean   @default(true) @map("is_available")
+  unavailableUntil  DateTime? @map("unavailable_until")
+
   option        ProductOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
 }
 

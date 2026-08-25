@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { X, Plus, Trash2, Ban } from "lucide-react";
 import type { Product, ProductOption } from "@golfeexpress/types";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { uploadProductImage, uploadProductGalleryImage, withCacheBust } from "@/services/uploadsApi";
@@ -40,7 +40,15 @@ function toOptionGroupInput(option: ProductOption): OptionGroupInput {
     isRequired: option.isRequired,
     isMultiple: option.isMultiple,
     maxChoices: option.maxChoices ?? null,
-    choices: option.choices.map((c) => ({ name: c.name, priceModifier: c.priceModifier })),
+    choices: option.choices.map((c) => ({
+      name: c.name,
+      priceModifier: c.priceModifier,
+      // ?? true : les choix créés avant l'ajout de ce champ n'ont pas
+      // encore cette valeur en base tant que le Pro ne les a pas
+      // ré-enregistrés -- on les considère disponibles par défaut.
+      isAvailable: c.isAvailable ?? true,
+      unavailableUntil: c.unavailableUntil ?? null,
+    })),
   };
 }
 
@@ -123,7 +131,13 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
   function addOptionGroup() {
     setOptionGroups((prev) => [
       ...prev,
-      { name: "", isRequired: false, isMultiple: false, maxChoices: null, choices: [{ name: "", priceModifier: 0 }] },
+      {
+        name: "",
+        isRequired: false,
+        isMultiple: false,
+        maxChoices: null,
+        choices: [{ name: "", priceModifier: 0, isAvailable: true, unavailableUntil: null }],
+      },
     ]);
   }
 
@@ -137,11 +151,19 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
 
   function addChoice(groupIndex: number) {
     setOptionGroups((prev) =>
-      prev.map((g, i) => (i === groupIndex ? { ...g, choices: [...g.choices, { name: "", priceModifier: 0 }] } : g))
+      prev.map((g, i) =>
+        i === groupIndex
+          ? { ...g, choices: [...g.choices, { name: "", priceModifier: 0, isAvailable: true, unavailableUntil: null }] }
+          : g
+      )
     );
   }
 
-  function updateChoice(groupIndex: number, choiceIndex: number, patch: Partial<{ name: string; priceModifier: number }>) {
+  function updateChoice(
+    groupIndex: number,
+    choiceIndex: number,
+    patch: Partial<{ name: string; priceModifier: number; isAvailable: boolean; unavailableUntil: string | null }>
+  ) {
     setOptionGroups((prev) =>
       prev.map((g, i) =>
         i === groupIndex ? { ...g, choices: g.choices.map((c, ci) => (ci === choiceIndex ? { ...c, ...patch } : c)) } : g
@@ -471,31 +493,75 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
 
                   <div className="flex flex-col gap-1.5">
                     {group.choices.map((choice, choiceIndex) => (
-                      <div key={choiceIndex} className="flex items-center gap-1.5">
-                        <input
-                          value={choice.name}
-                          onChange={(e) => updateChoice(groupIndex, choiceIndex, { name: e.target.value })}
-                          placeholder="Ex: Medium"
-                          className="flex-1 rounded-sm border border-gris-light px-2 py-1 text-xs"
-                        />
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gris">+</span>
+                      <div key={choiceIndex} className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5">
                           <input
-                            type="number"
-                            step="0.5"
-                            value={choice.priceModifier}
-                            onChange={(e) => updateChoice(groupIndex, choiceIndex, { priceModifier: Number(e.target.value) || 0 })}
-                            className="w-16 rounded-sm border border-gris-light px-1.5 py-1 text-xs"
+                            value={choice.name}
+                            onChange={(e) => updateChoice(groupIndex, choiceIndex, { name: e.target.value })}
+                            placeholder="Ex: Medium"
+                            className="flex-1 rounded-sm border border-gris-light px-2 py-1 text-xs"
                           />
-                          <span className="text-xs text-gris">€</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gris">+</span>
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={choice.priceModifier}
+                              onChange={(e) => updateChoice(groupIndex, choiceIndex, { priceModifier: Number(e.target.value) || 0 })}
+                              className="w-16 rounded-sm border border-gris-light px-1.5 py-1 text-xs"
+                            />
+                            <span className="text-xs text-gris">€</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateChoice(
+                                groupIndex,
+                                choiceIndex,
+                                choice.isAvailable
+                                  ? { isAvailable: false, unavailableUntil: null }
+                                  : { isAvailable: true, unavailableUntil: null }
+                              )
+                            }
+                            title={choice.isAvailable ? "Marquer en rupture" : "Choix en rupture — cliquer pour remettre disponible"}
+                            className={`rounded-sm p-1 ${
+                              choice.isAvailable ? "text-gris hover:bg-red-50 hover:text-red-500" : "bg-red-50 text-red-500"
+                            }`}
+                          >
+                            <Ban size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeChoice(groupIndex, choiceIndex)}
+                            className="rounded-sm p-1 text-gris hover:bg-red-50 hover:text-red-500"
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeChoice(groupIndex, choiceIndex)}
-                          className="rounded-sm p-1 text-gris hover:bg-red-50 hover:text-red-500"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+
+                        {!choice.isAvailable && (
+                          <div className="ml-1 flex items-center gap-3 rounded-sm bg-sable px-2 py-1.5 text-[11px] text-nuit">
+                            <span className="font-semibold text-red-500">En rupture</span>
+                            <label className="flex items-center gap-1">
+                              <input
+                                type="radio"
+                                name={`choice-unavail-${groupIndex}-${choiceIndex}`}
+                                checked={!choice.unavailableUntil}
+                                onChange={() => updateChoice(groupIndex, choiceIndex, { unavailableUntil: null })}
+                              />
+                              Jusqu'à nouvel ordre
+                            </label>
+                            <label className="flex items-center gap-1">
+                              <input
+                                type="radio"
+                                name={`choice-unavail-${groupIndex}-${choiceIndex}`}
+                                checked={!!choice.unavailableUntil}
+                                onChange={() => updateChoice(groupIndex, choiceIndex, { unavailableUntil: tomorrowMidnightISO() })}
+                              />
+                              Aujourd'hui seulement
+                            </label>
+                          </div>
+                        )}
                       </div>
                     ))}
                     <button

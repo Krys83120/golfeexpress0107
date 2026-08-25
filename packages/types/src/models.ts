@@ -223,6 +223,9 @@ export interface ProductOptionChoice {
   optionId: string;
   name: string;
   priceModifier: number;
+  /** Rupture sur ce choix précis (ex: "plus de mâche"). Voir prisma/schema.prisma. */
+  isAvailable?: boolean;
+  unavailableUntil?: string | null;
 }
 
 export interface ProductOption {
