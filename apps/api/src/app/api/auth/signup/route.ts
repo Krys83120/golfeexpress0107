@@ -131,22 +131,43 @@ async function handler(req: NextRequest) {
     throw new ApiError(500, "La création du compte a échoué. Merci de réessayer.");
   }
 
-  // Email de bienvenue + alerte admin pour les nouveaux Pro/Rider — en
-  // fire-and-forget (jamais attendu, jamais bloquant) pour ne pas retarder
-  // la réponse de signup ni la faire échouer si Resend a un souci.
+  // Email de bienvenue + alerte admin pour les nouveaux Pro/Rider — chaque
+  // envoi reste catché individuellement (une erreur d'email ne fait
+  // toujours PAS échouer l'inscription, comportement inchangé), mais on
+  // ATTEND désormais que ces envois soient réellement partis avant de
+  // renvoyer la réponse (Promise.allSettled).
+  //
+  // Corrigé le 25/08/2026 : ces envois étaient auparavant en pur
+  // "fire-and-forget" (jamais attendus, ni ici ni ailleurs) pour ne pas
+  // retarder la réponse de signup. Problème constaté en prod : sur Vercel,
+  // une fonction serverless peut être gelée dès l'envoi de la réponse HTTP
+  // — l'email de bienvenue avait parfois le temps de partir vers Resend,
+  // mais l'alerte admin "nouveau Pro en attente", lancée juste après dans
+  // le code, se faisait couper en plein vol avant d'atteindre Resend. Aucune
+  // exception n'était levée (la coupure n'est pas une erreur JS), donc
+  // aucun log d'échec n'apparaissait non plus — d'où une alerte silencieuse
+  // et invisible. Voir investigation du 25/08/2026 (logs Vercel + tableau
+  // d'envoi Resend) pour le détail.
   const welcomeRole = role === "PRO" ? "pro" : role === "RIDER" ? "rider" : "client";
-  sendWelcomeEmail(email, firstName, welcomeRole).catch((err) =>
-    console.error("[signup] Échec envoi email de bienvenue:", err)
-  );
+  const notificationTasks: Promise<void>[] = [
+    sendWelcomeEmail(email, firstName, welcomeRole).catch((err) =>
+      console.error("[signup] Échec envoi email de bienvenue:", err)
+    ),
+  ];
   if (role === "PRO") {
-    sendNewProPendingAlert(`${firstName} ${lastName}`, email).catch((err) =>
-      console.error("[signup] Échec envoi alerte admin (nouveau Pro):", err)
+    notificationTasks.push(
+      sendNewProPendingAlert(`${firstName} ${lastName}`, email).catch((err) =>
+        console.error("[signup] Échec envoi alerte admin (nouveau Pro):", err)
+      )
     );
   } else if (role === "RIDER") {
-    sendNewRiderPendingAlert(firstName, lastName, email).catch((err) =>
-      console.error("[signup] Échec envoi alerte admin (nouveau Rider):", err)
+    notificationTasks.push(
+      sendNewRiderPendingAlert(firstName, lastName, email).catch((err) =>
+        console.error("[signup] Échec envoi alerte admin (nouveau Rider):", err)
+      )
     );
   }
+  await Promise.allSettled(notificationTasks);
 
   return NextResponse.json(
     {
