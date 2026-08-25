@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Copy, FolderCog } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy, FolderCog, HelpCircle } from "lucide-react";
 import { useProMenuStore } from "@/store/useProMenuStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ProductFormModal } from "@/components/ProductFormModal";
 import { CategoryManagerModal } from "@/components/CategoryManagerModal";
+import { ProductTutorialModal } from "@/components/ProductTutorialModal";
 import type { Product } from "@golfeexpress/types";
 
 function ProductThumbnail({ image }: { image: string | null | undefined }) {
@@ -30,6 +31,7 @@ export function MenuPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState<string | null>(null);
 
@@ -88,6 +90,13 @@ export function MenuPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <button
+            onClick={() => setShowTutorial(true)}
+            className="flex items-center gap-2 rounded-sm border border-gris-light px-4 py-2.5 text-sm font-semibold text-nuit hover:bg-gris-light"
+          >
+            <HelpCircle size={16} />
+            Tutoriel
+          </button>
+          <button
             onClick={() => setShowCategoryManager(true)}
             className="flex items-center gap-2 rounded-sm border border-gris-light px-4 py-2.5 text-sm font-semibold text-nuit hover:bg-gris-light"
           >
@@ -132,6 +141,12 @@ export function MenuPage() {
           <button onClick={() => setCreating(true)} className="mt-2 text-sm font-semibold text-golfe-green">
             Ajouter votre premier produit
           </button>
+          <p className="mt-3 text-xs text-gris">
+            Pas encore sûr de comment faire ?{" "}
+            <button onClick={() => setShowTutorial(true)} className="font-semibold text-nuit underline">
+              Voir le tutoriel
+            </button>
+          </p>
         </div>
       )}
 
@@ -183,14 +198,21 @@ export function MenuPage() {
 
                   <div className="flex items-center justify-between border-t border-gris-light pt-3">
                     <p className="font-bold text-golfe-green">{Number(product.price).toFixed(2)} €</p>
-                    <label className="flex items-center gap-1.5 text-xs text-gris">
-                      <input
-                        type="checkbox"
-                        checked={product.isAvailable}
-                        onChange={() => toggleAvailability(product.id)}
-                      />
-                      Disponible
-                    </label>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <label className="flex items-center gap-1.5 text-xs text-gris">
+                        <input
+                          type="checkbox"
+                          checked={product.isAvailable}
+                          onChange={() => toggleAvailability(product.id)}
+                        />
+                        Disponible
+                      </label>
+                      {!product.isAvailable && (
+                        <span className="text-[11px] text-gris">
+                          {product.unavailableUntil ? "Revient demain" : "Jusqu'à nouvel ordre"}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -219,6 +241,8 @@ export function MenuPage() {
           onRenamed={loadProducts}
         />
       )}
+
+      {showTutorial && <ProductTutorialModal onClose={() => setShowTutorial(false)} />}
     </div>
   );
 }

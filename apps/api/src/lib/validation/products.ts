@@ -9,6 +9,11 @@ export const createProductSchema = z.object({
   category: z.string().min(1, "La catégorie est requise."),
   isAvailable: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
+  // Indisponibilité temporaire ("Non disponible pour le moment", voir
+  // ProductFormModal.tsx) -- date/heure jusqu'à laquelle le produit reste
+  // indisponible, ou null (indisponibilité manuelle sans date, ou produit
+  // disponible). Remis à null automatiquement par le Cron une fois dépassée.
+  unavailableUntil: z.string().datetime().nullable().optional(),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;

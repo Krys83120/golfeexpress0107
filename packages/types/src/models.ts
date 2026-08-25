@@ -247,6 +247,8 @@ export interface Product {
   category: string;
   isAvailable: boolean;
   isFeatured: boolean;
+  /** Non-disponibilité temporaire ("Non disponible pour le moment") : date/heure jusqu'à laquelle le produit reste indisponible, ou null (indisponibilité manuelle sans date, ou produit disponible). Voir prisma/schema.prisma. */
+  unavailableUntil?: string | null;
   /** Client voit un champ "Instructions spécifiques" par ligne de panier pour ce produit. Voir prisma/schema.prisma. */
   allowSpecialInstructions?: boolean;
   /** Affiche au client un avertissement "des frais supplémentaires peuvent être appliqués" lors du choix des options. Voir prisma/schema.prisma. */

@@ -42,7 +42,16 @@ export const useProMenuStore = create<ProMenuState>((set, get) => ({
   toggleAvailability: async (productId) => {
     const product = get().products.find((p) => p.id === productId);
     if (!product) return;
-    const updated = await updateProductApi(productId, { isAvailable: !product.isAvailable });
+    // On efface systématiquement unavailableUntil ici : ce toggle rapide
+    // (case à cocher sur la liste) ne propose pas le choix "aujourd'hui
+    // seulement" -- sans ce reset, une date restée en base depuis un
+    // précédent réglage "aujourd'hui seulement" fait via la fiche produit
+    // pourrait faire réapparaître le produit tout seul plus tard, alors que
+    // le Pro l'a explicitement rendu indisponible via ce toggle-ci.
+    const updated = await updateProductApi(productId, {
+      isAvailable: !product.isAvailable,
+      unavailableUntil: null,
+    });
     set((state) => ({ products: state.products.map((p) => (p.id === productId ? updated : p)) }));
   },
 

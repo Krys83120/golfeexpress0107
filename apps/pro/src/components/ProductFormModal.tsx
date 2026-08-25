@@ -18,6 +18,20 @@ function isLikelyPhotoUrl(value: string): boolean {
   return value.startsWith("http://") || value.startsWith("https://");
 }
 
+/**
+ * Minuit (heure locale du navigateur, donc du Pro) au tout début de demain,
+ * converti en ISO -- utilisé comme valeur de Product.unavailableUntil pour le
+ * mode "Aujourd'hui seulement" : le job Cron quotidien
+ * (/api/cron/reset-product-availability, ~1h/2h/3h du matin heure de Paris
+ * selon la saison, donc toujours après ce minuit) remet le produit
+ * disponible dès qu'il tourne après cette heure-là.
+ */
+function tomorrowMidnightISO(): string {
+  const d = new Date();
+  d.setHours(24, 0, 0, 0);
+  return d.toISOString();
+}
+
 const SUGGESTED_CATEGORIES = ["Menus", "Entrées", "Plats", "Poke Bowls", "Burgers", "Pizzas", "Salades", "Sandwichs", "Desserts", "Boissons", "Snacks"];
 
 function toOptionGroupInput(option: ProductOption): OptionGroupInput {
@@ -40,6 +54,14 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
   const [uploadingGalleryPhoto, setUploadingGalleryPhoto] = useState(false);
   const [isAvailable, setIsAvailable] = useState(product?.isAvailable ?? true);
   const [isFeatured, setIsFeatured] = useState(product?.isFeatured ?? false);
+  const [unavailableUntil, setUnavailableUntil] = useState<string | null>(product?.unavailableUntil ?? null);
+  // Choix affiché uniquement quand "Non disponible pour le moment" est coché
+  // -- déduit de unavailableUntil pour un produit déjà en édition (une date
+  // = "aujourd'hui seulement" a été choisi la dernière fois ; pas de date =
+  // "jusqu'à nouvel ordre").
+  const [unavailabilityMode, setUnavailabilityMode] = useState<"today" | "indefinite">(
+    product?.unavailableUntil ? "today" : "indefinite"
+  );
 
   const [optionGroups, setOptionGroups] = useState<OptionGroupInput[]>(
     product?.options?.map(toOptionGroupInput) ?? []
@@ -94,6 +116,7 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
       category,
       isAvailable,
       isFeatured,
+      unavailableUntil,
     });
   }
 
@@ -298,11 +321,57 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-nuit">
-                <input type="checkbox" checked={isAvailable} onChange={(e) => setIsAvailable(e.target.checked)} />
-                Disponible
-              </label>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="flex items-center gap-2 text-sm text-nuit">
+                  <input
+                    type="checkbox"
+                    checked={!isAvailable}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setIsAvailable(false);
+                        setUnavailabilityMode("indefinite");
+                        setUnavailableUntil(null);
+                      } else {
+                        setIsAvailable(true);
+                        setUnavailableUntil(null);
+                      }
+                    }}
+                  />
+                  Non disponible pour le moment
+                  <span className="text-xs font-normal text-gris">(rupture de stock, etc.)</span>
+                </label>
+
+                {!isAvailable && (
+                  <div className="mt-2 ml-6 flex flex-col gap-1.5 rounded-sm bg-sable p-2.5">
+                    <label className="flex items-center gap-2 text-sm text-nuit">
+                      <input
+                        type="radio"
+                        name="unavailability-duration"
+                        checked={unavailabilityMode === "today"}
+                        onChange={() => {
+                          setUnavailabilityMode("today");
+                          setUnavailableUntil(tomorrowMidnightISO());
+                        }}
+                      />
+                      Aujourd'hui seulement <span className="text-xs text-gris">(redevient disponible demain)</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-nuit">
+                      <input
+                        type="radio"
+                        name="unavailability-duration"
+                        checked={unavailabilityMode === "indefinite"}
+                        onChange={() => {
+                          setUnavailabilityMode("indefinite");
+                          setUnavailableUntil(null);
+                        }}
+                      />
+                      Jusqu'à nouvel ordre <span className="text-xs text-gris">(à vous de le remettre disponible)</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
               <label className="flex items-center gap-2 text-sm text-nuit">
                 <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} />
                 Mettre en avant

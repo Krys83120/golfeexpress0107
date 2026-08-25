@@ -543,6 +543,14 @@ model Product {
   category    String
   isAvailable Boolean  @default(true) @map("is_available")
   isFeatured  Boolean  @default(false) @map("is_featured")
+  /// Rendu non-disponible temporairement (rupture, etc.) jusqu'à cette date
+  /// incluse -- null tant que le produit n'est pas dans ce cas. Utilisé avec
+  /// isAvailable=false : si renseigné, un job Cron quotidien remet
+  /// automatiquement isAvailable=true et ce champ à null dès que la date est
+  /// dépassée (voir /api/cron/reset-product-availability). Si isAvailable=false
+  /// et ce champ reste null, l'indisponibilité est manuelle et permanente
+  /// (jusqu'à ce que le Pro recoche "Disponible" lui-même).
+  unavailableUntil DateTime? @map("unavailable_until")
   /// true = le client voit un champ "Instructions spécifiques" (texte libre)
   /// pour CE produit lors de l'ajout au panier, stocké par ligne de panier
   /// sur OrderItem.specialInstructions -- voir ProductOptionsModal.tsx côté
