@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { fetchPublicPros, buildProSlug, CATEGORY_LABELS_PLAIN } from "@/lib/publicApi";
@@ -39,7 +40,7 @@ export default async function CommercantsListPage() {
                 const city = pro.addresses?.[0]?.city;
                 const categoryLabel = CATEGORY_LABELS_PLAIN[pro.category] ?? pro.category;
                 return (
-                  <a
+                  <Link
                     key={pro.id}
                     href={`/commercants/${buildProSlug(pro)}`}
                     className="flex flex-col items-center gap-2 text-center transition hover:opacity-80"
@@ -58,7 +59,7 @@ export default async function CommercantsListPage() {
                       {categoryLabel}
                       {city ? ` · ${city}` : ""}
                     </p>
-                  </a>
+                  </Link>
                 );
               })}
             </div>
