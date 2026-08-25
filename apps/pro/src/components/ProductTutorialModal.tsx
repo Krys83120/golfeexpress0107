@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Plus, Pencil, Copy, Mail } from "lucide-react";
+import { X, Plus, Pencil, Copy, Mail, Ban } from "lucide-react";
 
 interface ProductTutorialModalProps {
   onClose: () => void;
@@ -84,8 +84,14 @@ export function ProductTutorialModal({ onClose }: ProductTutorialModalProps) {
                   ou "Autre (personnalisée)" pour en créer une nouvelle.
                 </li>
                 <li>
-                  <strong className="text-nuit">Disponible</strong> / <strong className="text-nuit">Mettre en avant</strong> —
-                  cochées ou non selon votre choix ; "Mettre en avant" ajoute une petite étoile ⭐ sur le produit.
+                  <strong className="text-nuit">Non disponible pour le moment</strong> — à cocher en cas de rupture
+                  sur ce produit. Deux choix apparaissent alors : "Aujourd'hui seulement" (redevient disponible tout
+                  seul le lendemain) ou "Jusqu'à nouvel ordre" (à vous de le réactiver). Décochée = produit
+                  disponible normalement.
+                </li>
+                <li>
+                  <strong className="text-nuit">Mettre en avant</strong> — ajoute une petite étoile ⭐ sur le
+                  produit.
                 </li>
               </ul>
               <p className="mt-2 text-sm leading-relaxed text-gris">
@@ -145,6 +151,14 @@ export function ProductTutorialModal({ onClose }: ProductTutorialModalProps) {
                 (ex. "Grande") et un supplément de prix (ex. +3 €, ou 0 € si ce choix n'ajoute rien au prix de base).
                 Répétez l'opération pour autant de groupes que nécessaire (ex. "La taille", puis "Suppléments", puis
                 "Sauce").
+              </p>
+              <p className="mt-2 flex items-start gap-1.5 text-sm leading-relaxed text-gris">
+                <Ban size={14} className="mt-0.5 flex-shrink-0 text-red-400" />
+                <span>
+                  Rupture sur un choix précis (ex. plus de mozzarella) ? Cliquez sur l'icône{" "}
+                  <Ban size={11} className="inline text-red-400" /> à côté de son prix, puis choisissez "Aujourd'hui
+                  seulement" ou "Jusqu'à nouvel ordre" — le client le verra grisé, marqué "Indisponible".
+                </span>
               </p>
 
               {/* Mini-exemple visuel */}
@@ -209,6 +223,35 @@ export function ProductTutorialModal({ onClose }: ProductTutorialModalProps) {
               Pour aller plus vite avec des produits similaires (plusieurs pizzas, plusieurs poke bowls...), utilisez
               l'icône de duplication sur une fiche existante — la copie s'ouvre directement en modification, il ne
               reste qu'à changer le nom, la photo et le prix.
+            </p>
+          </section>
+
+          {/* Astuce rupture de stock */}
+          <section className="rounded-sm bg-sable p-3">
+            <div className="mb-1 flex items-center gap-2">
+              <Ban size={14} className="text-nuit" />
+              <h3 className="font-heading text-sm font-bold text-nuit">Astuce : gérer une rupture de stock</h3>
+            </div>
+            <p className="text-sm leading-relaxed text-gris">
+              Deux niveaux possibles, selon ce qui manque :
+            </p>
+            <ul className="mt-1.5 flex flex-col gap-1 text-sm leading-relaxed text-gris">
+              <li>
+                <strong className="text-nuit">Tout un produit</strong> — cochez{" "}
+                <strong className="text-nuit">"Non disponible pour le moment"</strong> sur sa fiche (étape 2), ou
+                directement la case "Disponible" depuis la liste des produits.
+              </li>
+              <li>
+                <strong className="text-nuit">Un seul choix dans un groupe</strong> (ex. une seule taille, une seule
+                sauce) — utilisez l'icône <Ban size={11} className="inline text-red-400" /> à côté de ce choix,
+                dans la section "🧩 Options" (étape 4). Le reste du produit et des autres choix restent disponibles.
+              </li>
+            </ul>
+            <p className="mt-1.5 text-sm leading-relaxed text-gris">
+              Dans les deux cas, choisissez <strong className="text-nuit">"Aujourd'hui seulement"</strong> si ça
+              revient le lendemain (remis en ligne tout seul, rien à refaire), ou{" "}
+              <strong className="text-nuit">"Jusqu'à nouvel ordre"</strong> si vous ne savez pas encore quand —
+              vous le réactiverez vous-même le moment venu.
             </p>
           </section>
 
