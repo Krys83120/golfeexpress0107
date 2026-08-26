@@ -16,6 +16,24 @@ const MIN_DISTANCE_METERS = 20; // évite de spammer l'API si le livreur est à 
  * À placer une seule fois, au niveau racine de l'app (dans MainApp), pour
  * qu'il continue de tourner peu importe l'onglet actif.
  */
+// `LocationSubscription.remove()` (expo-location) lève une exception
+// *synchrone* sur l'export web de cette app — "LocationEventEmitter.
+// removeSubscription is not a function" (confirmé via la console : c'est
+// la vraie cause de l'écran blanc au passage hors ligne, capturée en
+// pleine trace dans `o.unregisterCallback` / `Object.remove`). Un simple
+// appel non protégé dans un useEffect/cleanup fait planter tout l'arbre
+// React, sans error boundary pour l'intercepter. On isole donc l'appel
+// dans un try/catch : l'abonnement est de toute façon coupé/remplacé
+// juste après, donc ignorer l'échec du `.remove()` lui-même est sans
+// risque.
+function safeRemoveSubscription(sub: Location.LocationSubscription | null) {
+  try {
+    sub?.remove();
+  } catch {
+    // Non bloquant — voir commentaire ci-dessus.
+  }
+}
+
 export function useLocationTracking() {
   const isOnline = useRiderSessionStore((s) => s.isOnline);
   const activeDelivery = useRiderSessionStore((s) => s.activeDelivery);
@@ -28,7 +46,7 @@ export function useLocationTracking() {
 
   useEffect(() => {
     if (!isOnline) {
-      watchSubscription.current?.remove();
+      safeRemoveSubscription(watchSubscription.current);
       watchSubscription.current = null;
       return;
     }
@@ -61,7 +79,7 @@ export function useLocationTracking() {
 
     return () => {
       cancelled = true;
-      watchSubscription.current?.remove();
+      safeRemoveSubscription(watchSubscription.current);
       watchSubscription.current = null;
     };
   }, [isOnline]);
