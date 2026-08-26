@@ -297,10 +297,46 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
                     const isUnavailable = choice.isAvailable === false;
                     const isQuantifiable = choice.allowMultipleQty === true;
 
-                    if (isQuantifiable) {
+                    if (isQuantifiable && qty === 0) {
                       // Choix "quantité multiple" (ex: "Bacon" x4, réglé par
-                      // le Pro dans ProductFormModal.tsx) -- stepper +/- à la
-                      // place de la case à cocher classique ci-dessous.
+                      // le Pro dans ProductFormModal.tsx) PAS ENCORE
+                      // sélectionné : même apparence tappable (case à cocher)
+                      // qu'un choix normal ci-dessous -- un premier tap
+                      // sélectionne directement 1 unité (voir la branche
+                      // qty > 0 juste après, qui prend le relais avec le
+                      // stepper +/-). Plus intuitif que de partir sur un
+                      // stepper à 0 où il faudrait deviner qu'il faut appuyer
+                      // sur "+" pour sélectionner ce choix.
+                      return (
+                        <Pressable
+                          key={choice.id}
+                          onPress={() => adjustChoiceQty(group, choice.name, 1)}
+                          disabled={isUnavailable}
+                          style={[styles.choiceRow, isUnavailable && { opacity: 0.45 }]}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                              <Text style={styles.choiceName}>{choice.name}</Text>
+                              {isUnavailable && (
+                                <View style={styles.unavailableBadge}>
+                                  <Text style={styles.unavailableBadgeText}>Indisponible</Text>
+                                </View>
+                              )}
+                            </View>
+                            {!isUnavailable && Number(choice.priceModifier) > 0 && (
+                              <Text style={styles.choicePrice}>+{Number(choice.priceModifier).toFixed(2).replace(".", ",")} € / unité</Text>
+                            )}
+                          </View>
+                          {!isUnavailable && <View style={styles.checkbox} />}
+                        </Pressable>
+                      );
+                    }
+
+                    if (isQuantifiable) {
+                      // Déjà sélectionné (qty >= 1) : stepper complet -/qty/+.
+                      // Repasser à 0 via "-" déselectionne entièrement le
+                      // choix, qui revient à l'apparence "case à cocher"
+                      // ci-dessus au prochain rendu.
                       return (
                         <View key={choice.id} style={[styles.choiceRow, isUnavailable && { opacity: 0.45 }]}>
                           <View style={{ flex: 1 }}>
@@ -318,11 +354,7 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
                           </View>
                           {!isUnavailable && (
                             <View style={styles.stepper}>
-                              <Pressable
-                                onPress={() => adjustChoiceQty(group, choice.name, -1)}
-                                disabled={qty === 0}
-                                style={[styles.stepperBtn, qty === 0 && { opacity: 0.35 }]}
-                              >
+                              <Pressable onPress={() => adjustChoiceQty(group, choice.name, -1)} style={styles.stepperBtn}>
                                 <Text style={styles.stepperBtnText}>−</Text>
                               </Pressable>
                               <Text style={styles.stepperQty}>{qty}</Text>
