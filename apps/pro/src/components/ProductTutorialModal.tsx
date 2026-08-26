@@ -159,6 +159,15 @@ export function ProductTutorialModal({ onClose }: ProductTutorialModalProps) {
                 bouton +/- à la place de la case à cocher, jusqu'à 20 par choix. Laissez décoché pour un choix qu'on
                 ne peut sélectionner qu'une fois (ex. une sauce).
               </p>
+              <p className="mt-2 text-sm leading-relaxed text-gris">
+                <strong className="text-nuit">Groupe conditionnel</strong> — visible à partir du 2ᵉ groupe créé, ce
+                menu déroulant fait apparaître ce groupe UNIQUEMENT si un choix précis d'un groupe précédent est
+                sélectionné. Exemple : vous proposez un burger "Seul ou En Menu" — créez d'abord un groupe "Formule"
+                (Seul / En Menu), puis un groupe "Boisson" dont le "Groupe conditionnel" pointe vers "Formule : En
+                Menu". Le client ne verra "Boisson" (et l'"Accompagnement" éventuel) que s'il a choisi "En Menu" —
+                pas besoin de créer deux fiches produit séparées. Laissez sur "Aucune (toujours affiché)" pour un
+                groupe classique.
+              </p>
               <p className="mt-2 flex items-start gap-1.5 text-sm leading-relaxed text-gris">
                 <Ban size={14} className="mt-0.5 flex-shrink-0 text-red-400" />
                 <span>
@@ -193,6 +202,30 @@ export function ProductTutorialModal({ onClose }: ProductTutorialModalProps) {
                     <p className="ml-3 mt-1 text-[11px] text-gris">
                       → le client pourra ajouter "Bacon" plusieurs fois (x2, x3, x4...), mais "Fromage" et "Œuf"
                       qu'une seule fois chacun.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-sm border border-gris-light p-3">
+                <p className="mb-2 text-xs font-semibold text-nuit">Exemple "Seul ou En Menu" (groupe conditionnel) :</p>
+                <div className="flex flex-col gap-2 text-xs text-gris">
+                  <div>
+                    <span className="font-semibold text-nuit">Groupe "Formule"</span> — Obligatoire, choix unique
+                    <div className="ml-3 mt-1 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-gris-light px-2 py-0.5">Seul +0 €</span>
+                      <span className="rounded-full bg-gris-light px-2 py-0.5">En Menu +3,5 €</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-nuit">Groupe "Boisson"</span> — Obligatoire, choix unique
+                    <span className="ml-1 font-medium text-golfe-green">· Groupe conditionnel : Formule : En Menu</span>
+                    <div className="ml-3 mt-1 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-gris-light px-2 py-0.5">Coca +0 €</span>
+                      <span className="rounded-full bg-gris-light px-2 py-0.5">Eau +0 €</span>
+                    </div>
+                    <p className="ml-3 mt-1 text-[11px] text-gris">
+                      → n'apparaît au client que s'il a choisi "En Menu" juste au-dessus.
                     </p>
                   </div>
                 </div>
@@ -236,6 +269,12 @@ export function ProductTutorialModal({ onClose }: ProductTutorialModalProps) {
               Pour aller plus vite avec des produits similaires (plusieurs pizzas, plusieurs poke bowls...), utilisez
               l'icône de duplication sur une fiche existante — la copie s'ouvre directement en modification, il ne
               reste qu'à changer le nom, la photo et le prix.
+            </p>
+            <p className="mt-1.5 text-sm leading-relaxed text-gris">
+              Ça marche aussi pour plusieurs produits "Seul ou En Menu" : composez une première fois les groupes
+              "Formule"/"Boisson"/"Accompagnement" sur un seul produit (voir l'exemple ci-dessus), puis dupliquez-le
+              pour vos autres burgers/sandwichs — il ne reste qu'à changer le produit principal, tout le reste
+              (boissons, accompagnements, dépendances) est repris automatiquement.
             </p>
           </section>
 

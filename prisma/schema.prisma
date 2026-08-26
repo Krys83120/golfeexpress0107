@@ -600,6 +600,31 @@ model ProductOption {
   /// requête qui lit ProductOption doit trier par ce champ (orderBy:
   /// {sortOrder: "asc"}), jamais laisser l'ordre implicite de la base.
   sortOrder   Int           @default(0) @map("sort_order")
+  /// Groupe CONDITIONNEL : si renseigné, ce groupe n'est affiché au client
+  /// (et son "isRequired" éventuel n'est appliqué) que si ce choix précis
+  /// (dans un AUTRE groupe, forcément défini avant celui-ci -- voir la
+  /// validation dans updateProductOptionsSchema) est actuellement
+  /// sélectionné. Ex: groupe "Formule" (Seul / En Menu), puis groupes
+  /// "Boisson"/"Accompagnement" qui dépendent du choix "En Menu" -- ils
+  /// n'apparaissent et ne deviennent obligatoires que si le client a
+  /// choisi "En Menu". null = groupe inconditionnel (comportement normal,
+  /// toujours affiché), comme avant l'ajout de ce champ.
+  ///
+  /// Référencé par id (OptionChoice.id), mais ce id change à CHAQUE
+  /// sauvegarde des options par le Pro (PUT .../options supprime puis
+  /// recrée systématiquement tous les groupes/choix) -- le payload envoyé
+  /// par ProductFormModal.tsx référence donc la dépendance par POSITION
+  /// (groupIndex/choiceIndex dans le tableau soumis), résolue vers le vrai
+  /// id en base seulement après création (voir options/route.ts). Ne
+  /// jamais essayer d'écrire ce champ directement depuis une position sans
+  /// passer par cette résolution.
+  ///
+  /// onDelete: SetNull (pas Restrict) -- indispensable : la route PUT
+  /// options supprime tous les OptionChoice existants avant de tout
+  /// recréer, à CHAQUE sauvegarde ; avec Restrict, ne serait-ce qu'une
+  /// dépendance existante ferait échouer cette suppression en boucle.
+  dependsOnChoiceId String?       @map("depends_on_choice_id")
+  dependsOnChoice   OptionChoice? @relation("OptionDependency", fields: [dependsOnChoiceId], references: [id], onDelete: SetNull)
   choices     OptionChoice[]
 
   product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -634,6 +659,12 @@ model OptionChoice {
   sortOrder         Int       @default(0) @map("sort_order")
 
   option        ProductOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  /// Côté inverse de ProductOption.dependsOnChoiceId -- les groupes
+  /// conditionnels qui n'apparaissent que si CE choix précis est
+  /// sélectionné. Jamais lu directement dans le code applicatif (la
+  /// résolution se fait plutôt via ProductOption.dependsOnChoiceId), mais
+  /// requis par Prisma pour une relation nommée entre deux mêmes modèles.
+  dependentOptions ProductOption[] @relation("OptionDependency")
 }
 
 // ==================== COMMANDES ====================

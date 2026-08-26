@@ -34,12 +34,33 @@ function tomorrowMidnightISO(): string {
 
 const SUGGESTED_CATEGORIES = ["Menus", "Entrées", "Plats", "Poke Bowls", "Burgers", "Pizzas", "Salades", "Sandwichs", "Desserts", "Boissons", "Snacks"];
 
-function toOptionGroupInput(option: ProductOption): OptionGroupInput {
+/**
+ * Retrouve la POSITION (groupIndex/choiceIndex dans `allOptions`) du choix
+ * référencé par ProductOption.dependsOnChoiceId (un id réel, en base) --
+ * c'est cette position, pas l'id, qui est envoyée au serveur (voir
+ * OptionGroupInput.dependsOn et options/route.ts pour la résolution
+ * inverse). null si non renseigné, ou si le choix référencé est introuvable
+ * (dépendance orpheline -- filet de sécurité, ne devrait pas arriver).
+ */
+function resolveDependsOnPosition(
+  dependsOnChoiceId: string | null | undefined,
+  allOptions: ProductOption[]
+): { groupIndex: number; choiceIndex: number } | null {
+  if (!dependsOnChoiceId) return null;
+  for (let groupIndex = 0; groupIndex < allOptions.length; groupIndex++) {
+    const choiceIndex = allOptions[groupIndex].choices.findIndex((c) => c.id === dependsOnChoiceId);
+    if (choiceIndex !== -1) return { groupIndex, choiceIndex };
+  }
+  return null;
+}
+
+function toOptionGroupInput(option: ProductOption, allOptions: ProductOption[]): OptionGroupInput {
   return {
     name: option.name,
     isRequired: option.isRequired,
     isMultiple: option.isMultiple,
     maxChoices: option.maxChoices ?? null,
+    dependsOn: resolveDependsOnPosition(option.dependsOnChoiceId, allOptions),
     choices: option.choices.map((c) => ({
       name: c.name,
       priceModifier: c.priceModifier,
@@ -53,6 +74,74 @@ function toOptionGroupInput(option: ProductOption): OptionGroupInput {
       allowMultipleQty: c.allowMultipleQty ?? false,
     })),
   };
+}
+
+/**
+ * Nettoie les groupes/choix vides laissés en cours de saisie AVANT
+ * l'enregistrement, en remappant chaque `dependsOn` (référence par
+ * POSITION) vers les nouveaux index post-nettoyage -- sans ça, supprimer un
+ * groupe/choix vide au milieu de la liste déciderait silencieusement un
+ * `dependsOn` existant vers la mauvaise cible. Une dépendance dont la cible
+ * a elle-même été supprimée (nom resté vide) est effacée (null) plutôt que
+ * de pointer dans le vide.
+ */
+function cleanOptionGroupsForSave(groups: OptionGroupInput[]): OptionGroupInput[] {
+  // Par groupe (ancien index) : ancien index de choix -> nouvel index de
+  // choix, une fois les choix à nom vide retirés.
+  const perGroupChoiceIndexMaps: Map<number, number>[] = groups.map((g) => {
+    const map = new Map<number, number>();
+    let newIndex = 0;
+    g.choices.forEach((c, oldIndex) => {
+      if (c.name.trim()) {
+        map.set(oldIndex, newIndex);
+        newIndex++;
+      }
+    });
+    return map;
+  });
+
+  const cleanedChoicesPerGroup = groups.map((g) =>
+    g.choices
+      .filter((c) => c.name.trim())
+      // "Quantité multiple" n'a de sens que pour un groupe à choix
+      // multiples -- même garde que "Choix maxi" ci-dessous.
+      .map((c) => ({ ...c, allowMultipleQty: g.isMultiple ? c.allowMultipleQty : false }))
+  );
+
+  // Un groupe survit s'il a un nom ET au moins un choix après nettoyage.
+  const groupSurvives = groups.map((g, i) => !!g.name.trim() && cleanedChoicesPerGroup[i].length > 0);
+  const oldToNewGroupIndex = new Map<number, number>();
+  let nextGroupIndex = 0;
+  groups.forEach((_, i) => {
+    if (groupSurvives[i]) {
+      oldToNewGroupIndex.set(i, nextGroupIndex);
+      nextGroupIndex++;
+    }
+  });
+
+  const result: OptionGroupInput[] = [];
+  groups.forEach((g, i) => {
+    if (!groupSurvives[i]) return;
+    let dependsOn: OptionGroupInput["dependsOn"] = null;
+    if (g.dependsOn) {
+      const targetNewGroupIndex = oldToNewGroupIndex.get(g.dependsOn.groupIndex);
+      const targetNewChoiceIndex = perGroupChoiceIndexMaps[g.dependsOn.groupIndex]?.get(g.dependsOn.choiceIndex);
+      if (targetNewGroupIndex !== undefined && targetNewChoiceIndex !== undefined) {
+        dependsOn = { groupIndex: targetNewGroupIndex, choiceIndex: targetNewChoiceIndex };
+      }
+    }
+    result.push({
+      ...g,
+      name: g.name.trim(),
+      // "Choix max" n'a de sens que pour un groupe à choix multiples -- on
+      // l'ignore silencieusement si "Choix multiples" n'est pas coché
+      // plutôt que de laisser une valeur orpheline sans effet visible.
+      maxChoices: g.isMultiple ? g.maxChoices : null,
+      dependsOn,
+      choices: cleanedChoicesPerGroup[i],
+    });
+  });
+  return result;
 }
 
 export function ProductFormModal({ product, proId, existingCategories, onClose, onSave }: ProductFormModalProps) {
@@ -75,7 +164,7 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
   );
 
   const [optionGroups, setOptionGroups] = useState<OptionGroupInput[]>(
-    product?.options?.map(toOptionGroupInput) ?? []
+    product?.options?.map((o) => toOptionGroupInput(o, product.options!)) ?? []
   );
   const [allowSpecialInstructions, setAllowSpecialInstructions] = useState(product?.allowSpecialInstructions ?? false);
   const [hasExtraFeeNotice, setHasExtraFeeNotice] = useState(product?.hasExtraFeeNotice ?? false);
@@ -139,6 +228,7 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
         isRequired: false,
         isMultiple: false,
         maxChoices: null,
+        dependsOn: null,
         choices: [{ name: "", priceModifier: 0, isAvailable: true, unavailableUntil: null, allowMultipleQty: false }],
       },
     ]);
@@ -149,7 +239,24 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
   }
 
   function removeGroup(index: number) {
-    setOptionGroups((prev) => prev.filter((_, i) => i !== index));
+    setOptionGroups((prev) =>
+      prev
+        .map((g, i) => {
+          if (i === index) return null; // marqué pour suppression, filtré ci-dessous
+          if (!g.dependsOn) return g;
+          // Le groupe dont dépendait ce groupe vient d'être supprimé -- la
+          // dépendance n'a plus de sens, on l'efface plutôt que de la
+          // laisser pointer vers une position qui n'existe plus.
+          if (g.dependsOn.groupIndex === index) return { ...g, dependsOn: null };
+          // Tous les groupes situés APRÈS celui supprimé reculent d'une
+          // position -- toute dépendance qui les référence doit suivre.
+          if (g.dependsOn.groupIndex > index) {
+            return { ...g, dependsOn: { ...g.dependsOn, groupIndex: g.dependsOn.groupIndex - 1 } };
+          }
+          return g;
+        })
+        .filter((g): g is OptionGroupInput => g !== null)
+    );
   }
 
   function addChoice(groupIndex: number) {
@@ -188,7 +295,21 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
 
   function removeChoice(groupIndex: number, choiceIndex: number) {
     setOptionGroups((prev) =>
-      prev.map((g, i) => (i === groupIndex ? { ...g, choices: g.choices.filter((_, ci) => ci !== choiceIndex) } : g))
+      prev.map((g, i) => {
+        const choices = i === groupIndex ? g.choices.filter((_, ci) => ci !== choiceIndex) : g.choices;
+        // Un groupe conditionnel qui dépend PRÉCISÉMENT du choix supprimé
+        // perd sa dépendance (cible disparue) ; s'il dépend d'un choix situé
+        // après dans le même groupe, sa position doit reculer d'un cran.
+        let dependsOn = g.dependsOn;
+        if (dependsOn && dependsOn.groupIndex === groupIndex) {
+          if (dependsOn.choiceIndex === choiceIndex) {
+            dependsOn = null;
+          } else if (dependsOn.choiceIndex > choiceIndex) {
+            dependsOn = { ...dependsOn, choiceIndex: dependsOn.choiceIndex - 1 };
+          }
+        }
+        return { ...g, choices, dependsOn };
+      })
     );
   }
 
@@ -197,23 +318,10 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
     setSavingOptions(true);
     setOptionsMessage(null);
     try {
-      // Filtre les groupes/choix vides laissés en cours de saisie plutôt
-      // que d'obliger à les supprimer manuellement avant d'enregistrer.
-      const cleaned = optionGroups
-        .map((g) => ({
-          ...g,
-          name: g.name.trim(),
-          // "Choix max" n'a de sens que pour un groupe à choix multiples --
-          // on l'ignore silencieusement si "Choix multiples" n'est pas coché
-          // plutôt que de laisser une valeur orpheline sans effet visible.
-          maxChoices: g.isMultiple ? g.maxChoices : null,
-          choices: g.choices
-            .filter((c) => c.name.trim())
-            // "Quantité multiple" n'a de sens que pour un groupe à choix
-            // multiples -- même garde que "Choix maxi" ci-dessus.
-            .map((c) => ({ ...c, allowMultipleQty: g.isMultiple ? c.allowMultipleQty : false })),
-        }))
-        .filter((g) => g.name && g.choices.length > 0);
+      // Filtre les groupes/choix vides laissés en cours de saisie (plutôt
+      // que d'obliger à les supprimer manuellement avant d'enregistrer) ET
+      // remappe les dependsOn en conséquence -- voir cleanOptionGroupsForSave.
+      const cleaned = cleanOptionGroupsForSave(optionGroups);
       await updateProductOptions(product.id, cleaned, { allowSpecialInstructions, hasExtraFeeNotice });
       setOptionGroups(cleaned);
       setOptionsMessage("✅ Options enregistrées.");
@@ -509,6 +617,44 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
                       </label>
                     )}
                   </div>
+
+                  {groupIndex > 0 && (
+                    <div className="mb-3">
+                      <label className="mb-1 block text-xs font-semibold text-nuit">
+                        Groupe conditionnel
+                        <span className="ml-1 font-normal text-gris">
+                          (n'apparaît que si ce choix est sélectionné)
+                        </span>
+                      </label>
+                      <select
+                        value={group.dependsOn ? `${group.dependsOn.groupIndex}-${group.dependsOn.choiceIndex}` : ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (!value) {
+                            updateGroup(groupIndex, { dependsOn: null });
+                            return;
+                          }
+                          const [gi, ci] = value.split("-").map(Number);
+                          updateGroup(groupIndex, { dependsOn: { groupIndex: gi, choiceIndex: ci } });
+                        }}
+                        className="w-full rounded-sm border border-gris-light px-2.5 py-1.5 text-xs"
+                      >
+                        <option value="">Aucune (toujours affiché)</option>
+                        {optionGroups.slice(0, groupIndex).map((earlierGroup, earlierGroupIndex) =>
+                          earlierGroup.choices.map((choice, choiceIndex) => (
+                            <option key={`${earlierGroupIndex}-${choiceIndex}`} value={`${earlierGroupIndex}-${choiceIndex}`}>
+                              {earlierGroup.name || "(groupe sans nom)"} : {choice.name || "(choix sans nom)"}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      {group.dependsOn && group.isRequired && (
+                        <p className="mt-1 text-[11px] text-gris">
+                          Obligatoire uniquement quand ce choix est sélectionné.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex flex-col gap-1.5">
                     {group.choices.map((choice, choiceIndex) => (

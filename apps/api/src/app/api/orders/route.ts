@@ -324,6 +324,60 @@ async function postHandler(req: NextRequest) {
     }
   }
 
+  /**
+   * Revalide côté serveur les groupes CONDITIONNELS (ProductOption.dependsOnChoiceId,
+   * voir schema.prisma) -- ex: "Boisson"/"Accompagnement" qui ne doivent
+   * s'appliquer que si le client a choisi "En Menu" dans le groupe
+   * "Formule". Même principe de défense en profondeur que les autres
+   * assert* ci-dessus : le masquage côté Client (ProductOptionsModal.tsx,
+   * groupe simplement pas affiché tant que sa dépendance n'est pas
+   * satisfaite) peut être contourné par un appel API direct.
+   *
+   * `dependsOnChoiceId` référence un OptionChoice par id -- on retrouve son
+   * groupe/nom en parcourant product.options (le choix référencé appartient
+   * forcément au même produit, voir la résolution position -> id dans
+   * options/route.ts).
+   */
+  function assertGroupDependenciesSatisfied(
+    product: (typeof products)[number],
+    selectedOptions: Record<string, string> | undefined
+  ) {
+    for (const group of product.options) {
+      if (!group.dependsOnChoiceId) continue;
+      let targetGroupName: string | null = null;
+      let targetChoiceName: string | null = null;
+      for (const candidateGroup of product.options) {
+        const choice = candidateGroup.choices.find((c) => c.id === group.dependsOnChoiceId);
+        if (choice) {
+          targetGroupName = candidateGroup.name;
+          targetChoiceName = choice.name;
+          break;
+        }
+      }
+      // Dépendance orpheline (choix référencé introuvable, ex: donnée
+      // incohérente) -- on ignore plutôt que de bloquer toute la commande.
+      if (!targetGroupName || !targetChoiceName) continue;
+
+      const selectedInTargetGroup = (selectedOptions?.[targetGroupName] ?? "")
+        .split(",")
+        .map((n) => n.trim())
+        .filter(Boolean);
+      const isActive = selectedInTargetGroup.includes(targetChoiceName);
+      const rawSelectionForThisGroup = selectedOptions?.[group.name];
+      const hasSelectionForThisGroup = !!rawSelectionForThisGroup && rawSelectionForThisGroup.trim() !== "";
+
+      if (!isActive && hasSelectionForThisGroup) {
+        throw new ApiError(
+          400,
+          `"${group.name}" ne s'applique pas pour "${product.name}" avec la sélection actuelle.`
+        );
+      }
+      if (isActive && group.isRequired && !hasSelectionForThisGroup) {
+        throw new ApiError(400, `"${group.name}" est obligatoire pour "${product.name}".`);
+      }
+    }
+  }
+
   let subtotal = 0;
   const orderItemsData = items.map((item) => {
     const product = productById.get(item.productId);
@@ -336,6 +390,7 @@ async function postHandler(req: NextRequest) {
     assertWithinMaxChoices(product, item.options);
     assertChoicesAvailable(product, item.options);
     assertQuantifiableChoices(product, item.options);
+    assertGroupDependenciesSatisfied(product, item.options);
 
     const unitPrice = Number(product.price) + computeOptionsSurcharge(product, item.options);
     const totalPrice = unitPrice * item.quantity;

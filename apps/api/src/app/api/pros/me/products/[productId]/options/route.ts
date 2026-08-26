@@ -15,9 +15,14 @@ import { serializeProduct } from "@/lib/serializeProduct";
  * recréer à chaque sauvegarde.
  *
  * Body: {
- *   options: [{ name, isRequired, isMultiple, maxChoices, choices: [{ name, priceModifier, isAvailable, unavailableUntil, allowMultipleQty }] }],
+ *   options: [{ name, isRequired, isMultiple, maxChoices, dependsOn: {groupIndex, choiceIndex} | null, choices: [{ name, priceModifier, isAvailable, unavailableUntil, allowMultipleQty }] }],
  *   allowSpecialInstructions?, hasExtraFeeNotice?
  * }
+ * `dependsOn` référence un choix par POSITION dans le tableau `options` reçu
+ * (groupIndex/choiceIndex) -- jamais par id, car tous les ids sont recréés à
+ * chaque sauvegarde (voir plus bas). Résolu vers un vrai OptionChoice.id en
+ * base dans une seconde passe une fois tous les groupes/choix créés (voir
+ * ProductOption.dependsOnChoiceId dans schema.prisma).
  * Les deux derniers champs sont les réglages produit affichés dans le même
  * bloc "🧩 Options" du formulaire Pro (voir ProductFormModal.tsx) -- omis
  * (undefined) = inchangés côté serveur, jamais réinitialisés à false.
@@ -53,8 +58,15 @@ async function putHandler(req: NextRequest, ctx: { params: { productId: string }
     // côté Client, formulaire Pro) réaffiche les groupes/choix dans le même
     // ordre, l'ordre implicite d'une requête Prisma sans `orderBy` n'étant
     // pas garanti stable (voir ProductOption.sortOrder dans schema.prisma).
+    // Passe 1 : on crée tous les groupes/choix, SANS dependsOnChoiceId --
+    // impossible de le renseigner tout de suite puisqu'il référence un choix
+    // par id, et les ids des choix référencés (potentiellement) n'existent
+    // pas encore tant que leur propre groupe n'est pas créé. On garde une
+    // trace, dans l'ordre du tableau reçu, des options créées (avec leurs
+    // choix et les vrais ids générés) pour la passe 2 ci-dessous.
+    const createdOptions: Array<{ id: string; choices: { id: string }[] }> = [];
     for (const [optionIndex, option] of parsed.data.options.entries()) {
-      await tx.productOption.create({
+      const created = await tx.productOption.create({
         data: {
           productId: product.id,
           name: option.name,
@@ -88,6 +100,22 @@ async function putHandler(req: NextRequest, ctx: { params: { productId: string }
             })),
           },
         },
+        include: { choices: { orderBy: { sortOrder: "asc" } } },
+      });
+      createdOptions.push({ id: created.id, choices: created.choices.map((c) => ({ id: c.id })) });
+    }
+    // Passe 2 : on résout chaque `dependsOn` (position dans le tableau reçu)
+    // vers le vrai OptionChoice.id créé en passe 1, et on l'enregistre sur le
+    // ProductOption correspondant. Le schéma de validation
+    // (updateProductOptionsSchema) garantit déjà que groupIndex/choiceIndex
+    // sont dans les bornes et pointent vers un groupe défini AVANT celui-ci.
+    for (const [optionIndex, option] of parsed.data.options.entries()) {
+      if (!option.dependsOn) continue;
+      const targetChoiceId = createdOptions[option.dependsOn.groupIndex]?.choices[option.dependsOn.choiceIndex]?.id;
+      if (!targetChoiceId) continue; // déjà validé en amont, filet de sécurité seulement
+      await tx.productOption.update({
+        where: { id: createdOptions[optionIndex].id },
+        data: { dependsOnChoiceId: targetChoiceId },
       });
     }
     // Réglages produit portés par ce même endpoint (voir la note en tête de

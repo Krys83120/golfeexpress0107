@@ -104,13 +104,29 @@ export const useProMenuStore = create<ProMenuState>((set, get) => ({
 
     let finalProduct = created;
     if (product.options && product.options.length > 0) {
+      const sourceOptions = product.options;
       finalProduct = await updateProductOptions(
         created.id,
-        product.options.map((o) => ({
+        sourceOptions.map((o) => ({
           name: o.name,
           isRequired: o.isRequired,
           isMultiple: o.isMultiple,
           maxChoices: o.maxChoices ?? null,
+          // La copie reçoit des id tout neufs pour ses groupes/choix (voir
+          // options/route.ts, qui recrée tout à chaque sauvegarde) --
+          // dependsOnChoiceId (id réel du produit SOURCE) ne peut donc pas
+          // être réutilisé tel quel. On le reconvertit en position
+          // (groupIndex/choiceIndex dans `sourceOptions`, structure
+          // identique côté copie puisqu'on envoie les mêmes groupes dans le
+          // même ordre) -- même format que ProductFormModal.tsx.
+          dependsOn: (() => {
+            if (!o.dependsOnChoiceId) return null;
+            for (let groupIndex = 0; groupIndex < sourceOptions.length; groupIndex++) {
+              const choiceIndex = sourceOptions[groupIndex].choices.findIndex((c) => c.id === o.dependsOnChoiceId);
+              if (choiceIndex !== -1) return { groupIndex, choiceIndex };
+            }
+            return null;
+          })(),
           // Une copie repart toujours disponible, même si le choix d'origine
           // était en rupture -- un "plus de mâche" sur le produit copié n'a
           // aucune raison de s'appliquer à la nouvelle fiche.

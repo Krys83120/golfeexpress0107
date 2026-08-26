@@ -51,6 +51,28 @@ function isSelectionComplete(options: ProductOption[], selection: SelectionState
   return options.every((group) => !group.isRequired || (selection[group.name]?.size ?? 0) > 0);
 }
 
+/**
+ * Un groupe CONDITIONNEL (ProductOption.dependsOnChoiceId, réglé par le Pro
+ * dans ProductFormModal.tsx -- ex: "Boisson"/"Accompagnement" qui ne
+ * s'appliquent que si "En Menu" est choisi dans "Formule") n'est actif --
+ * affiché, et son éventuel "Obligatoire" appliqué -- que si le choix dont il
+ * dépend est actuellement sélectionné. Un groupe non conditionnel
+ * (dependsOnChoiceId absent/null) reste toujours actif, comme avant l'ajout
+ * de cette fonctionnalité.
+ */
+function isGroupActive(
+  group: ProductOption,
+  selection: SelectionState,
+  choiceLookup: Map<string, { groupName: string; choiceName: string }>
+): boolean {
+  if (!group.dependsOnChoiceId) return true;
+  const target = choiceLookup.get(group.dependsOnChoiceId);
+  // Dépendance orpheline (choix référencé introuvable) -- filet de sécurité,
+  // on affiche plutôt que de masquer silencieusement un groupe entier.
+  if (!target) return true;
+  return selection[target.groupName]?.has(target.choiceName) ?? false;
+}
+
 export function ProductOptionsModal({ product, canOrder = true, onClose, onConfirm }: ProductOptionsModalProps) {
   const options = product.options ?? [];
   // Number(...) défensif — un prix reçu en texte (bug de sérialisation
@@ -161,9 +183,31 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
     });
   }
 
+  // groupe -> {groupe, choix} du choix dont il dépend, pour résoudre les
+  // groupes conditionnels (voir isGroupActive ci-dessus).
+  const choiceLookup = useMemo(() => {
+    const map = new Map<string, { groupName: string; choiceName: string }>();
+    for (const group of options) {
+      for (const choice of group.choices) {
+        map.set(choice.id, { groupName: group.name, choiceName: choice.name });
+      }
+    }
+    return map;
+  }, [options]);
+
+  // Groupes réellement actifs compte tenu de la sélection en cours --
+  // affichage, validation ("Obligatoire") et soumission de commande
+  // s'appuient TOUS sur cette liste plutôt que sur `options` directement,
+  // pour qu'un groupe conditionnel pas encore actif (ex: "Boisson" tant que
+  // "En Menu" n'est pas coché) reste invisible et jamais requis/soumis.
+  const activeGroups = useMemo(
+    () => options.filter((group) => isGroupActive(group, selection, choiceLookup)),
+    [options, selection, choiceLookup]
+  );
+
   const extraPrice = useMemo(() => {
     let sum = 0;
-    for (const group of options) {
+    for (const group of activeGroups) {
       const chosen = selection[group.name];
       if (!chosen) continue;
       for (const [choiceName, qty] of chosen) {
@@ -172,17 +216,17 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
       }
     }
     return sum;
-  }, [selection, options]);
+  }, [selection, activeGroups]);
 
   const totalPrice = basePrice + extraPrice;
-  const optionsComplete = isSelectionComplete(options, selection);
+  const optionsComplete = isSelectionComplete(activeGroups, selection);
   const canConfirm = optionsComplete && canOrder;
 
   function handleConfirm() {
     if (!canConfirm) return;
     const flatOptions: Record<string, string> = {};
     const labelParts: string[] = [];
-    for (const group of options) {
+    for (const group of activeGroups) {
       const chosen = selection[group.name];
       if (chosen && chosen.size > 0) {
         // Encode la quantité en répétant le nom du choix dans la chaîne CSV
@@ -271,7 +315,7 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
               </View>
             )}
 
-            {options.map((group) => {
+            {activeGroups.map((group) => {
               const chosen = selection[group.name] ?? new Map<string, number>();
               return (
                 <View key={group.id} style={styles.group}>

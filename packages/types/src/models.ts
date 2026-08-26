@@ -238,6 +238,8 @@ export interface ProductOption {
   isMultiple: boolean;
   /** Nombre max de choix sélectionnables (isMultiple seulement) ; null = pas de limite. Voir prisma/schema.prisma. */
   maxChoices?: number | null;
+  /** Groupe conditionnel : n'apparaît (et n'est obligatoire) que si ce choix (id d'un AUTRE groupe défini avant) est sélectionné. null = groupe toujours affiché. Voir prisma/schema.prisma. */
+  dependsOnChoiceId?: string | null;
   choices: ProductOptionChoice[];
 }
 

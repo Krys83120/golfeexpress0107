@@ -30,6 +30,13 @@ export async function deleteProductApi(productId: string): Promise<void> {
 }
 
 export type OptionGroupInput = Pick<ProductOption, "name" | "isRequired" | "isMultiple" | "maxChoices"> & {
+  /**
+   * Groupe conditionnel : référence un choix d'un groupe précédent par
+   * POSITION dans le tableau `options` envoyé (jamais par id -- voir
+   * ProductFormModal.tsx et options/route.ts pour la résolution position ->
+   * id côté serveur). null = groupe toujours affiché.
+   */
+  dependsOn: { groupIndex: number; choiceIndex: number } | null;
   choices: {
     name: string;
     priceModifier: number;
