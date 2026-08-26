@@ -226,6 +226,7 @@ export function MenuPage() {
           product={editingProduct}
           proId={profile.id}
           existingCategories={categories}
+          allProducts={products}
           onClose={() => {
             setCreating(false);
             setEditingProduct(null);

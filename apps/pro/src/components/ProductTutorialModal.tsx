@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Plus, Pencil, Copy, Mail, Ban, Zap } from "lucide-react";
+import { X, Plus, Pencil, Copy, Mail, Ban, Zap, ListPlus } from "lucide-react";
 
 interface ProductTutorialModalProps {
   onClose: () => void;
@@ -129,6 +129,16 @@ export function ProductTutorialModal({ onClose }: ProductTutorialModalProps) {
                 Un <strong className="text-nuit">groupe</strong>, c'est une famille de choix pour le client — par
                 exemple "La taille" (Petite / Moyenne / Grande), ou "Suppléments" (Fromage / Bacon / Œuf). Cliquez
                 sur <strong className="text-nuit">"+ Groupe"</strong>, puis réglez :
+              </p>
+              <p className="mb-2 flex items-start gap-1.5 rounded-sm bg-golfe-green/5 p-2.5 text-sm leading-relaxed text-nuit">
+                <ListPlus size={14} className="mt-0.5 flex-shrink-0 text-golfe-green" />
+                <span>
+                  Si vous avez déjà créé ce groupe sur un autre produit (ex: "La Taille" sur un autre poke, "La Base"
+                  sur un autre, "Boisson" sur un burger déjà en menu...), "+ Groupe" vous propose de le réutiliser
+                  tel quel au lieu de tout ressaisir — cochez-le dans la liste proposée. Si ce groupe dépendait d'un
+                  autre (ex: "Boisson" qui n'apparaît que si "En Menu" est choisi), ce groupe "de base" est
+                  automatiquement coché avec lui, pour ne jamais charger un groupe conditionnel sans sa dépendance.
+                </span>
               </p>
               <ul className="flex flex-col gap-1.5 text-sm leading-relaxed text-gris">
                 <li>

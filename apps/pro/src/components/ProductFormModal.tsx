@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { X, Plus, Trash2, Ban, Zap } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { X, Plus, Trash2, Ban, Zap, ListPlus } from "lucide-react";
 import type { Product, ProductOption } from "@golfeexpress/types";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { uploadProductImage, uploadProductGalleryImage, withCacheBust } from "@/services/uploadsApi";
@@ -10,6 +10,14 @@ interface ProductFormModalProps {
   proId: string;
   /** Catégories déjà utilisées par ce Pro, proposées en suggestion (saisie libre sinon). */
   existingCategories: string[];
+  /**
+   * Tous les produits du Pro (avec leurs options) -- sert UNIQUEMENT à
+   * proposer, au clic sur "+ Groupe", de réutiliser un groupe déjà
+   * configuré sur un autre produit (ex: "La Taille" déjà créée sur une
+   * autre pizza) plutôt que de le ressaisir entièrement. Voir
+   * existingGroupsLibrary / addSelectedLibraryGroups ci-dessous.
+   */
+  allProducts: Product[];
   onClose: () => void;
   onSave: (data: Omit<Product, "id" | "proId">) => void;
 }
@@ -144,7 +152,7 @@ function cleanOptionGroupsForSave(groups: OptionGroupInput[]): OptionGroupInput[
   return result;
 }
 
-export function ProductFormModal({ product, proId, existingCategories, onClose, onSave }: ProductFormModalProps) {
+export function ProductFormModal({ product, proId, existingCategories, allProducts, onClose, onSave }: ProductFormModalProps) {
   const [name, setName] = useState(product?.name ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
   const [price, setPrice] = useState(product?.price.toString() ?? "");
@@ -170,6 +178,52 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
   const [hasExtraFeeNotice, setHasExtraFeeNotice] = useState(product?.hasExtraFeeNotice ?? false);
   const [savingOptions, setSavingOptions] = useState(false);
   const [optionsMessage, setOptionsMessage] = useState<string | null>(null);
+
+  // "Bibliothèque" des groupes déjà configurés sur les AUTRES produits de ce
+  // Pro (ex: "La Taille" déjà créée sur un poke, "La Base" sur un autre,
+  // "Boisson" sur un burger déjà en "Seul / En Menu"...) -- proposée au
+  // clic sur "+ Groupe" pour éviter de ressaisir un groupe identique à
+  // chaque nouveau produit (voir addSelectedLibraryGroups ci-dessous).
+  // Dédupliquée par NOM de groupe -- si plusieurs produits ont un groupe du
+  // même nom configuré différemment, le dernier rencontré l'emporte
+  // (approximation "version la plus à jour"), le Pro peut toujours ajuster
+  // après import.
+  //
+  // IMPORTANT : un groupe n'est PAS forcément lié à "Formule" (Seul / En
+  // Menu) -- "La Taille" ou "La Base" (ex: sur un poke) sont des groupes
+  // normaux, indépendants, réutilisables tels quels sans rien exiger
+  // d'autre. Seuls les groupes qui étaient RÉELLEMENT configurés comme
+  // conditionnels sur leur produit d'origine (ProductOption.dependsOnChoiceId
+  // -- ex: "Boisson"/"Accompagnement" dépendant de "Formule : En Menu")
+  // portent une dépendance ici : on la retrouve par NOM (groupe + choix,
+  // pas par id -- l'id d'origine n'a aucun sens sur ce produit-ci) en
+  // cherchant, dans les groupes du MÊME produit d'origine, celui qui
+  // contient le choix référencé.
+  const existingGroupsLibrary = useMemo(() => {
+    const byName = new Map<string, { option: ProductOption; dependsOnGroupName: string | null; dependsOnChoiceName: string | null }>();
+    for (const p of allProducts) {
+      if (p.id === product?.id) continue; // déjà visibles/modifiables juste en dessous, inutile de se proposer soi-même
+      const groups = p.options ?? [];
+      for (const group of groups) {
+        let dependsOnGroupName: string | null = null;
+        let dependsOnChoiceName: string | null = null;
+        if (group.dependsOnChoiceId) {
+          for (const candidate of groups) {
+            const choice = candidate.choices.find((c) => c.id === group.dependsOnChoiceId);
+            if (choice) {
+              dependsOnGroupName = candidate.name;
+              dependsOnChoiceName = choice.name;
+              break;
+            }
+          }
+        }
+        byName.set(group.name, { option: group, dependsOnGroupName, dependsOnChoiceName });
+      }
+    }
+    return Array.from(byName.values()).sort((a, b) => a.option.name.localeCompare(b.option.name, "fr"));
+  }, [allProducts, product?.id]);
+  const [showGroupPicker, setShowGroupPicker] = useState(false);
+  const [selectedLibraryGroupNames, setSelectedLibraryGroupNames] = useState<Set<string>>(new Set());
 
   // Id stable utilisé comme nom de fichier pour la photo produit. En
   // édition, on utilise l'id réel du produit. En création (id pas encore
@@ -232,6 +286,84 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
         choices: [{ name: "", priceModifier: 0, isAvailable: true, unavailableUntil: null, allowMultipleQty: false }],
       },
     ]);
+  }
+
+  /**
+   * Ajoute au produit courant les groupes cochés dans le panneau "+ Groupe"
+   * (voir existingGroupsLibrary ci-dessus), en repartant d'une copie propre
+   * -- jamais des ids/valeurs du produit d'origine, qui ne veulent rien dire
+   * ici (même principe que duplicateProduct dans useProMenuStore.ts) :
+   *  - une rupture de stock (isAvailable=false) sur le produit d'origine ne
+   *    doit pas se propager au nouveau produit.
+   *  - une éventuelle dépendance ("Groupe conditionnel", ex: "Boisson" qui
+   *    dépend de "Formule : En Menu") est reconstruite par NOM plutôt que
+   *    copiée telle quelle : le groupe qu'elle référence ("Formule") a
+   *    forcément été coché en même temps (voir la case à cocher du
+   *    panneau, qui l'ajoute automatiquement) ou est déjà présent sur ce
+   *    produit -- IMPORTANT : le lot est d'abord réordonné pour que ce
+   *    groupe "de base" soit toujours ajouté AVANT celui qui en dépend,
+   *    sinon le serveur (updateProductOptionsSchema) refuserait
+   *    l'enregistrement (une dépendance doit toujours pointer vers un
+   *    groupe défini plus tôt dans la liste).
+   */
+  function addSelectedLibraryGroups() {
+    const selected = existingGroupsLibrary.filter((lg) => selectedLibraryGroupNames.has(lg.option.name));
+
+    // Tri topologique simple : un groupe ne peut être placé que si le
+    // groupe dont il dépend est déjà "résolu" (soit déjà présent sur ce
+    // produit, soit déjà placé plus tôt dans ce même lot).
+    const resolvedNames = new Set(optionGroups.map((g) => g.name));
+    const remaining = [...selected];
+    const ordered: typeof selected = [];
+    let progress = true;
+    while (remaining.length > 0 && progress) {
+      progress = false;
+      for (let i = remaining.length - 1; i >= 0; i--) {
+        const lg = remaining[i];
+        if (!lg.dependsOnGroupName || resolvedNames.has(lg.dependsOnGroupName)) {
+          ordered.push(lg);
+          resolvedNames.add(lg.option.name);
+          remaining.splice(i, 1);
+          progress = true;
+        }
+      }
+    }
+    // Filet de sécurité (ne devrait pas arriver grâce à l'auto-sélection en
+    // cascade sur la case à cocher) : dépendance orpheline -- on ajoute
+    // quand même le groupe, simplement sans sa dépendance, plutôt que de le
+    // perdre silencieusement.
+    ordered.push(...remaining);
+
+    setOptionGroups((prev) => {
+      const result = [...prev];
+      for (const lg of ordered) {
+        const g = lg.option;
+        let dependsOn: OptionGroupInput["dependsOn"] = null;
+        if (lg.dependsOnGroupName && lg.dependsOnChoiceName) {
+          const targetGroupIndex = result.findIndex((rg) => rg.name === lg.dependsOnGroupName);
+          const targetChoiceIndex =
+            targetGroupIndex !== -1 ? result[targetGroupIndex].choices.findIndex((c) => c.name === lg.dependsOnChoiceName) : -1;
+          if (targetGroupIndex !== -1 && targetChoiceIndex !== -1) {
+            dependsOn = { groupIndex: targetGroupIndex, choiceIndex: targetChoiceIndex };
+          }
+        }
+        result.push({
+          name: g.name,
+          isRequired: g.isRequired,
+          isMultiple: g.isMultiple,
+          maxChoices: g.maxChoices ?? null,
+          dependsOn,
+          choices: g.choices.map((c) => ({
+            name: c.name,
+            priceModifier: c.priceModifier,
+            isAvailable: true,
+            unavailableUntil: null,
+            allowMultipleQty: c.allowMultipleQty ?? false,
+          })),
+        });
+      }
+      return result;
+    });
   }
 
   /**
@@ -601,12 +733,134 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
               <h3 className="font-heading text-sm font-bold text-nuit">🧩 Options (taille, base, sauce...)</h3>
               <button
                 type="button"
-                onClick={addOptionGroup}
+                onClick={() => {
+                  // Rien à réutiliser (premier produit du Pro, ou aucun
+                  // autre produit n'a d'options) -- comportement inchangé,
+                  // on ajoute directement un groupe vide.
+                  if (existingGroupsLibrary.length === 0) {
+                    addOptionGroup();
+                  } else {
+                    setShowGroupPicker(true);
+                  }
+                }}
                 className="flex items-center gap-1 rounded-sm border border-gris-light px-2.5 py-1.5 text-xs font-semibold text-nuit hover:bg-gris-light"
               >
                 <Plus size={13} /> Groupe
               </button>
             </div>
+
+            {showGroupPicker && (
+              <div className="mb-4 rounded-sm border border-golfe-green/40 bg-golfe-green/5 p-3">
+                <div className="mb-2 flex items-center gap-1.5">
+                  <ListPlus size={14} className="text-golfe-green" />
+                  <p className="text-xs font-semibold text-nuit">
+                    Réutiliser un groupe déjà créé sur un autre produit ?
+                  </p>
+                </div>
+                <p className="mb-2 text-[11px] text-gris">
+                  Cochez un ou plusieurs groupes pour les ajouter tels quels à ce produit, sans les ressaisir.
+                </p>
+                <div className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
+                  {existingGroupsLibrary.map((group) => {
+                    // Un groupe déjà présent sur CE produit (ajouté à la
+                    // main, ou via le modèle "Seul / En Menu") compte comme
+                    // "de base" satisfaite -- pas besoin de le re-cocher.
+                    const alreadyOnProduct = new Set(optionGroups.map((g) => g.name));
+                    return (
+                      <label key={group.option.name} className="flex items-start gap-2 text-xs text-nuit">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={selectedLibraryGroupNames.has(group.option.name)}
+                          onChange={(e) =>
+                            setSelectedLibraryGroupNames((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) {
+                                next.add(group.option.name);
+                                // Le groupe "de base" (ex: "Formule") dont
+                                // dépend celui-ci doit être chargé AVANT lui
+                                // -- coché automatiquement en cascade s'il
+                                // n'est pas déjà présent sur ce produit,
+                                // pour ne jamais charger un groupe
+                                // conditionnel orphelin de sa dépendance.
+                                let depName = group.dependsOnGroupName;
+                                while (depName && !alreadyOnProduct.has(depName) && !next.has(depName)) {
+                                  next.add(depName);
+                                  const depEntry = existingGroupsLibrary.find((lg) => lg.option.name === depName);
+                                  depName = depEntry?.dependsOnGroupName ?? null;
+                                }
+                              } else {
+                                next.delete(group.option.name);
+                                // Si on décoche un groupe "de base", on
+                                // décoche en cascade tout groupe encore
+                                // sélectionné qui en dépend (directement ou
+                                // indirectement) -- sinon on chargerait un
+                                // groupe conditionnel sans sa dépendance.
+                                const cascadeUncheck = (name: string) => {
+                                  for (const lg of existingGroupsLibrary) {
+                                    if (lg.dependsOnGroupName === name && next.has(lg.option.name)) {
+                                      next.delete(lg.option.name);
+                                      cascadeUncheck(lg.option.name);
+                                    }
+                                  }
+                                };
+                                cascadeUncheck(group.option.name);
+                              }
+                              return next;
+                            })
+                          }
+                        />
+                        <span>
+                          <span className="font-semibold">{group.option.name}</span>
+                          <span className="text-gris"> — {group.option.choices.map((c) => c.name).join(", ")}</span>
+                          {group.dependsOnGroupName && (
+                            <span className="ml-1 text-golfe-green">
+                              (nécessite "{group.dependsOnGroupName} : {group.dependsOnChoiceName}"
+                              {!alreadyOnProduct.has(group.dependsOnGroupName) ? ", coché automatiquement" : ""})
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addSelectedLibraryGroups();
+                      setShowGroupPicker(false);
+                      setSelectedLibraryGroupNames(new Set());
+                    }}
+                    disabled={selectedLibraryGroupNames.size === 0}
+                    className="rounded-sm bg-golfe-green px-3 py-1.5 text-xs font-semibold text-nuit disabled:opacity-50"
+                  >
+                    Ajouter{selectedLibraryGroupNames.size > 0 ? ` (${selectedLibraryGroupNames.size})` : ""}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addOptionGroup();
+                      setShowGroupPicker(false);
+                      setSelectedLibraryGroupNames(new Set());
+                    }}
+                    className="rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-nuit hover:bg-gris-light"
+                  >
+                    Créer un groupe vide à la place
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowGroupPicker(false);
+                      setSelectedLibraryGroupNames(new Set());
+                    }}
+                    className="rounded-sm px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
 
             {optionGroups.length === 0 && (
               <div className="mb-3 flex flex-col gap-2.5 rounded-sm bg-sable p-3">
