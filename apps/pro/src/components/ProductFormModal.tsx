@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Plus, Trash2, Ban } from "lucide-react";
+import { X, Plus, Trash2, Ban, Zap } from "lucide-react";
 import type { Product, ProductOption } from "@golfeexpress/types";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { uploadProductImage, uploadProductGalleryImage, withCacheBust } from "@/services/uploadsApi";
@@ -230,6 +230,56 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
         maxChoices: null,
         dependsOn: null,
         choices: [{ name: "", priceModifier: 0, isAvailable: true, unavailableUntil: null, allowMultipleQty: false }],
+      },
+    ]);
+  }
+
+  /**
+   * Raccourci "Seul / En Menu" : pré-remplit d'un coup les 3 groupes
+   * typiques d'un produit vendu seul OU en menu (ex: burger seul, ou avec
+   * boisson + accompagnement), avec la dépendance conditionnelle déjà
+   * câblée (Boisson/Accompagnement -> Formule : "En Menu") -- le Pro n'a
+   * plus qu'à ajuster les noms/prix des choix (déjà éditables juste en
+   * dessous) plutôt que de recréer 3 groupes et leurs dépendances à la main
+   * à chaque nouveau produit. Uniquement proposé tant qu'aucune option n'a
+   * encore été ajoutée (voir son emplacement dans le JSX ci-dessous) --
+   * remplacerait sinon silencieusement des groupes déjà en cours de saisie.
+   */
+  function applySeulEnMenuPreset() {
+    setOptionGroups([
+      {
+        name: "Formule",
+        isRequired: true,
+        isMultiple: false,
+        maxChoices: null,
+        dependsOn: null,
+        choices: [
+          { name: "Seul", priceModifier: 0, isAvailable: true, unavailableUntil: null, allowMultipleQty: false },
+          { name: "En Menu", priceModifier: 3.5, isAvailable: true, unavailableUntil: null, allowMultipleQty: false },
+        ],
+      },
+      {
+        name: "Boisson",
+        isRequired: true,
+        isMultiple: false,
+        maxChoices: null,
+        // Position 0-1 = le choix "En Menu" ci-dessus (voir OptionGroupInput.dependsOn).
+        dependsOn: { groupIndex: 0, choiceIndex: 1 },
+        choices: [
+          { name: "Coca-Cola", priceModifier: 0, isAvailable: true, unavailableUntil: null, allowMultipleQty: false },
+          { name: "Eau", priceModifier: 0, isAvailable: true, unavailableUntil: null, allowMultipleQty: false },
+        ],
+      },
+      {
+        name: "Accompagnement",
+        isRequired: true,
+        isMultiple: false,
+        maxChoices: null,
+        dependsOn: { groupIndex: 0, choiceIndex: 1 },
+        choices: [
+          { name: "Frites", priceModifier: 0, isAvailable: true, unavailableUntil: null, allowMultipleQty: false },
+          { name: "Salade", priceModifier: 0, isAvailable: true, unavailableUntil: null, allowMultipleQty: false },
+        ],
       },
     ]);
   }
@@ -559,10 +609,23 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
             </div>
 
             {optionGroups.length === 0 && (
-              <p className="mb-3 text-xs text-gris">
-                Aucune option pour ce produit. Ajoutez un groupe (ex: "La taille") pour proposer des variantes avec
-                supplément de prix, comme dans l'exemple ci-contre.
-              </p>
+              <div className="mb-3 flex flex-col gap-2.5 rounded-sm bg-sable p-3">
+                <p className="text-xs text-gris">
+                  Aucune option pour ce produit. Ajoutez un groupe (ex: "La taille") pour proposer des variantes avec
+                  supplément de prix, comme dans l'exemple ci-contre.
+                </p>
+                <button
+                  type="button"
+                  onClick={applySeulEnMenuPreset}
+                  className="flex items-center justify-center gap-1.5 self-start rounded-sm border border-golfe-green bg-golfe-green/10 px-3 py-1.5 text-xs font-semibold text-golfe-green hover:bg-golfe-green/20"
+                >
+                  <Zap size={13} /> Utiliser le modèle "Seul / En Menu"
+                </button>
+                <p className="text-[11px] text-gris">
+                  Pré-remplit "Formule" (Seul / En Menu), "Boisson" et "Accompagnement" avec la dépendance déjà
+                  réglée — il ne reste qu'à ajuster les noms et prix.
+                </p>
+              </div>
             )}
 
             <div className="flex flex-col gap-4">

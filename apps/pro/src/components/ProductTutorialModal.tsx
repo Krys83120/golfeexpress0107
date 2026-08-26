@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Plus, Pencil, Copy, Mail, Ban } from "lucide-react";
+import { X, Plus, Pencil, Copy, Mail, Ban, Zap } from "lucide-react";
 
 interface ProductTutorialModalProps {
   onClose: () => void;
@@ -230,6 +230,16 @@ export function ProductTutorialModal({ onClose }: ProductTutorialModalProps) {
                   </div>
                 </div>
               </div>
+
+              <p className="mt-2 flex items-start gap-1.5 rounded-sm bg-golfe-green/5 p-2.5 text-sm leading-relaxed text-nuit">
+                <Zap size={14} className="mt-0.5 flex-shrink-0 text-golfe-green" />
+                <span>
+                  <strong className="text-nuit">Raccourci</strong> — tant qu'aucune option n'a encore été ajoutée sur
+                  le produit, le bouton <strong className="text-nuit">"⚡ Utiliser le modèle 'Seul / En Menu'"</strong> en
+                  haut de la section "🧩 Options" pré-remplit directement ces 3 groupes (avec la dépendance déjà
+                  câblée) — il ne reste qu'à ajuster les noms et prix des choix.
+                </span>
+              </p>
             </div>
           </section>
 
