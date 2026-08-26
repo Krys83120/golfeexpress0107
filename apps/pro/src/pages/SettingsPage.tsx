@@ -19,6 +19,54 @@ import { useAuthStore } from "@/store/useAuthStore";
 
 const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
+/**
+ * Un jour peut avoir PLUSIEURS créneaux (ex: 10h-14h puis 18h-23h pour un
+ * Pro en coupure le midi/après-midi) — regroupé ici en une entrée par jour
+ * avec sa liste de créneaux, plus pratique à manipuler côté formulaire que
+ * le tableau plat OpeningHours[] envoyé/reçu par l'API (voir
+ * flattenHoursForSave ci-dessous pour la conversion inverse).
+ */
+type TimeRange = { openTime: string; closeTime: string };
+type DayHours = { dayOfWeek: number; isClosed: boolean; ranges: TimeRange[] };
+
+const DEFAULT_RANGE: TimeRange = { openTime: "09:00", closeTime: "18:00" };
+
+/** Doit rester aligné avec MAX_RANGES_PER_DAY côté serveur (apps/api/src/lib/validation/proProfile.ts). */
+const MAX_RANGES_PER_DAY = 4;
+
+/** Regroupe le tableau plat OpeningHours[] (renvoyé par l'API) en une entrée par jour. */
+function groupOpeningHours(openingHours: OpeningHours[]): DayHours[] {
+  const byDay = new Map<number, OpeningHours[]>();
+  for (const h of openingHours) {
+    byDay.set(h.dayOfWeek, [...(byDay.get(h.dayOfWeek) ?? []), h]);
+  }
+  return Array.from({ length: 7 }, (_, dayOfWeek) => {
+    const existing = byDay.get(dayOfWeek);
+    // Pas encore de réglage pour ce jour (premier paramétrage) : dimanche
+    // fermé par défaut, le reste ouvert avec un créneau par défaut.
+    if (!existing || existing.length === 0) {
+      return { dayOfWeek, isClosed: dayOfWeek === 0, ranges: [DEFAULT_RANGE] };
+    }
+    const isClosed = existing.every((h) => h.isClosed);
+    const ranges = isClosed
+      ? [DEFAULT_RANGE] // valeur prête si le Pro décoche "Fermé" ensuite
+      : existing
+          .filter((h) => !h.isClosed)
+          .sort((a, b) => a.openTime.localeCompare(b.openTime))
+          .map((h) => ({ openTime: h.openTime, closeTime: h.closeTime }));
+    return { dayOfWeek, isClosed, ranges };
+  });
+}
+
+/** Conversion inverse : l'état groupé par jour -> le tableau plat attendu par PUT /api/pros/me/opening-hours. */
+function flattenHoursForSave(hours: DayHours[]) {
+  return hours.flatMap((d) =>
+    d.isClosed
+      ? [{ dayOfWeek: d.dayOfWeek, openTime: DEFAULT_RANGE.openTime, closeTime: DEFAULT_RANGE.closeTime, isClosed: true }]
+      : d.ranges.map((r) => ({ dayOfWeek: d.dayOfWeek, openTime: r.openTime, closeTime: r.closeTime, isClosed: false }))
+  );
+}
+
 // Mêmes paliers que le sélecteur "Démarrer la préparation" côté commande
 // (ProOrderCard.tsx) — juste pour rester cohérent visuellement, cette
 // valeur-ci n'est qu'une indication par défaut affichée sur la fiche
@@ -35,7 +83,7 @@ type PrepTimeUnit = "min" | "h";
 
 export function SettingsPage() {
   const [pro, setPro] = useState<Pro | null>(null);
-  const [hours, setHours] = useState<OpeningHours[]>([]);
+  const [hours, setHours] = useState<DayHours[]>([]);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -54,6 +102,7 @@ export function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingHours, setSavingHours] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [hoursMessage, setHoursMessage] = useState<string | null>(null);
 
   // Fermeture manuelle ("En vacances" / "Fermé exceptionnellement") — ne
   // touche jamais aux horaires hebdomadaires ci-dessus (state `hours`).
@@ -135,20 +184,10 @@ export function SettingsPage() {
         setCity(existingAddress.city);
       }
 
-      // S'il manque des jours (premier paramétrage), on complète avec des
-      // valeurs par défaut "fermé" pour toujours afficher les 7 lignes.
-      const byDay = new Map(openingHours.map((h) => [h.dayOfWeek, h]));
-      const complete: OpeningHours[] = Array.from({ length: 7 }, (_, dayOfWeek) =>
-        byDay.get(dayOfWeek) ?? {
-          id: `placeholder-${dayOfWeek}`,
-          proId: shopProfile.id,
-          dayOfWeek,
-          openTime: "09:00",
-          closeTime: "18:00",
-          isClosed: dayOfWeek === 0,
-        }
-      );
-      setHours(complete);
+      // S'il manque des jours (premier paramétrage), groupOpeningHours
+      // complète avec des valeurs par défaut "fermé" pour toujours afficher
+      // les 7 jours.
+      setHours(groupOpeningHours(openingHours));
       setStatus("loaded");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de charger les paramètres.");
@@ -160,8 +199,37 @@ export function SettingsPage() {
     load();
   }, []);
 
-  function updateHour(dayOfWeek: number, field: "openTime" | "closeTime" | "isClosed", value: string | boolean) {
-    setHours((prev) => prev.map((h) => (h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h)));
+  function setDayClosed(dayOfWeek: number, isClosed: boolean) {
+    setHours((prev) => prev.map((d) => (d.dayOfWeek === dayOfWeek ? { ...d, isClosed } : d)));
+  }
+
+  function updateRange(dayOfWeek: number, index: number, field: "openTime" | "closeTime", value: string) {
+    setHours((prev) =>
+      prev.map((d) =>
+        d.dayOfWeek === dayOfWeek
+          ? { ...d, ranges: d.ranges.map((r, i) => (i === index ? { ...r, [field]: value } : r)) }
+          : d
+      )
+    );
+  }
+
+  /** "+ Ajouter un créneau" : pour un Pro en coupure (ex: 10h-14h puis 18h-23h). */
+  function addRange(dayOfWeek: number) {
+    setHours((prev) =>
+      prev.map((d) => {
+        if (d.dayOfWeek !== dayOfWeek) return d;
+        // Nouveau créneau proposé juste après le dernier de la journée, pour
+        // éviter de faire retaper des horaires qui se chevauchent forcément.
+        const last = d.ranges[d.ranges.length - 1];
+        return { ...d, ranges: [...d.ranges, last ? { openTime: last.closeTime, closeTime: "23:00" } : DEFAULT_RANGE] };
+      })
+    );
+  }
+
+  function removeRange(dayOfWeek: number, index: number) {
+    setHours((prev) =>
+      prev.map((d) => (d.dayOfWeek === dayOfWeek ? { ...d, ranges: d.ranges.filter((_, i) => i !== index) } : d))
+    );
   }
 
   /**
@@ -356,22 +424,47 @@ export function SettingsPage() {
     }
   }
 
+  /**
+   * Vérification légère côté client avant envoi (même logique que le
+   * superRefine côté serveur, voir updateOpeningHoursSchema) : évite un
+   * aller-retour réseau pour une erreur de saisie évidente (créneau vide,
+   * heure de fin avant heure de début, créneaux qui se chevauchent).
+   */
+  function findHoursError(): string | null {
+    for (const day of hours) {
+      if (day.isClosed) continue;
+      if (day.ranges.length === 0) {
+        return `${DAY_LABELS[day.dayOfWeek]} : ajoutez au moins un créneau, ou cochez "Fermé".`;
+      }
+      const sorted = [...day.ranges].sort((a, b) => a.openTime.localeCompare(b.openTime));
+      for (const r of sorted) {
+        if (r.openTime >= r.closeTime) {
+          return `${DAY_LABELS[day.dayOfWeek]} : l'heure de fin (${r.closeTime}) doit être après l'heure de début (${r.openTime}).`;
+        }
+      }
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i].openTime < sorted[i - 1].closeTime) {
+          return `${DAY_LABELS[day.dayOfWeek]} : les créneaux se chevauchent.`;
+        }
+      }
+    }
+    return null;
+  }
+
   async function handleSaveHours() {
+    const validationError = findHoursError();
+    if (validationError) {
+      setHoursMessage(`❌ ${validationError}`);
+      return;
+    }
     setSavingHours(true);
-    setSaveMessage(null);
+    setHoursMessage(null);
     try {
-      const updated = await updateMyOpeningHours(
-        hours.map((h) => ({
-          dayOfWeek: h.dayOfWeek,
-          openTime: h.openTime,
-          closeTime: h.closeTime,
-          isClosed: h.isClosed,
-        }))
-      );
-      setHours(updated);
-      setSaveMessage("Horaires mis à jour.");
+      const updated = await updateMyOpeningHours(flattenHoursForSave(hours));
+      setHours(groupOpeningHours(updated));
+      setHoursMessage("✅ Horaires mis à jour.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible d'enregistrer les horaires.");
+      setHoursMessage(err instanceof Error ? `❌ ${err.message}` : "❌ Impossible d'enregistrer les horaires.");
     } finally {
       setSavingHours(false);
     }
@@ -1004,39 +1097,69 @@ export function SettingsPage() {
       </div>
 
       <div className="rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
-        <h3 className="mb-4 font-heading text-base font-bold text-nuit">🕐 Horaires d'ouverture</h3>
-        <div className="flex flex-col gap-2">
+        <h3 className="mb-1 font-heading text-base font-bold text-nuit">🕐 Horaires d'ouverture</h3>
+        <p className="mb-4 text-xs text-gris">
+          Fermé entre midi et le soir ? Ajoutez plusieurs créneaux sur une même journée (ex. 10h-14h puis 18h-23h).
+        </p>
+        <div className="flex flex-col gap-3">
           {hours.map((day) => (
-            <div key={day.dayOfWeek} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-gris-light py-2 last:border-0">
-              <span className="w-24 text-sm font-medium text-nuit">{DAY_LABELS[day.dayOfWeek]}</span>
-              <label className="flex items-center gap-1.5 text-xs text-gris">
-                <input
-                  type="checkbox"
-                  checked={!day.isClosed}
-                  onChange={(e) => updateHour(day.dayOfWeek, "isClosed", !e.target.checked)}
-                />
-                Ouvert
-              </label>
-              {!day.isClosed && (
-                <div className="flex items-center gap-2">
+            <div key={day.dayOfWeek} className="flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-gris-light py-2.5 last:border-0">
+              <span className="w-24 pt-1.5 text-sm font-medium text-nuit">{DAY_LABELS[day.dayOfWeek]}</span>
+              <div className="flex flex-1 flex-col gap-2">
+                <label className="flex items-center gap-1.5 text-xs text-gris">
                   <input
-                    type="time"
-                    value={day.openTime}
-                    onChange={(e) => updateHour(day.dayOfWeek, "openTime", e.target.value)}
-                    className="rounded-sm border border-gris-light px-2 py-1 text-sm"
+                    type="checkbox"
+                    checked={!day.isClosed}
+                    onChange={(e) => setDayClosed(day.dayOfWeek, !e.target.checked)}
                   />
-                  <span className="text-sm text-gris">à</span>
-                  <input
-                    type="time"
-                    value={day.closeTime}
-                    onChange={(e) => updateHour(day.dayOfWeek, "closeTime", e.target.value)}
-                    className="rounded-sm border border-gris-light px-2 py-1 text-sm"
-                  />
-                </div>
-              )}
+                  Ouvert
+                </label>
+                {!day.isClosed && (
+                  <div className="flex flex-col gap-2">
+                    {day.ranges.map((range, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <input
+                          type="time"
+                          value={range.openTime}
+                          onChange={(e) => updateRange(day.dayOfWeek, index, "openTime", e.target.value)}
+                          className="rounded-sm border border-gris-light px-2 py-1 text-sm"
+                        />
+                        <span className="text-sm text-gris">à</span>
+                        <input
+                          type="time"
+                          value={range.closeTime}
+                          onChange={(e) => updateRange(day.dayOfWeek, index, "closeTime", e.target.value)}
+                          className="rounded-sm border border-gris-light px-2 py-1 text-sm"
+                        />
+                        {day.ranges.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeRange(day.dayOfWeek, index)}
+                            aria-label="Supprimer ce créneau"
+                            className="rounded-full px-1.5 text-sm text-gris hover:bg-gris-light hover:text-corail"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {day.ranges.length < MAX_RANGES_PER_DAY && (
+                      <button
+                        type="button"
+                        onClick={() => addRange(day.dayOfWeek)}
+                        className="self-start text-xs font-semibold text-golfe-green-dark hover:underline"
+                      >
+                        + Ajouter un créneau
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
+
+        {hoursMessage && <p className="mt-3 text-sm">{hoursMessage}</p>}
 
         <button
           onClick={handleSaveHours}

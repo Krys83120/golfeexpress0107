@@ -1,9 +1,28 @@
 import React from "react";
 import { View, Text, Pressable, Linking, Image } from "react-native";
 import type { ProWithUi } from "@/services/prosApi";
+import type { OpeningHours } from "@golfeexpress/types";
 
 // Même ordre que côté Pro (SettingsPage.tsx) : dayOfWeek 0 = Dimanche.
 const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+
+/**
+ * Un jour peut avoir plusieurs créneaux (Pro en coupure, ex: 10h-14h puis
+ * 18h-23h — voir apps/pro/src/pages/SettingsPage.tsx) : on regroupe donc
+ * par jour avant affichage plutôt que d'afficher une ligne par créneau brut
+ * (qui répéterait le nom du jour et cassait la clé React `dayOfWeek`).
+ */
+function groupHoursByDay(hours: OpeningHours[]) {
+  const byDay = new Map<number, OpeningHours[]>();
+  for (const h of hours) byDay.set(h.dayOfWeek, [...(byDay.get(h.dayOfWeek) ?? []), h]);
+  return [...byDay.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([dayOfWeek, rows]) => ({
+      dayOfWeek,
+      isClosed: rows.every((r) => r.isClosed),
+      ranges: rows.filter((r) => !r.isClosed).sort((a, b) => a.openTime.localeCompare(b.openTime)),
+    }));
+}
 
 type SocialKind = "instagram" | "facebook" | "tiktok";
 
@@ -134,11 +153,11 @@ export function BusinessInfoCard({ pro }: { pro: ProWithUi }) {
   const formattedAddress = proAddress
     ? [proAddress.street, proAddress.complement, `${proAddress.zipCode} ${proAddress.city}`.trim()].filter(Boolean).join(", ")
     : null;
-  const sortedHours = [...(pro.openingHours ?? [])].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  const groupedHours = groupHoursByDay(pro.openingHours ?? []);
   const hasBrandSocials = Boolean(pro.instagramUrl || pro.facebookUrl || pro.tiktokUrl);
   const hasSocialRow = Boolean(pro.websiteUrl || hasBrandSocials);
   const hasInfo = Boolean(
-    formattedAddress || pro.phone || pro.emailContact || pro.defaultPrepTimeMinutes || sortedHours.length > 0 || hasSocialRow
+    formattedAddress || pro.phone || pro.emailContact || pro.defaultPrepTimeMinutes || groupedHours.length > 0 || hasSocialRow
   );
 
   if (!hasInfo) return null;
@@ -169,17 +188,17 @@ export function BusinessInfoCard({ pro }: { pro: ProWithUi }) {
           <InfoRow emoji="⏱️">Temps de préparation habituel : ~{pro.defaultPrepTimeMinutes} min</InfoRow>
         ) : null}
 
-        {sortedHours.length > 0 && (
+        {groupedHours.length > 0 && (
           <View className="flex-row items-start gap-3">
             <View className="mt-0.5 h-6 w-6 items-center justify-center rounded-full bg-golfe-green/10">
               <Text style={{ fontSize: 12 }}>🕒</Text>
             </View>
             <View style={{ flex: 1 }}>
-              {sortedHours.map((h) => (
-                <View key={h.dayOfWeek} className="flex-row justify-between py-0.5">
-                  <Text className="text-[12px] text-gris">{DAY_LABELS[h.dayOfWeek]}</Text>
+              {groupedHours.map((day) => (
+                <View key={day.dayOfWeek} className="flex-row justify-between py-0.5">
+                  <Text className="text-[12px] text-gris">{DAY_LABELS[day.dayOfWeek]}</Text>
                   <Text className="text-[12px] font-medium text-nuit">
-                    {h.isClosed ? "Fermé" : `${h.openTime} - ${h.closeTime}`}
+                    {day.isClosed ? "Fermé" : day.ranges.map((r) => `${r.openTime} - ${r.closeTime}`).join(", ")}
                   </Text>
                 </View>
               ))}

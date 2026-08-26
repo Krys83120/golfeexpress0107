@@ -35,15 +35,80 @@ export const updateProProfileSchema = z.object({
 
 export type UpdateProProfileInput = z.infer<typeof updateProProfileSchema>;
 
+const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 const openingHourSchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6),
-  openTime: z.string(), // "HH:mm"
-  closeTime: z.string(),
+  openTime: z.string().regex(HH_MM, "Horaire invalide (HH:mm attendu)."), // "HH:mm"
+  closeTime: z.string().regex(HH_MM, "Horaire invalide (HH:mm attendu)."),
   isClosed: z.boolean(),
 });
 
+/// Un jour peut désormais avoir PLUSIEURS créneaux (ex: 10h-14h puis
+/// 18h-23h pour un Pro en coupure) : `hours` n'est donc plus limité à 7
+/// lignes pile (une par jour) mais à AU MOINS une ligne par jour, jusqu'à
+/// MAX_RANGES_PER_DAY créneaux chacun. Le superRefine ci-dessous vérifie
+/// que les 7 jours sont bien couverts, qu'un jour "fermé" n'a qu'UNE seule
+/// ligne (pas de mélange fermé + créneaux), et que les créneaux d'un même
+/// jour ne se chevauchent pas -- cohérent avec la comparaison lexicale
+/// "HH:mm" déjà utilisée côté calcul ouvert/fermé (lib/openingHours.ts).
+const MAX_RANGES_PER_DAY = 4;
+
 export const updateOpeningHoursSchema = z.object({
-  hours: z.array(openingHourSchema).length(7, "Les 7 jours de la semaine doivent être fournis."),
+  hours: z
+    .array(openingHourSchema)
+    .min(7, "Les 7 jours de la semaine doivent être fournis.")
+    .max(7 * MAX_RANGES_PER_DAY, `Trop de créneaux (maximum ${MAX_RANGES_PER_DAY} par jour).`)
+    .superRefine((hours, ctx) => {
+      const byDay = new Map<number, typeof hours>();
+      for (const h of hours) {
+        byDay.set(h.dayOfWeek, [...(byDay.get(h.dayOfWeek) ?? []), h]);
+      }
+
+      for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) {
+        const dayHours = byDay.get(dayOfWeek);
+        if (!dayHours || dayHours.length === 0) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Horaires manquants pour le jour ${dayOfWeek}.` });
+          continue;
+        }
+
+        if (dayHours.length > MAX_RANGES_PER_DAY) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Maximum ${MAX_RANGES_PER_DAY} créneaux par jour.`,
+          });
+          continue;
+        }
+
+        const closedCount = dayHours.filter((h) => h.isClosed).length;
+        if (closedCount > 0 && dayHours.length > 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Un jour fermé ne peut pas avoir en plus des créneaux d'ouverture.",
+          });
+          continue;
+        }
+        if (closedCount > 0) continue; // jour fermé, une seule ligne : rien d'autre à vérifier
+
+        const sorted = [...dayHours].sort((a, b) => a.openTime.localeCompare(b.openTime));
+        for (const h of sorted) {
+          if (h.openTime >= h.closeTime) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Le créneau ${h.openTime}-${h.closeTime} n'est pas valide (l'ouverture doit précéder la fermeture).`,
+            });
+          }
+        }
+        for (let i = 1; i < sorted.length; i++) {
+          if (sorted[i].openTime < sorted[i - 1].closeTime) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Les créneaux d'un même jour ne doivent pas se chevaucher.",
+            });
+          }
+        }
+      }
+    }),
 });
 
 export type UpdateOpeningHoursInput = z.infer<typeof updateOpeningHoursSchema>;

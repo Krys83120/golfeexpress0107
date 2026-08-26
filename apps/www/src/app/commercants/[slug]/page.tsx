@@ -41,6 +41,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+
+/**
+ * Un jour peut avoir plusieurs créneaux (Pro en coupure, ex: 10h-14h puis
+ * 18h-23h — voir apps/pro/src/pages/SettingsPage.tsx) : on regroupe donc
+ * par jour pour l'affichage visible ci-dessous (le JSON-LD
+ * OpeningHoursSpecification, lui, accepte nativement plusieurs entrées pour
+ * le même dayOfWeek et n'a pas besoin de ce regroupement).
+ */
+function groupHoursByDay(hours: { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }[]) {
+  const byDay = new Map<number, typeof hours>();
+  for (const h of hours) byDay.set(h.dayOfWeek, [...(byDay.get(h.dayOfWeek) ?? []), h]);
+  return [...byDay.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([dayOfWeek, rows]) => ({
+      dayOfWeek,
+      isClosed: rows.every((r) => r.isClosed),
+      ranges: rows.filter((r) => !r.isClosed).sort((a, b) => a.openTime.localeCompare(b.openTime)),
+    }));
+}
 const SCHEMA_DAY_NAMES = [
   "Sunday",
   "Monday",
@@ -169,14 +188,14 @@ export default async function CommercantDetailPage({ params }: PageProps) {
             <div className="mt-8 rounded-2xl bg-sable p-5">
               <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gris">Horaires d'ouverture</p>
               <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
-                {[...pro.openingHours]
-                  .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
-                  .map((h) => (
-                    <div key={h.dayOfWeek} className="flex justify-between gap-2">
-                      <span className="text-gris">{DAY_LABELS[h.dayOfWeek]}</span>
-                      <span className="font-medium text-nuit">{h.isClosed ? "Fermé" : `${h.openTime}–${h.closeTime}`}</span>
-                    </div>
-                  ))}
+                {groupHoursByDay(pro.openingHours).map((day) => (
+                  <div key={day.dayOfWeek} className="flex justify-between gap-2">
+                    <span className="text-gris">{DAY_LABELS[day.dayOfWeek]}</span>
+                    <span className="font-medium text-nuit">
+                      {day.isClosed ? "Fermé" : day.ranges.map((r) => `${r.openTime}–${r.closeTime}`).join(", ")}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}

@@ -70,14 +70,18 @@ export function computeOpenStatus(
   }
 
   const { dayOfWeek, hhmm } = getParisNow();
-  const today = openingHours.find((h) => h.dayOfWeek === dayOfWeek);
+  // Un jour peut avoir PLUSIEURS créneaux (ex: 10h-14h puis 18h-23h pour un
+  // Pro en coupure) : on ne prend plus la première ligne du jour, on
+  // regarde si l'heure actuelle tombe dans AU MOINS un des créneaux non
+  // fermés de ce jour.
+  const todayRanges = openingHours.filter((h) => h.dayOfWeek === dayOfWeek);
 
-  if (!today || today.isClosed) {
+  if (todayRanges.length === 0 || todayRanges.every((h) => h.isClosed)) {
     return { isOpen: false, reason: "OUTSIDE_HOURS", manualClosureUntil: null, manualClosureNote: null };
   }
 
   // Comparaison lexicale valide car "HH:mm" est toujours sur 5 caractères
   // zéro-paddés (ex: "09:00" <= "13:30" <= "18:00").
-  const isOpen = hhmm >= today.openTime && hhmm <= today.closeTime;
+  const isOpen = todayRanges.some((h) => !h.isClosed && hhmm >= h.openTime && hhmm <= h.closeTime);
   return { isOpen, reason: isOpen ? "OPEN" : "OUTSIDE_HOURS", manualClosureUntil: null, manualClosureNote: null };
 }

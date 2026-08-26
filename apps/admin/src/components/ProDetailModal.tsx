@@ -21,6 +21,23 @@ interface ProDetailModalProps {
 
 const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
+/**
+ * Un jour peut avoir plusieurs créneaux (Pro en coupure, ex: 10h-14h puis
+ * 18h-23h — voir apps/pro/src/pages/SettingsPage.tsx) : on regroupe donc
+ * par jour pour l'affichage plutôt qu'une ligne brute par créneau.
+ */
+function groupHoursByDay(hours: { dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }[]) {
+  const byDay = new Map<number, typeof hours>();
+  for (const h of hours) byDay.set(h.dayOfWeek, [...(byDay.get(h.dayOfWeek) ?? []), h]);
+  return [...byDay.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([dayOfWeek, rows]) => ({
+      dayOfWeek,
+      isClosed: rows.every((r) => r.isClosed),
+      ranges: rows.filter((r) => !r.isClosed).sort((a, b) => a.openTime.localeCompare(b.openTime)),
+    }));
+}
+
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
@@ -252,14 +269,14 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
           <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gris">🕐 Horaires d'ouverture</h3>
           {pro.openingHours && pro.openingHours.length > 0 ? (
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 rounded-sm bg-gris-light p-4 text-sm">
-              {[...pro.openingHours]
-                .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
-                .map((h) => (
-                  <div key={h.dayOfWeek} className="flex justify-between">
-                    <span className="text-gris">{DAY_LABELS[h.dayOfWeek]}</span>
-                    <span className="text-nuit">{h.isClosed ? "Fermé" : `${h.openTime} – ${h.closeTime}`}</span>
-                  </div>
-                ))}
+              {groupHoursByDay(pro.openingHours).map((day) => (
+                <div key={day.dayOfWeek} className="flex justify-between">
+                  <span className="text-gris">{DAY_LABELS[day.dayOfWeek]}</span>
+                  <span className="text-nuit">
+                    {day.isClosed ? "Fermé" : day.ranges.map((r) => `${r.openTime} – ${r.closeTime}`).join(", ")}
+                  </span>
+                </div>
+              ))}
             </div>
           ) : (
             <p className="rounded-sm bg-gris-light p-4 text-sm text-gris">— non renseignées —</p>
