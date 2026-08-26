@@ -588,6 +588,18 @@ model ProductOption {
   /// revalidé côté serveur à la création de commande (orders/route.ts) --
   /// jamais fait confiance uniquement au blocage client.
   maxChoices  Int?          @map("max_choices")
+  /// Position de ce groupe dans la liste telle que configurée par le Pro
+  /// (ProductFormModal.tsx, ordre des groupes à l'écran) -- sans ce champ,
+  /// l'ordre renvoyé par une requête Prisma/Postgres sans `orderBy` n'est
+  /// PAS garanti stable dans le temps (dépend du plan d'exécution, pas de
+  /// l'ordre de création), ce qui mélangeait l'ordre des groupes sur le
+  /// ticket de préparation (printLabel.ts) et dans ProductOptionsModal.tsx
+  /// côté Client. Réécrit intégralement (0, 1, 2...) à chaque sauvegarde
+  /// des options par le Pro (PUT /api/pros/me/products/[productId]/options,
+  /// qui supprime puis recrée tous les groupes -- voir ce fichier). TOUTE
+  /// requête qui lit ProductOption doit trier par ce champ (orderBy:
+  /// {sortOrder: "asc"}), jamais laisser l'ordre implicite de la base.
+  sortOrder   Int           @default(0) @map("sort_order")
   choices     OptionChoice[]
 
   product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -616,6 +628,10 @@ model OptionChoice {
   /// supplément par occurrence, aucun changement nécessaire à ce calcul.
   /// Revalidé côté serveur par assertQuantifiableChoices (orders/route.ts).
   allowMultipleQty  Boolean   @default(false) @map("allow_multiple_qty")
+  /// Position de ce choix dans son groupe, même principe et même raison que
+  /// ProductOption.sortOrder ci-dessus (ordre non garanti sans ce champ).
+  /// TOUTE requête qui lit OptionChoice doit trier par ce champ.
+  sortOrder         Int       @default(0) @map("sort_order")
 
   option        ProductOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
 }

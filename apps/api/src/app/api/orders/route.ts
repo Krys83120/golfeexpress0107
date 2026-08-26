@@ -170,7 +170,17 @@ async function postHandler(req: NextRequest) {
   const productIds = items.map((i) => i.productId);
   const products = await prisma.product.findMany({
     where: { id: { in: productIds } },
-    include: { options: { include: { choices: true } } },
+    // orderBy imbriqué obligatoire sur options ET choices -- reorderOptionsByProductDefinition
+    // ci-dessous s'appuie sur cet ordre pour réordonner les options choisies
+    // par le client selon celui configuré par le Pro ; sans lui, l'ordre
+    // renvoyé par Prisma/Postgres n'est pas garanti stable (voir
+    // ProductOption.sortOrder / OptionChoice.sortOrder dans schema.prisma).
+    include: {
+      options: {
+        orderBy: { sortOrder: "asc" },
+        include: { choices: { orderBy: { sortOrder: "asc" } } },
+      },
+    },
   });
 
   const productById = new Map(products.map((p) => [p.id, p]));

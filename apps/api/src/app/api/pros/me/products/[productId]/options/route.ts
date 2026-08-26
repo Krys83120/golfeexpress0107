@@ -47,7 +47,13 @@ async function putHandler(req: NextRequest, ctx: { params: { productId: string }
       await tx.optionChoice.deleteMany({ where: { optionId: { in: existingOptionIds } } });
       await tx.productOption.deleteMany({ where: { id: { in: existingOptionIds } } });
     }
-    for (const option of parsed.data.options) {
+    // sortOrder = position dans le tableau reçu (celui affiché/réordonné par
+    // le Pro dans ProductFormModal.tsx) -- indispensable pour que TOUTE
+    // lecture ultérieure (ticket de préparation, ProductOptionsModal.tsx
+    // côté Client, formulaire Pro) réaffiche les groupes/choix dans le même
+    // ordre, l'ordre implicite d'une requête Prisma sans `orderBy` n'étant
+    // pas garanti stable (voir ProductOption.sortOrder dans schema.prisma).
+    for (const [optionIndex, option] of parsed.data.options.entries()) {
       await tx.productOption.create({
         data: {
           productId: product.id,
@@ -61,8 +67,9 @@ async function putHandler(req: NextRequest, ctx: { params: { productId: string }
           // assertWithinMaxChoices dans orders/route.ts qui s'appuie sur ce
           // champ à la création de la commande).
           maxChoices: option.isMultiple ? option.maxChoices ?? null : null,
+          sortOrder: optionIndex,
           choices: {
-            create: option.choices.map((c) => ({
+            create: option.choices.map((c, choiceIndex) => ({
               name: c.name,
               priceModifier: c.priceModifier,
               // Rupture sur ce choix précis (ex: "plus de mâche") -- même
@@ -77,6 +84,7 @@ async function putHandler(req: NextRequest, ctx: { params: { productId: string }
               // dans orders/route.ts qui s'appuie sur ce champ à la création
               // de la commande).
               allowMultipleQty: option.isMultiple ? c.allowMultipleQty : false,
+              sortOrder: choiceIndex,
             })),
           },
         },
@@ -95,7 +103,14 @@ async function putHandler(req: NextRequest, ctx: { params: { productId: string }
   });
   const updated = await prisma.product.findUnique({
     where: { id: product.id },
-    include: { options: { include: { choices: true } } },
+    // orderBy imbriqué obligatoire -- voir le commentaire sur
+    // ProductOption.sortOrder dans schema.prisma.
+    include: {
+      options: {
+        orderBy: { sortOrder: "asc" },
+        include: { choices: { orderBy: { sortOrder: "asc" } } },
+      },
+    },
   });
   return NextResponse.json({ product: updated ? serializeProduct(updated) : null });
 }
