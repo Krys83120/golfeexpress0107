@@ -4,7 +4,6 @@ import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { updateProductOptionsSchema } from "@/lib/validation/products";
 import { serializeProduct } from "@/lib/serializeProduct";
-
 /**
  * PUT /api/pros/me/products/[productId]/options
  *
@@ -16,7 +15,7 @@ import { serializeProduct } from "@/lib/serializeProduct";
  * recréer à chaque sauvegarde.
  *
  * Body: {
- *   options: [{ name, isRequired, isMultiple, maxChoices, choices: [{ name, priceModifier, isAvailable, unavailableUntil }] }],
+ *   options: [{ name, isRequired, isMultiple, maxChoices, choices: [{ name, priceModifier, isAvailable, unavailableUntil, allowMultipleQty }] }],
  *   allowSpecialInstructions?, hasExtraFeeNotice?
  * }
  * Les deux derniers champs sont les réglages produit affichés dans le même
@@ -72,6 +71,12 @@ async function putHandler(req: NextRequest, ctx: { params: { productId: string }
               // commande et le Cron pour la remise à disponible automatique.
               isAvailable: c.isAvailable,
               unavailableUntil: c.unavailableUntil ?? null,
+              // Quantité multiple pour CE choix précis (ex: "Bacon" x4) --
+              // n'a de sens que pour un groupe à choix multiples, même garde
+              // que maxChoices ci-dessus (voir aussi assertQuantifiableChoices
+              // dans orders/route.ts qui s'appuie sur ce champ à la création
+              // de la commande).
+              allowMultipleQty: option.isMultiple ? c.allowMultipleQty : false,
             })),
           },
         },
@@ -94,5 +99,4 @@ async function putHandler(req: NextRequest, ctx: { params: { productId: string }
   });
   return NextResponse.json({ product: updated ? serializeProduct(updated) : null });
 }
-
 export const PUT = withErrorHandling(putHandler);
