@@ -52,13 +52,20 @@ export function OnlineToggleHeader() {
           <Text style={[styles.toggleLabel, { color: isOnline ? "#2ECC71" : "#9CA3AF" }]}>
             {isOnline ? "En ligne" : "Hors ligne"}
           </Text>
+          {/* Purement visuel : le Switch est imbriqué dans le Pressable
+              ci-dessus, qui gère déjà le tap sur toute la pastille. Sur
+              l'export web, un clic sur le <input type=checkbox> rendu par
+              Switch remonte (bubbling DOM) jusqu'au Pressable parent, donc
+              lui laisser son propre onValueChange déclenchait toggleOnline
+              DEUX fois pour un seul appui. pointerEvents="none" fait du
+              Switch un simple indicateur d'état, sans capter le tap. */}
           <Switch
             value={isOnline}
-            onValueChange={toggleOnline}
             disabled={isTogglingOnline}
             trackColor={{ false: "#3A3A52", true: "#2ECC71" }}
             thumbColor="white"
             style={{ transform: [{ scale: 0.75 }] }}
+            pointerEvents="none"
           />
         </Pressable>
       </View>

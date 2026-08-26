@@ -17,22 +17,53 @@ const KEEP_AWAKE_TAG = "rider-online";
  * utilise un tag distinct de celui de CurrentDeliveryCard pour que les deux
  * verrous coexistent sans se marcher dessus.
  */
+// `activateKeepAwakeAsync`/`deactivateKeepAwake` sont typées comme
+// retournant une Promise, mais sur le Wake Lock API web (utilisé par
+// l'export web/PWA de cette app), relâcher un verrou déjà relâché — ou
+// alors qu'aucun verrou n'a jamais été pris — peut lever une exception
+// *synchrone* plutôt qu'un rejet de Promise. Un simple `.catch()` ne
+// protège pas contre ça : une exception synchrone dans un useEffect (ou
+// sa fonction de nettoyage) fait planter tout l'arbre React, ce qui
+// produit exactement le symptôme observé (écran blanc), faute d'error
+// boundary. On enveloppe donc chaque appel dans un try/catch pour ne
+// jamais laisser d'exception s'échapper d'ici.
+function safeActivate() {
+  try {
+    Promise.resolve(activateKeepAwakeAsync(KEEP_AWAKE_TAG)).catch(() => {
+      // Non bloquant (ex: Wake Lock API non supportée sur ce navigateur) —
+      // voir isAvailableAsync() dans expo-keep-awake si un jour on veut
+      // avertir l'utilisateur plutôt que d'échouer silencieusement.
+    });
+  } catch {
+    // Non bloquant.
+  }
+}
+
+function safeDeactivate() {
+  try {
+    Promise.resolve(deactivateKeepAwake(KEEP_AWAKE_TAG)).catch(() => {});
+  } catch {
+    // Non bloquant.
+  }
+}
+
 export function useOnlineKeepAwake() {
   const isOnline = useRiderSessionStore((s) => s.isOnline);
 
   useEffect(() => {
     if (isOnline) {
-      activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(() => {
-        // Non bloquant (ex: Wake Lock API non supportée sur ce navigateur) —
-        // voir isAvailableAsync() dans expo-keep-awake si un jour on veut
-        // avertir l'utilisateur plutôt que d'échouer silencieusement.
-      });
-    } else {
-      deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => {});
+      safeActivate();
     }
-
+    // Pas de "else safeDeactivate()" ici : la fonction de nettoyage
+    // ci-dessous s'en charge déjà dès que `isOnline` repasse à false (React
+    // l'exécute avant de relancer l'effet), donc pas besoin de désactiver
+    // une deuxième fois dans le corps de l'effet. Ce double appel coup sur
+    // coup (nettoyage + branche "else") était très probablement la cause
+    // de l'écran blanc au passage hors ligne : le passage en ligne, lui,
+    // ne déclenchait jamais deux appels à deactivateKeepAwake, d'où le
+    // bug qui n'apparaissait que dans un sens.
     return () => {
-      deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => {});
+      safeDeactivate();
     };
   }, [isOnline]);
 }
