@@ -152,6 +152,13 @@ export function ProductTutorialModal({ onClose }: ProductTutorialModalProps) {
                 Répétez l'opération pour autant de groupes que nécessaire (ex. "La taille", puis "Suppléments", puis
                 "Sauce").
               </p>
+              <p className="mt-2 text-sm leading-relaxed text-gris">
+                <strong className="text-nuit">Quantité multiple</strong> — coché sous un choix précis (visible
+                uniquement dans un groupe "Choix multiples"), il permet au client de l'ajouter plusieurs fois plutôt
+                qu'une seule (ex. "Bacon" x4 s'il veut plusieurs suppléments de bacon). Le client voit alors un
+                bouton +/- à la place de la case à cocher, jusqu'à 20 par choix. Laissez décoché pour un choix qu'on
+                ne peut sélectionner qu'une fois (ex. une sauce).
+              </p>
               <p className="mt-2 flex items-start gap-1.5 text-sm leading-relaxed text-gris">
                 <Ban size={14} className="mt-0.5 flex-shrink-0 text-red-400" />
                 <span>
@@ -178,9 +185,15 @@ export function ProductTutorialModal({ onClose }: ProductTutorialModalProps) {
                     multiples
                     <div className="ml-3 mt-1 flex flex-wrap gap-1.5">
                       <span className="rounded-full bg-gris-light px-2 py-0.5">Fromage +1,5 €</span>
-                      <span className="rounded-full bg-gris-light px-2 py-0.5">Bacon +2 €</span>
+                      <span className="rounded-full bg-golfe-green/15 px-2 py-0.5 font-medium text-nuit">
+                        Bacon +2 € · quantité multiple ✓
+                      </span>
                       <span className="rounded-full bg-gris-light px-2 py-0.5">Œuf +1 €</span>
                     </div>
+                    <p className="ml-3 mt-1 text-[11px] text-gris">
+                      → le client pourra ajouter "Bacon" plusieurs fois (x2, x3, x4...), mais "Fromage" et "Œuf"
+                      qu'une seule fois chacun.
+                    </p>
                   </div>
                 </div>
               </div>
