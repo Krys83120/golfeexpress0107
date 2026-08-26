@@ -226,6 +226,8 @@ export interface ProductOptionChoice {
   /** Rupture sur ce choix précis (ex: "plus de mâche"). Voir prisma/schema.prisma. */
   isAvailable?: boolean;
   unavailableUntil?: string | null;
+  /** Le client peut ajouter ce choix plusieurs fois (ex: "Bacon" x4) au lieu d'une seule. Voir prisma/schema.prisma. */
+  allowMultipleQty?: boolean;
 }
 
 export interface ProductOption {

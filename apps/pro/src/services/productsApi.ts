@@ -36,6 +36,8 @@ export type OptionGroupInput = Pick<ProductOption, "name" | "isRequired" | "isMu
     /** Rupture sur ce choix précis (ex: "plus de mâche"). Voir ProductFormModal.tsx. */
     isAvailable: boolean;
     unavailableUntil: string | null;
+    /** Le client peut ajouter ce choix plusieurs fois (ex: "Bacon" x4). Voir ProductFormModal.tsx. */
+    allowMultipleQty: boolean;
   }[];
 };
 

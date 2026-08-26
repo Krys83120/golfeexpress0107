@@ -27,6 +27,15 @@ import {
 const SERVICE_FEE = 0.99;
 const PLATFORM_COMMISSION_RATE_FALLBACK = 0.18;
 
+// Quantité maximale acceptée pour un même choix répété sur une ligne (ex:
+// "Bacon" x20 maxi) -- filet de sécurité pur, le vrai plafond métier reste
+// ProductOption.maxChoices quand le Pro en règle un pour le groupe. Évite
+// qu'un appel API direct (contournant ProductOptionsModal.tsx côté Client)
+// n'envoie une quantité absurde pour un choix, même sur un groupe sans
+// maxChoices défini. Même valeur que côté Client, voir MAX_QTY_PER_CHOICE
+// dans ProductOptionsModal.tsx.
+const MAX_QTY_PER_CHOICE = 20;
+
 /**
  * POST /api/orders
  *
@@ -267,6 +276,44 @@ async function postHandler(req: NextRequest) {
     }
   }
 
+  /**
+   * Revalide côté serveur qu'un choix répété plusieurs fois sur la même
+   * ligne (ex: "Bacon, Bacon, Bacon, Bacon" -- quantité encodée en répétant
+   * le nom du choix dans la chaîne CSV, voir ProductOptionsModal.tsx côté
+   * Client) est bien autorisé pour CE choix précis
+   * (OptionChoice.allowMultipleQty, réglable par le Pro dans
+   * ProductFormModal.tsx) et ne dépasse pas MAX_QTY_PER_CHOICE -- même
+   * principe de défense en profondeur que assertWithinMaxChoices et
+   * assertChoicesAvailable ci-dessus : le blocage côté Client peut être
+   * contourné.
+   */
+  function assertQuantifiableChoices(product: (typeof products)[number], selectedOptions: Record<string, string> | undefined) {
+    if (!selectedOptions) return;
+    for (const [groupName, selectedChoiceNames] of Object.entries(selectedOptions)) {
+      const group = product.options.find((o) => o.name === groupName);
+      if (!group) continue;
+      const chosenNames = selectedChoiceNames.split(",").map((n) => n.trim()).filter(Boolean);
+      const counts = new Map<string, number>();
+      for (const name of chosenNames) counts.set(name, (counts.get(name) ?? 0) + 1);
+      for (const [choiceName, count] of counts) {
+        if (count > MAX_QTY_PER_CHOICE) {
+          throw new ApiError(
+            400,
+            `"${choiceName}" (${group.name}) : quantité maximale ${MAX_QTY_PER_CHOICE} dépassée pour "${product.name}".`
+          );
+        }
+        if (count <= 1) continue;
+        const choice = group.choices.find((c) => c.name === choiceName);
+        if (choice && !choice.allowMultipleQty) {
+          throw new ApiError(
+            400,
+            `"${choiceName}" (${group.name}) ne peut être ajouté qu'une seule fois pour "${product.name}".`
+          );
+        }
+      }
+    }
+  }
+
   let subtotal = 0;
   const orderItemsData = items.map((item) => {
     const product = productById.get(item.productId);
@@ -278,6 +325,7 @@ async function postHandler(req: NextRequest) {
     }
     assertWithinMaxChoices(product, item.options);
     assertChoicesAvailable(product, item.options);
+    assertQuantifiableChoices(product, item.options);
 
     const unitPrice = Number(product.price) + computeOptionsSurcharge(product, item.options);
     const totalPrice = unitPrice * item.quantity;

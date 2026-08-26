@@ -29,6 +29,12 @@ export const optionChoiceInputSchema = z.object({
   // Base") -- même principe que Product.isAvailable/unavailableUntil.
   isAvailable: z.boolean().default(true),
   unavailableUntil: z.string().datetime().nullable().optional(),
+  // Quantité multiple pour CE choix précis (ex: "Bacon" x4) -- réglable par
+  // le Pro uniquement quand le groupe est à choix multiples (voir la route
+  // PUT options qui l'ignore silencieusement sinon, même principe que
+  // maxChoices ci-dessous pour le groupe). Voir prisma/schema.prisma
+  // OptionChoice.allowMultipleQty.
+  allowMultipleQty: z.boolean().default(false),
 });
 
 export const productOptionInputSchema = z.object({

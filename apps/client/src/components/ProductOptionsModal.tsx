@@ -23,8 +23,29 @@ interface ProductOptionsModalProps {
   }) => void;
 }
 
-/** Sélections en cours : nom du groupe -> ensemble des noms de choix cochés. */
-type SelectionState = Record<string, Set<string>>;
+/**
+ * Sélections en cours : nom du groupe -> (nom du choix -> quantité choisie).
+ * Une quantité vaut 1 pour un choix normal (case à cocher / radio classique)
+ * et peut monter au-delà de 1 uniquement pour un choix "quantité multiple"
+ * (OptionChoice.allowMultipleQty, réglé par le Pro dans ProductFormModal.tsx
+ * -- ex: "Bacon" x4). Un choix non sélectionné n'a jamais d'entrée dans la
+ * Map (invariant maintenu par toggleChoice/adjustChoiceQty ci-dessous), donc
+ * `.size` reste un indicateur fiable de "au moins un choix sélectionné",
+ * comme avec l'ancien Set<string>.
+ */
+type SelectionState = Record<string, Map<string, number>>;
+
+// Quantité maximale acceptée pour un même choix "quantité multiple" (ex:
+// "Bacon" x20 maxi) -- garde-fou UX pur, revalidé côté serveur (voir
+// MAX_QTY_PER_CHOICE dans orders/route.ts, même valeur).
+const MAX_QTY_PER_CHOICE = 20;
+
+function totalPicksInGroup(chosen: Map<string, number> | undefined): number {
+  if (!chosen) return 0;
+  let total = 0;
+  for (const qty of chosen.values()) total += qty;
+  return total;
+}
 
 function isSelectionComplete(options: ProductOption[], selection: SelectionState): boolean {
   return options.every((group) => !group.isRequired || (selection[group.name]?.size ?? 0) > 0);
@@ -81,7 +102,7 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
     // fonction, mise à jour partielle du state...).
     if (choice && choice.isAvailable === false) return;
     setSelection((prev) => {
-      const current = new Set(prev[group.name] ?? []);
+      const current = new Map(prev[group.name] ?? []);
       if (group.isMultiple) {
         if (current.has(choiceName)) {
           current.delete(choiceName);
@@ -89,16 +110,52 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
           // Limite de choix pour ce groupe (ex: "3 protéines maxi") réglée
           // par le Pro sur sa fiche produit (ProductOption.maxChoices, voir
           // aussi assertWithinMaxChoices côté serveur qui revalide cette
-          // même limite à la création de la commande). Une fois la limite
-          // atteinte, un nouveau choix est simplement ignoré -- décocher un
-          // choix déjà sélectionné reste toujours possible juste au-dessus.
-          if (group.maxChoices != null && current.size >= group.maxChoices) return prev;
-          current.add(choiceName);
+          // même limite à la création de la commande). Compte le total des
+          // quantités du groupe (pas juste le nombre de choix distincts), la
+          // même limite s'appliquant qu'il s'agisse de choix répétés ou non.
+          // Une fois la limite atteinte, un nouveau choix est simplement
+          // ignoré -- décocher un choix déjà sélectionné reste toujours
+          // possible juste au-dessus.
+          if (group.maxChoices != null && totalPicksInGroup(current) >= group.maxChoices) return prev;
+          current.set(choiceName, 1);
         }
       } else {
         // Choix unique : sélectionner un choix remplace le précédent.
         current.clear();
-        current.add(choiceName);
+        current.set(choiceName, 1);
+      }
+      return { ...prev, [group.name]: current };
+    });
+  }
+
+  /**
+   * Ajuste la quantité d'un choix "quantité multiple" (OptionChoice.
+   * allowMultipleQty, ex: "Bacon" x4 -- voir ProductFormModal.tsx côté Pro)
+   * de `delta` (+1/-1 depuis le stepper). Une quantité qui retombe à 0
+   * retire l'entrée de la Map plutôt que de la garder à 0, pour conserver
+   * l'invariant "présent dans la Map = sélectionné" utilisé ailleurs
+   * (isSelectionComplete, extraPrice, handleConfirm...).
+   */
+  function adjustChoiceQty(group: ProductOption, choiceName: string, delta: number) {
+    const choice = group.choices.find((c) => c.name === choiceName);
+    if (choice && choice.isAvailable === false) return;
+    setSelection((prev) => {
+      const current = new Map(prev[group.name] ?? []);
+      const currentQty = current.get(choiceName) ?? 0;
+      const nextQty = currentQty + delta;
+      if (nextQty <= 0) {
+        current.delete(choiceName);
+      } else {
+        if (nextQty > MAX_QTY_PER_CHOICE) return prev;
+        // Même limite de groupe que toggleChoice ci-dessus (ex: "3 maxi"),
+        // en comptant le total des AUTRES choix du groupe + la nouvelle
+        // quantité de celui-ci.
+        let totalOthers = 0;
+        for (const [name, qty] of current) {
+          if (name !== choiceName) totalOthers += qty;
+        }
+        if (group.maxChoices != null && totalOthers + nextQty > group.maxChoices) return prev;
+        current.set(choiceName, nextQty);
       }
       return { ...prev, [group.name]: current };
     });
@@ -109,9 +166,9 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
     for (const group of options) {
       const chosen = selection[group.name];
       if (!chosen) continue;
-      for (const choiceName of chosen) {
+      for (const [choiceName, qty] of chosen) {
         const choice = group.choices.find((c) => c.name === choiceName);
-        if (choice) sum += Number(choice.priceModifier);
+        if (choice) sum += Number(choice.priceModifier) * qty;
       }
     }
     return sum;
@@ -124,13 +181,27 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
   function handleConfirm() {
     if (!canConfirm) return;
     const flatOptions: Record<string, string> = {};
+    const labelParts: string[] = [];
     for (const group of options) {
       const chosen = selection[group.name];
       if (chosen && chosen.size > 0) {
-        flatOptions[group.name] = [...chosen].join(", ");
+        // Encode la quantité en répétant le nom du choix dans la chaîne CSV
+        // envoyée à l'API (ex: "Bacon, Bacon, Bacon, Bacon" pour x4) --
+        // computeOptionsSurcharge et assertQuantifiableChoices côté serveur
+        // (orders/route.ts) savent déjà lire ce format, aucun changement
+        // d'API nécessaire. Le libellé affiché au client/sur le ticket reste
+        // lui condensé ("Bacon x4"), voir groupLabelParts ci-dessous.
+        const names: string[] = [];
+        const groupLabelParts: string[] = [];
+        for (const [choiceName, qty] of chosen) {
+          for (let i = 0; i < qty; i++) names.push(choiceName);
+          groupLabelParts.push(qty > 1 ? `${choiceName} x${qty}` : choiceName);
+        }
+        flatOptions[group.name] = names.join(", ");
+        labelParts.push(groupLabelParts.join(", "));
       }
     }
-    const optionsLabel = Object.values(flatOptions).join(", ");
+    const optionsLabel = labelParts.join(", ");
     const trimmedInstructions = specialInstructions.trim();
     onConfirm({
       options: flatOptions,
@@ -201,7 +272,7 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
             )}
 
             {options.map((group) => {
-              const chosen = selection[group.name] ?? new Set<string>();
+              const chosen = selection[group.name] ?? new Map<string, number>();
               return (
                 <View key={group.id} style={styles.group}>
                   <View style={styles.groupHeader}>
@@ -219,10 +290,51 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
                   </View>
 
                   {group.choices.map((choice) => {
-                    const isSelected = chosen.has(choice.name);
+                    const qty = chosen.get(choice.name) ?? 0;
+                    const isSelected = qty > 0;
                     // isAvailable absent (ancien choix jamais ré-enregistré
                     // depuis l'ajout du champ) = disponible par défaut.
                     const isUnavailable = choice.isAvailable === false;
+                    const isQuantifiable = choice.allowMultipleQty === true;
+
+                    if (isQuantifiable) {
+                      // Choix "quantité multiple" (ex: "Bacon" x4, réglé par
+                      // le Pro dans ProductFormModal.tsx) -- stepper +/- à la
+                      // place de la case à cocher classique ci-dessous.
+                      return (
+                        <View key={choice.id} style={[styles.choiceRow, isUnavailable && { opacity: 0.45 }]}>
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                              <Text style={styles.choiceName}>{choice.name}</Text>
+                              {isUnavailable && (
+                                <View style={styles.unavailableBadge}>
+                                  <Text style={styles.unavailableBadgeText}>Indisponible</Text>
+                                </View>
+                              )}
+                            </View>
+                            {!isUnavailable && Number(choice.priceModifier) > 0 && (
+                              <Text style={styles.choicePrice}>+{Number(choice.priceModifier).toFixed(2).replace(".", ",")} € / unité</Text>
+                            )}
+                          </View>
+                          {!isUnavailable && (
+                            <View style={styles.stepper}>
+                              <Pressable
+                                onPress={() => adjustChoiceQty(group, choice.name, -1)}
+                                disabled={qty === 0}
+                                style={[styles.stepperBtn, qty === 0 && { opacity: 0.35 }]}
+                              >
+                                <Text style={styles.stepperBtnText}>−</Text>
+                              </Pressable>
+                              <Text style={styles.stepperQty}>{qty}</Text>
+                              <Pressable onPress={() => adjustChoiceQty(group, choice.name, 1)} style={styles.stepperBtn}>
+                                <Text style={styles.stepperBtnText}>+</Text>
+                              </Pressable>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    }
+
                     return (
                       <Pressable
                         key={choice.id}
@@ -393,6 +505,18 @@ const styles = StyleSheet.create({
   unavailableBadgeText: { fontSize: 10, fontWeight: "600", color: "#6B7280" },
   radio: { height: 22, width: 22, alignItems: "center", justifyContent: "center", borderRadius: 999, borderWidth: 2, borderColor: "#D1D5DB" },
   checkbox: { height: 22, width: 22, alignItems: "center", justifyContent: "center", borderRadius: 6, borderWidth: 2, borderColor: "#D1D5DB" },
+  stepper: { flexDirection: "row", alignItems: "center", gap: 10 },
+  stepperBtn: {
+    height: 26,
+    width: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+  },
+  stepperBtnText: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+  stepperQty: { minWidth: 16, textAlign: "center", fontSize: 14, fontWeight: "700", color: "#1A1A2E" },
   footer: { borderTopWidth: 1, borderTopColor: "#F3F4F6", padding: 16 },
   confirmBtn: { alignItems: "center", borderRadius: 16, backgroundColor: "#1A1A2E", paddingVertical: 16 },
   confirmText: { fontSize: 15, fontWeight: "700", color: "white" },

@@ -605,6 +605,17 @@ model OptionChoice {
   /// disponibles une fois unavailableUntil dépassée.
   isAvailable       Boolean   @default(true) @map("is_available")
   unavailableUntil  DateTime? @map("unavailable_until")
+  /// true = le client peut ajouter CE choix plusieurs fois sur la même
+  /// ligne (ex: "Bacon" x4) plutôt qu'une seule fois -- activé par le Pro
+  /// choix par choix (pas par groupe entier), voir ProductFormModal.tsx
+  /// (réglage, uniquement affiché quand ProductOption.isMultiple=true) et
+  /// ProductOptionsModal.tsx côté Client (stepper +/- à la place de la case
+  /// à cocher simple). La quantité est encodée en répétant le nom du choix
+  /// dans la chaîne CSV envoyée pour ce groupe (ex: "Bacon, Bacon, Bacon,
+  /// Bacon") -- computeOptionsSurcharge (orders/route.ts) somme déjà le
+  /// supplément par occurrence, aucun changement nécessaire à ce calcul.
+  /// Revalidé côté serveur par assertQuantifiableChoices (orders/route.ts).
+  allowMultipleQty  Boolean   @default(false) @map("allow_multiple_qty")
 
   option        ProductOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
 }

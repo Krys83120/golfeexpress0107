@@ -146,19 +146,37 @@ export function printOrderLabel(order: Order) {
  * sélectionné(s) }, les choix multiples étant déjà fusionnés en une chaîne
  * "A, B" côté client (voir apps/client/src/store/useCartStore.ts) -- on les
  * re-sépare ici pour en faire une ligne par choix sur le ticket.
+ *
+ * Un choix "quantité multiple" (ex: "Bacon" x4, voir OptionChoice.
+ * allowMultipleQty et ProductOptionsModal.tsx côté Client) apparaît répété
+ * plusieurs fois dans cette même chaîne CSV ("Bacon, Bacon, Bacon, Bacon")
+ * -- on les regroupe ici en une seule ligne "Bacon x4" plutôt que 4 lignes
+ * identiques, en conservant l'ordre de première apparition.
  */
 function formatItemOptionGroups(
   options: Record<string, unknown> | null | undefined
 ): Array<{ name: string; choices: string[] }> {
   if (!options) return [];
   return Object.entries(options)
-    .map(([group, value]) => ({
-      name: group,
-      choices: String(value ?? "")
+    .map(([group, value]) => {
+      const rawChoices = String(value ?? "")
         .split(",")
         .map((choice) => choice.trim())
-        .filter((choice) => choice.length > 0),
-    }))
+        .filter((choice) => choice.length > 0);
+      const counts = new Map<string, number>();
+      const order: string[] = [];
+      for (const choice of rawChoices) {
+        if (!counts.has(choice)) order.push(choice);
+        counts.set(choice, (counts.get(choice) ?? 0) + 1);
+      }
+      return {
+        name: group,
+        choices: order.map((choice) => {
+          const count = counts.get(choice) ?? 1;
+          return count > 1 ? `${choice} x${count}` : choice;
+        }),
+      };
+    })
     .filter((group) => group.choices.length > 0);
 }
 

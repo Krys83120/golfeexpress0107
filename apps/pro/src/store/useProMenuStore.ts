@@ -119,6 +119,7 @@ export const useProMenuStore = create<ProMenuState>((set, get) => ({
             priceModifier: c.priceModifier,
             isAvailable: true,
             unavailableUntil: null,
+            allowMultipleQty: c.allowMultipleQty ?? false,
           })),
         }))
       );

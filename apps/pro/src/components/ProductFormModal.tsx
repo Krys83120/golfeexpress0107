@@ -48,6 +48,9 @@ function toOptionGroupInput(option: ProductOption): OptionGroupInput {
       // ré-enregistrés -- on les considère disponibles par défaut.
       isAvailable: c.isAvailable ?? true,
       unavailableUntil: c.unavailableUntil ?? null,
+      // ?? false : même raison que isAvailable ci-dessus pour les choix
+      // créés avant l'ajout de ce champ.
+      allowMultipleQty: c.allowMultipleQty ?? false,
     })),
   };
 }
@@ -136,7 +139,7 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
         isRequired: false,
         isMultiple: false,
         maxChoices: null,
-        choices: [{ name: "", priceModifier: 0, isAvailable: true, unavailableUntil: null }],
+        choices: [{ name: "", priceModifier: 0, isAvailable: true, unavailableUntil: null, allowMultipleQty: false }],
       },
     ]);
   }
@@ -153,7 +156,13 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
     setOptionGroups((prev) =>
       prev.map((g, i) =>
         i === groupIndex
-          ? { ...g, choices: [...g.choices, { name: "", priceModifier: 0, isAvailable: true, unavailableUntil: null }] }
+          ? {
+              ...g,
+              choices: [
+                ...g.choices,
+                { name: "", priceModifier: 0, isAvailable: true, unavailableUntil: null, allowMultipleQty: false },
+              ],
+            }
           : g
       )
     );
@@ -162,7 +171,13 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
   function updateChoice(
     groupIndex: number,
     choiceIndex: number,
-    patch: Partial<{ name: string; priceModifier: number; isAvailable: boolean; unavailableUntil: string | null }>
+    patch: Partial<{
+      name: string;
+      priceModifier: number;
+      isAvailable: boolean;
+      unavailableUntil: string | null;
+      allowMultipleQty: boolean;
+    }>
   ) {
     setOptionGroups((prev) =>
       prev.map((g, i) =>
@@ -192,7 +207,11 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
           // on l'ignore silencieusement si "Choix multiples" n'est pas coché
           // plutôt que de laisser une valeur orpheline sans effet visible.
           maxChoices: g.isMultiple ? g.maxChoices : null,
-          choices: g.choices.filter((c) => c.name.trim()),
+          choices: g.choices
+            .filter((c) => c.name.trim())
+            // "Quantité multiple" n'a de sens que pour un groupe à choix
+            // multiples -- même garde que "Choix maxi" ci-dessus.
+            .map((c) => ({ ...c, allowMultipleQty: g.isMultiple ? c.allowMultipleQty : false })),
         }))
         .filter((g) => g.name && g.choices.length > 0);
       await updateProductOptions(product.id, cleaned, { allowSpecialInstructions, hasExtraFeeNotice });
@@ -538,6 +557,18 @@ export function ProductFormModal({ product, proId, existingCategories, onClose, 
                             <Trash2 size={13} />
                           </button>
                         </div>
+
+                        {group.isMultiple && (
+                          <label className="ml-1 flex items-center gap-1.5 text-[11px] text-nuit">
+                            <input
+                              type="checkbox"
+                              checked={choice.allowMultipleQty ?? false}
+                              onChange={(e) => updateChoice(groupIndex, choiceIndex, { allowMultipleQty: e.target.checked })}
+                            />
+                            Quantité multiple
+                            <span className="text-gris">(le client peut en ajouter plusieurs, ex : "{choice.name || "Bacon"}" x4)</span>
+                          </label>
+                        )}
 
                         {!choice.isAvailable && (
                           <div className="ml-1 flex items-center gap-3 rounded-sm bg-sable px-2 py-1.5 text-[11px] text-nuit">
