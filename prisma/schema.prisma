@@ -222,8 +222,8 @@ model ProEmployee {
   userId    String   @unique @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  pro       Pro      @relation(fields: [proId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  pro       Pro      @relation(fields: [proId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ==================== RÉINITIALISATION DE MOT DE PASSE ====================
