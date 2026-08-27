@@ -61,9 +61,16 @@ export async function updateAdminUser(userId: string, payload: UpdateAdminUserPa
  *
  * Suppression définitive — refusée par l'API (409) si le compte a un
  * historique de commandes lié, voir le message renvoyé dans ce cas.
+ *
+ * Timeout allongé à 30s (au lieu des 15s par défaut) : cette suppression
+ * passe par Supabase Auth, dont le trigger cascade vers nos tables métier
+ * (Client/Pro/Rider/Address/Notification) — plus lent qu'un appel API
+ * classique, et 15s coupait parfois la requête avant qu'elle n'aboutisse
+ * ("signal is aborted without reason" côté écran, alors que la suppression
+ * elle-même n'avait pas forcément échoué côté serveur).
  */
 export async function deleteAdminUser(userId: string): Promise<void> {
-  await apiFetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+  await apiFetch(`/api/admin/users/${userId}`, { method: "DELETE", timeoutMs: 30000 });
 }
 
 export interface AdminProRow extends Omit<Pro, "addresses" | "user"> {

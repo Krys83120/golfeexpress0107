@@ -12,9 +12,9 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
  */
 const FETCH_TIMEOUT_MS = 15000;
 
-function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
+function fetchWithTimeout(input: string, init: RequestInit = {}, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
@@ -28,6 +28,12 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   skipAuth?: boolean;
+  /**
+   * Délai avant annulation, en ms — utile pour les rares appels dont on
+   * sait qu'ils peuvent légitimement prendre plus que les 15s par défaut
+   * (ex: suppression d'un compte, qui cascade côté Supabase Auth).
+   */
+  timeoutMs?: number;
 }
 
 /**
@@ -36,19 +42,23 @@ interface RequestOptions {
  * réessayer une fois. Si le refresh échoue aussi, déconnecte l'utilisateur.
  */
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", body, skipAuth = false } = options;
+  const { method = "GET", body, skipAuth = false, timeoutMs } = options;
 
   async function performRequest(): Promise<Response> {
     const accessToken = skipAuth ? null : useAuthStore.getState().accessToken;
 
-    return fetchWithTimeout(`${API_BASE_URL}${path}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    return fetchWithTimeout(
+      `${API_BASE_URL}${path}`,
+      {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
       },
-      body: body ? JSON.stringify(body) : undefined,
-    });
+      timeoutMs
+    );
   }
 
   let response = await performRequest();
