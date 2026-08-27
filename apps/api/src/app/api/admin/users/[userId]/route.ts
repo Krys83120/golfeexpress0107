@@ -110,7 +110,13 @@ async function deleteHandler(req: NextRequest, { params }: { params: { userId: s
   const { error } = await supabaseAdmin.auth.admin.deleteUser(target.id);
   if (error) {
     console.error(`[admin users] Échec suppression Supabase Auth pour ${target.id}:`, error);
-    throw new ApiError(500, "La suppression a échoué. Réessayez, ou contactez le support si le problème persiste.");
+    // Le message d'erreur réel de Supabase (souvent une contrainte de clé
+    // étrangère précise, ex: "update or delete on table X violates foreign
+    // key constraint Y") est renvoyé tel quel plutôt que masqué par un
+    // message générique — ce panneau n'est utilisé que par des admins de
+    // confiance, donc pas de risque à leur montrer le détail technique, et
+    // ça évite d'avoir à aller chercher dans les logs Vercel à chaque fois.
+    throw new ApiError(500, `La suppression a échoué : ${error.message || "erreur inconnue"} (code: ${error.code ?? error.status ?? "?"}).`);
   }
 
   return NextResponse.json({ deleted: true });
