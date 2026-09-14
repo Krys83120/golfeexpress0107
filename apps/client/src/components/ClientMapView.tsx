@@ -43,14 +43,17 @@ export function ClientMapView({ pins, onPinPress }: ClientMapViewProps) {
 
   const markersJs = pins
     .map((p) => {
-      // Logo du Pro affiché en fond d'image circulaire quand présent — url()
-      // entre guillemets SIMPLES car il est injecté dans un attribut HTML
-      // style="..." en guillemets DOUBLES : des guillemets doubles ici (ex.
-      // via JSON.stringify) casseraient l'attribut et le logo resterait
-      // invisible (fond blanc vide). Repli sur l'emoji de catégorie sinon
-      // (pro sans logo uploadé).
+      // Logo du Pro affiché en fond d'image circulaire quand présent. url()
+      // SANS guillemets (valide en CSS tant que l'URL n'a ni espace ni
+      // parenthèse) : ce HTML est lui-même injecté dans une chaîne JS
+      // délimitée par des guillemets SIMPLES (voir `html:` juste plus bas) --
+      // un logoUrl contenant des guillemets simples (ex: url('...')) cassait
+      // cette chaîne JS en plein milieu, ce qui provoquait une erreur de
+      // syntaxe dans le <script> généré et empêchait TOUTE la carte de
+      // s'afficher (pas seulement le pin concerné) dès qu'un seul Pro avait
+      // un logo. Repli sur l'emoji de catégorie sinon (pro sans logo uploadé).
       const background = p.logoUrl
-        ? `white url('${p.logoUrl}') center/cover no-repeat`
+        ? `white url(${p.logoUrl}) center/cover no-repeat`
         : p.color;
       const inner = p.logoUrl ? "" : p.emoji;
       return `
