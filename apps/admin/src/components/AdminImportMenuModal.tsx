@@ -41,6 +41,85 @@ function decodeCsvBuffer(buffer: ArrayBuffer): string {
 }
 
 /**
+ * Parseur CSV minimal (délimiteur ';', guillemets doublés comme échappement)
+ * -- même logique que parseCsvRows côté serveur (adminMenuImport.ts), mais
+ * dupliquée ici côté client : on n'a besoin que d'y repérer une éventuelle
+ * colonne "image" (voir extractPhotosFromCsv ci-dessous), la validation
+ * complète du fichier reste faite par le serveur à l'import.
+ */
+function parseCsvRowsClient(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  const src = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  for (let i = 0; i < src.length; i++) {
+    const char = src[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (src[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+      continue;
+    }
+    if (char === '"') {
+      inQuotes = true;
+    } else if (char === ";") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows.filter((r) => r.some((cell) => cell.trim() !== ""));
+}
+
+/**
+ * Repère une éventuelle colonne "image" dans le même CSV de menu (à côté de
+ * "type" et "produit") et en extrait les paires nom/photo pour les lignes
+ * PRODUIT qui en ont une -- permet d'importer menu + photos en UN SEUL
+ * fichier (25/09/2026, sur demande explicite : la sélection de deux
+ * fichiers séparés prêtait à confusion). Renvoie [] si le fichier n'a pas
+ * de colonne "image" (cas normal d'un CSV de menu classique).
+ */
+function extractPhotosFromCsv(text: string): { productName: string; imageUrl: string }[] {
+  const rows = parseCsvRowsClient(text);
+  if (rows.length === 0) return [];
+  const header = rows[0].map((h) => h.trim().toLowerCase());
+  const idxType = header.indexOf("type");
+  const idxProduit = header.indexOf("produit");
+  const idxImage = header.indexOf("image");
+  if (idxType === -1 || idxProduit === -1 || idxImage === -1) return [];
+
+  const pairs: { productName: string; imageUrl: string }[] = [];
+  for (const cells of rows.slice(1)) {
+    const type = (cells[idxType] ?? "").trim().toUpperCase();
+    const imageUrl = (cells[idxImage] ?? "").trim();
+    const productName = (cells[idxProduit] ?? "").trim();
+    if (type === "PRODUIT" && productName && imageUrl) {
+      pairs.push({ productName, imageUrl });
+    }
+  }
+  return pairs;
+}
+
+/**
  * Import CSV manuel d'un menu complet (produits + groupes d'options +
  * choix) pour un Pro donné, directement depuis sa fiche admin -- sans que
  * le Pro ait besoin de tout ressaisir lui-même dans son propre compte.
@@ -65,47 +144,20 @@ export function AdminImportMenuModal({ proId, proName, onClose, onImported }: Ad
   const [clearExisting, setClearExisting] = useState(true);
   const [resetInfo, setResetInfo] = useState<{ deletedCount: number; keptCount: number } | null>(null);
 
-  // Photos (optionnel) -- second fichier CSV à 2 colonnes "nom;url_photo",
-  // appliqué juste après l'import : le parseur CSV du menu (adminMenuImport.ts)
-  // ne gère pas encore les images lui-même, ce fichier permet de les
-  // renseigner en un seul clic sans y toucher (voir POST .../set-images).
-  const photosInputRef = useRef<HTMLInputElement>(null);
-  const [photosFileName, setPhotosFileName] = useState<string | null>(null);
+  // Photos : un seul fichier CSV pour le menu ET les photos -- si le CSV
+  // sélectionné a une colonne "image" (voir extractPhotosFromCsv plus haut),
+  // les photos en sont extraites automatiquement et appliquées juste après
+  // l'import des produits (voir handleImport). Un CSV de menu classique sans
+  // cette colonne continue de fonctionner exactement comme avant.
   const [photosPairs, setPhotosPairs] = useState<{ productName: string; imageUrl: string }[]>([]);
   const [imagesResult, setImagesResult] = useState<AdminSetImagesResult | null>(null);
-
-  function handlePhotosFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPhotosFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const buffer = reader.result instanceof ArrayBuffer ? reader.result : null;
-      const text = buffer ? decodeCsvBuffer(buffer) : "";
-      const pairs = text
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => {
-          const idx = line.indexOf(";");
-          if (idx === -1) return null;
-          const productName = line.slice(0, idx).trim().replace(/^"|"$/g, "");
-          const imageUrl = line.slice(idx + 1).trim().replace(/^"|"$/g, "");
-          return productName && imageUrl ? { productName, imageUrl } : null;
-        })
-        .filter((p): p is { productName: string; imageUrl: string } => p !== null)
-        // Ignore une éventuelle ligne d'en-tête (ex: "nom;url_photo").
-        .filter((p) => !/^url|photo|image$/i.test(p.imageUrl));
-      setPhotosPairs(pairs);
-    };
-    reader.readAsArrayBuffer(file);
-  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
     setResult(null);
+    setImagesResult(null);
     setFileName(file.name);
 
     const reader = new FileReader();
@@ -121,6 +173,7 @@ export function AdminImportMenuModal({ proId, proName, onClose, onImported }: Ad
         .split(/\r?\n/)
         .filter((line) => /^"?PRODUIT"?\s*;/i.test(line.trim())).length;
       setProductCount(rough);
+      setPhotosPairs(extractPhotosFromCsv(text));
     };
     reader.onerror = () => setError("Impossible de lire ce fichier.");
     // Lu en ArrayBuffer (pas readAsText) pour pouvoir choisir l'encodage
@@ -169,7 +222,8 @@ export function AdminImportMenuModal({ proId, proName, onClose, onImported }: Ad
             </p>
             <p className="mb-3 text-xs text-gris">
               Format attendu : CSV séparé par <code>;</code>, avec une colonne <code>type</code> valant PRODUIT,
-              GROUPE ou CHOIX selon la ligne — même gabarit que les exports de menu déjà fournis.
+              GROUPE ou CHOIX selon la ligne — même gabarit que les exports de menu déjà fournis. Une colonne{" "}
+              <code>image</code> (optionnelle, sur les lignes PRODUIT) permet d'importer les photos en même temps.
             </p>
 
             <button
@@ -200,27 +254,13 @@ export function AdminImportMenuModal({ proId, proName, onClose, onImported }: Ad
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={() => photosInputRef.current?.click()}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-sm border-2 border-dashed border-gris-light bg-gris-light/50 px-4 py-4 text-xs font-semibold text-gris hover:bg-gris-light"
-            >
-              <ImageIcon size={14} />
-              {photosFileName ? "Changer le fichier photos" : "Photos (optionnel) : fichier nom;url_photo"}
-            </button>
-            <input
-              ref={photosInputRef}
-              type="file"
-              accept=".csv,text/csv"
-              onChange={handlePhotosFileChange}
-              className="hidden"
-            />
-            {photosFileName && (
-              <div className="mt-2 flex items-center gap-2 rounded-sm bg-gris-light p-3 text-sm text-nuit">
-                <ImageIcon size={15} />
-                <span className="flex-1 truncate">{photosFileName}</span>
-                <span className="text-xs text-gris">
-                  {photosPairs.length} photo{photosPairs.length > 1 ? "s" : ""}
+            {photosPairs.length > 0 && (
+              <div className="mt-2 flex items-center gap-2 rounded-sm bg-green-50 p-3 text-sm text-nuit">
+                <ImageIcon size={15} className="shrink-0 text-golfe-green" />
+                <span className="flex-1">
+                  Colonne "image" détectée dans ce fichier — {photosPairs.length} photo
+                  {photosPairs.length > 1 ? "s" : ""} sera{photosPairs.length > 1 ? "ont" : ""} appliquée
+                  {photosPairs.length > 1 ? "s" : ""} après l'import.
                 </span>
               </div>
             )}
