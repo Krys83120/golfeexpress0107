@@ -255,6 +255,8 @@ export interface Product {
   image?: string | null;
   additionalImages?: string[];
   category: string;
+  /** Position au sein de la catégorie ("sous-catégorie" côté admin) — voir prisma/schema.prisma. */
+  sortOrder?: number;
   isAvailable: boolean;
   isFeatured: boolean;
   /** Non-disponibilité temporaire ("Non disponible pour le moment") : date/heure jusqu'à laquelle le produit reste indisponible, ou null (indisponibilité manuelle sans date, ou produit disponible). Voir prisma/schema.prisma. */
@@ -267,6 +269,15 @@ export interface Product {
   rating?: number | null;
   ratingCount?: number;
   options?: ProductOption[];
+}
+
+/** Ordre d'affichage + photo optionnelle d'une catégorie de menu — voir model MenuCategory dans prisma/schema.prisma. */
+export interface MenuCategory {
+  id: string;
+  proId: string;
+  name: string;
+  image?: string | null;
+  sortOrder: number;
 }
 
 export interface OrderItem {

@@ -25,6 +25,53 @@ export async function renameAdminProductCategory(proId: string, oldName: string,
   return data.updatedCount;
 }
 
+export interface AdminMenuCategoryRow {
+  name: string;
+  count: number;
+  image: string | null;
+  sortOrder: number | null;
+}
+
+/** GET /api/admin/pros/:proId/categories — catégories de menu avec ordre + photo (voir model MenuCategory). */
+export async function fetchAdminCategories(proId: string): Promise<AdminMenuCategoryRow[]> {
+  const data = await apiFetch<{ categories: AdminMenuCategoryRow[] }>(`/api/admin/pros/${proId}/categories`);
+  return data.categories;
+}
+
+/** PUT /api/admin/pros/:proId/categories — enregistre le nouvel ordre après glisser-déposer (liste complète des noms). */
+export async function reorderAdminCategories(proId: string, order: string[]): Promise<void> {
+  await apiFetch(`/api/admin/pros/${proId}/categories`, { method: "PUT", body: { order } });
+}
+
+/**
+ * POST /api/admin/pros/:proId/categories/image — upload la photo d'une
+ * catégorie (image encodée en base64 côté appelant, voir la route pour le
+ * détail). Convertit le File en base64 ici pour garder apiFetch (JSON
+ * uniquement) inchangé plutôt que de lui ajouter un chemin multipart.
+ */
+export async function uploadAdminCategoryImage(proId: string, category: string, file: File): Promise<string> {
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) {
+    throw new Error("Format non supporté. Utilisez JPEG, PNG ou WebP.");
+  }
+  const buffer = await file.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const imageBase64 = btoa(binary);
+
+  const data = await apiFetch<{ image: string }>(`/api/admin/pros/${proId}/categories/image`, {
+    method: "POST",
+    body: { category, contentType: file.type, imageBase64 },
+  });
+  return data.image;
+}
+
+/** PUT /api/admin/pros/:proId/products/reorder — enregistre l'ordre des produits d'une catégorie après glisser-déposer. */
+export async function reorderAdminProducts(proId: string, productIds: string[]): Promise<void> {
+  await apiFetch(`/api/admin/pros/${proId}/products/reorder`, { method: "PUT", body: { productIds } });
+}
+
 export interface AdminResetMenuResult {
   deletedCount: number;
   keptCount: number;

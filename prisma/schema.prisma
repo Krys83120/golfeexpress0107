@@ -420,6 +420,11 @@ model Pro {
   reviews           Review[]
   /// Comptes employés créés par ce Pro (voir model ProEmployee).
   employees         ProEmployee[]
+  /// Ordre d'affichage + photo optionnelle des catégories de menu (voir
+  /// model MenuCategory ci-dessous) -- absent pour une catégorie qui n'a
+  /// jamais été personnalisée depuis l'admin (ordre alphabétique par défaut,
+  /// pas de photo).
+  menuCategories    MenuCategory[]
 }
 
 // ==================== LIVREUR (RIDER) ====================
@@ -555,6 +560,14 @@ model Product {
   /// Photos supplémentaires (galerie), au-delà de `image` la photo principale
   additionalImages String[] @default([]) @map("additional_images")
   category    String
+  /// Position de ce produit au sein de sa catégorie (vignette "sous-catégorie"
+  /// côté app Client), réglable par glisser-déposer depuis l'admin (voir
+  /// PUT .../products/reorder). 0 par défaut pour tout produit jamais
+  /// réordonné manuellement -- l'ordre affiché retombe alors sur celui
+  /// renvoyé par l'API (voir orderBy dans GET /api/pros/[proId]/products),
+  /// jamais laissé à l'ordre implicite de la base (voir la même remarque
+  /// sur ProductOption.sortOrder plus bas dans ce fichier).
+  sortOrder   Int      @default(0) @map("sort_order")
   isAvailable Boolean  @default(true) @map("is_available")
   isFeatured  Boolean  @default(false) @map("is_featured")
   /// Rendu non-disponible temporairement (rupture, etc.) jusqu'à cette date
@@ -586,6 +599,38 @@ model Product {
   pro            Pro             @relation(fields: [proId], references: [id])
   orderItems     OrderItem[]
   productReviews ProductReview[]
+}
+
+/// Métadonnées d'affichage d'une catégorie de menu (vignette catégorie côté
+/// app Client) -- ordre + photo optionnelle, réglables depuis l'admin
+/// (AdminCategoryManagerModal.tsx). Délibérément SANS relation vers Product
+/// (pas de categoryId en clé étrangère) : une catégorie n'est qu'une valeur
+/// de Product.category (simple chaîne, voir plus haut), donc une ligne ici
+/// n'existe que pour les catégories déjà personnalisées -- une catégorie
+/// nouvellement importée (via CSV) n'a pas encore de ligne et retombe sur un
+/// ordre alphabétique + un emoji par défaut côté Client, jusqu'à ce que
+/// l'admin la personnalise. Ce choix évite tout risque sur le modèle
+/// Product existant (déjà utilisé par les commandes/le panier en prod).
+model MenuCategory {
+  id        String   @id @default(uuid())
+  proId     String   @map("pro_id")
+  /// Doit correspondre EXACTEMENT (casse comprise) à Product.category --
+  /// renommer une catégorie (voir .../products/rename-category) doit
+  /// répercuter ce renommage ici pour ne pas perdre l'ordre/la photo déjà
+  /// réglés (voir la route de renommage, mise à jour en conséquence).
+  name      String
+  /// Photo de catégorie, uploadée depuis l'admin -- null tant qu'aucune
+  /// n'a été choisie (repli sur la photo du premier produit avec image,
+  /// puis sur un emoji générique côté Client, voir ProDetailScreen.tsx).
+  image     String?
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  pro Pro @relation(fields: [proId], references: [id], onDelete: Cascade)
+
+  @@unique([proId, name])
+  @@map("menu_categories")
 }
 
 model ProductOption {

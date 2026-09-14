@@ -31,6 +31,7 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
   const productsByPro = useProsStore((s) => s.productsByPro);
   const productsStatus = useProsStore((s) => s.productsStatus[pro.id]);
   const loadProductsForPro = useProsStore((s) => s.loadProductsForPro);
+  const categoriesByPro = useProsStore((s) => s.categoriesByPro);
   const reviewsByPro = useProsStore((s) => s.reviewsByPro);
   const reviewsStatus = useProsStore((s) => s.reviewsStatus[pro.id]);
   const loadReviewsForPro = useProsStore((s) => s.loadReviewsForPro);
@@ -63,10 +64,20 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
     return acc;
   }, {});
 
-  // Catégories dans l'ordre d'apparition des produits (celui déjà utilisé
-  // par `grouped` ci-dessus) -- pas de tri alphabétique, pour respecter
-  // l'ordre dans lequel le Pro/l'admin a saisi son menu.
-  const categories = useMemo(() => Object.keys(grouped), [products]);
+  // Catégories dans l'ordre réglé depuis l'admin (voir MenuCategory /
+  // AdminCategoryManagerModal.tsx, glisser-déposer) -- une catégorie jamais
+  // personnalisée arrive après celles réordonnées, triée alphabétiquement
+  // (voir ce tri déjà fait côté serveur dans GET /api/pros/[proId]/products,
+  // categoriesMeta reprend cet ordre tel quel). On filtre sur `grouped` par
+  // sécurité (categoriesMeta ne devrait jamais contenir de nom absent des
+  // produits chargés, mais éviter une vignette vide si jamais).
+  const categoriesMeta = categoriesByPro[pro.id] ?? [];
+  const categories = useMemo(() => {
+    const known = categoriesMeta.map((c) => c.name).filter((name) => grouped[name]);
+    const extra = Object.keys(grouped).filter((name) => !known.includes(name));
+    return [...known, ...extra];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, categoriesMeta]);
 
   // Vignettes catégories/produits (23/09/2026, sur demande explicite --
   // remplace la liste verticale "toutes les catégories empilées avec tous
@@ -87,11 +98,15 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
     }
   }, [categories, selectedCategory]);
 
-  // Photo de la vignette catégorie : pas encore de champ dédié "photo de
-  // catégorie" côté Pro (à venir) -- en attendant, on reprend la première
-  // photo produit disponible dans cette catégorie, sinon un emoji de repli.
-  function categoryTilePhoto(items: Product[]): string | undefined {
-    return items.find((p) => p.image?.startsWith("http"))?.image;
+  // Photo de la vignette catégorie : priorité à la photo choisie
+  // manuellement depuis l'admin (MenuCategory.image, "ajouter ou pas une
+  // photo de catégorie" -- optionnel). Sans ça, on reprend la première
+  // photo produit disponible dans cette catégorie ; sans ça non plus, un
+  // emoji de repli (voir categoryTileEmoji ci-dessous).
+  function categoryTilePhoto(category: string, items: Product[]): string | undefined {
+    const custom = categoriesMeta.find((c) => c.name === category)?.image;
+    if (custom) return custom;
+    return items.find((p) => p.image?.startsWith("http"))?.image ?? undefined;
   }
   function categoryTileEmoji(category: string): string {
     const c = category.toLowerCase();
@@ -338,7 +353,7 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
             >
               {categories.map((category) => {
                 const items = grouped[category];
-                const photo = categoryTilePhoto(items);
+                const photo = categoryTilePhoto(category, items);
                 const isSelected = category === selectedCategory;
                 return (
                   <Pressable key={category} onPress={() => setSelectedCategory(category)} style={{ width: 76 }}>

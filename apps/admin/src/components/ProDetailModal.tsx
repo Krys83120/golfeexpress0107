@@ -632,6 +632,7 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
         <AdminCategoryManagerModal
           proId={pro.id}
           categories={categoriesWithCounts}
+          products={products}
           onClose={() => setShowCategoryManager(false)}
           onRenamed={reloadProducts}
         />

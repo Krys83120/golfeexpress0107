@@ -1,6 +1,6 @@
 import { apiFetch } from "@/services/apiClient";
 import { getCategoryVisual, haversineDistanceKm, estimateDeliveryMinutes } from "@/services/categoryVisuals";
-import type { Pro, Product, OpenStatus, Review, ProductReview } from "@golfeexpress/types";
+import type { Pro, Product, OpenStatus, Review, ProductReview, MenuCategory } from "@golfeexpress/types";
 
 export interface ProWithUi extends Pro {
   emoji: string;
@@ -242,10 +242,23 @@ export async function fetchPros(params: FetchProsParams = {}): Promise<ProWithUi
   return data.pros.map((pro) => toProWithUi(pro, params.userLat, params.userLng, pricingConfig));
 }
 
-/** GET /api/pros/[proId]/products — menu public d'un commerçant. */
-export async function fetchProProducts(proId: string): Promise<Product[]> {
-  const data = await apiFetch<{ products: Product[] }>(`/api/pros/${proId}/products`, { skipAuth: true });
-  return data.products;
+/**
+ * GET /api/pros/[proId]/products — menu public d'un commerçant. Renvoie
+ * aussi `categories` (ordre d'affichage + photo optionnelle des vignettes
+ * catégorie, réglables depuis l'admin — voir model MenuCategory) : une
+ * catégorie jamais personnalisée n'y a que son `name`, `image: null` et un
+ * `sortOrder` déjà calculé côté serveur pour la classer après celles
+ * personnalisées (voir ce tri dans la route elle-même).
+ */
+export async function fetchProProducts(proId: string): Promise<{ products: Product[]; categories: MenuCategory[] }> {
+  const data = await apiFetch<{ products: Product[]; categories: { name: string; image: string | null; sortOrder: number }[] }>(
+    `/api/pros/${proId}/products`,
+    { skipAuth: true }
+  );
+  return {
+    products: data.products,
+    categories: data.categories.map((c, i) => ({ id: c.name, proId, name: c.name, image: c.image, sortOrder: c.sortOrder ?? i })),
+  };
 }
 
 /** GET /api/pros/[proId]/reviews — avis clients publics d'un commerçant. */

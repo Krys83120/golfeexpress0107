@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { fetchPros, fetchProProducts, fetchProReviews, type ProWithUi } from "@/services/prosApi";
-import type { Product, Review } from "@golfeexpress/types";
+import type { Product, Review, MenuCategory } from "@golfeexpress/types";
 
 interface ProsState {
   pros: ProWithUi[];
@@ -9,6 +9,8 @@ interface ProsState {
 
   productsByPro: Record<string, Product[]>;
   productsStatus: Record<string, "loading" | "loaded" | "error">;
+  /** Ordre d'affichage + photo optionnelle des vignettes catégorie (voir fetchProProducts) — chargé en même temps que les produits, jamais séparément. */
+  categoriesByPro: Record<string, MenuCategory[]>;
 
   reviewsByPro: Record<string, Review[]>;
   reviewsStatus: Record<string, "loading" | "loaded" | "error">;
@@ -24,6 +26,7 @@ export const useProsStore = create<ProsState>((set, get) => ({
   error: null,
   productsByPro: {},
   productsStatus: {},
+  categoriesByPro: {},
   reviewsByPro: {},
   reviewsStatus: {},
 
@@ -43,9 +46,10 @@ export const useProsStore = create<ProsState>((set, get) => ({
 
     set((state) => ({ productsStatus: { ...state.productsStatus, [proId]: "loading" } }));
     try {
-      const products = await fetchProProducts(proId);
+      const { products, categories } = await fetchProProducts(proId);
       set((state) => ({
         productsByPro: { ...state.productsByPro, [proId]: products },
+        categoriesByPro: { ...state.categoriesByPro, [proId]: categories },
         productsStatus: { ...state.productsStatus, [proId]: "loaded" },
       }));
     } catch {
