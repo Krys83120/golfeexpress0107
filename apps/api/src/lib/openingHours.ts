@@ -7,9 +7,14 @@ export interface ManualClosureInfo {
   manualClosureNote: string | null;
 }
 
+export interface AdminPauseInfo {
+  isPausedByAdmin: boolean;
+  adminPauseNote: string | null;
+}
+
 export interface OpenStatus {
   isOpen: boolean;
-  reason: "OPEN" | "OUTSIDE_HOURS" | "NO_HOURS_SET" | "VACATION" | "CLOSED";
+  reason: "OPEN" | "OUTSIDE_HOURS" | "NO_HOURS_SET" | "VACATION" | "CLOSED" | "ADMIN_PAUSE";
   manualClosureUntil: string | null;
   manualClosureNote: string | null;
 }
@@ -51,11 +56,26 @@ function getParisNow(): { dayOfWeek: number; hhmm: string } {
  * toujours sur les horaires hebdomadaires : c'est tout l'intérêt du bouton
  * dans les Réglages Pro — fermer sans avoir à toucher aux horaires
  * enregistrés (voir PATCH /api/pros/me/closure).
+ *
+ * La pause admin (adminPause, optionnelle) prime sur TOUT le reste, y
+ * compris la fermeture manuelle ci-dessus — contrairement à celle-ci, le Pro
+ * ne peut jamais la lever depuis ses propres Réglages (voir PATCH
+ * /api/admin/pros/[proId]/pause, réservé ADMIN/SUPER_ADMIN).
  */
 export function computeOpenStatus(
   openingHours: Pick<OpeningHours, "dayOfWeek" | "openTime" | "closeTime" | "isClosed">[] | null | undefined,
-  manualClosure: ManualClosureInfo
+  manualClosure: ManualClosureInfo,
+  adminPause?: AdminPauseInfo
 ): OpenStatus {
+  if (adminPause?.isPausedByAdmin) {
+    return {
+      isOpen: false,
+      reason: "ADMIN_PAUSE",
+      manualClosureUntil: null,
+      manualClosureNote: adminPause.adminPauseNote,
+    };
+  }
+
   if (manualClosure.isManuallyClosed) {
     return {
       isOpen: false,

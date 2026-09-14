@@ -9,6 +9,8 @@ export interface MapPinData {
   emoji: string;
   color: string;
   label: string;
+  /** Logo du Pro (Pro.logo) — affiché à la place de l'emoji quand présent. */
+  logoUrl?: string | null;
 }
 
 interface ClientMapViewProps {
@@ -40,19 +42,29 @@ export function ClientMapView({ pins, onPinPress }: ClientMapViewProps) {
       : { lat: 43.3, lng: 6.64 }; // Golfe de Saint-Tropez, si aucun pin
 
   const markersJs = pins
-    .map(
-      (p) => `
+    .map((p) => {
+      // Logo du Pro affiché en fond d'image circulaire quand présent — url()
+      // entre guillemets SIMPLES car il est injecté dans un attribut HTML
+      // style="..." en guillemets DOUBLES : des guillemets doubles ici (ex.
+      // via JSON.stringify) casseraient l'attribut et le logo resterait
+      // invisible (fond blanc vide). Repli sur l'emoji de catégorie sinon
+      // (pro sans logo uploadé).
+      const background = p.logoUrl
+        ? `white url('${p.logoUrl}') center/cover no-repeat`
+        : p.color;
+      const inner = p.logoUrl ? "" : p.emoji;
+      return `
     L.marker([${p.lat}, ${p.lng}], {
       icon: L.divIcon({
         className: '',
-        html: '<div style="width:40px;height:40px;border-radius:999px;background:${p.color};display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);font-size:18px;">${p.emoji}</div>',
+        html: '<div style="width:40px;height:40px;border-radius:999px;background:${background};display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);font-size:18px;">${inner}</div>',
         iconSize: [40, 40],
         iconAnchor: [20, 20],
       })
     }).addTo(map).on('click', function() {
       postToParent(${JSON.stringify(p.id)});
-    });`
-    )
+    });`;
+    })
     .join("\n");
 
   const html = `

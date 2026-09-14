@@ -84,13 +84,20 @@ async function postHandler(req: NextRequest) {
   // Vérification serveur du statut ouvert/fermé — indispensable en plus du
   // badge affiché côté Client (qui peut être obsolète de quelques minutes
   // ou contourné) : évite qu'une commande soit créée chez un commerçant
-  // fermé (horaires ou "En vacances"/"Fermé" — voir lib/openingHours.ts).
-  const openStatus = computeOpenStatus(pro.openingHours, {
-    isManuallyClosed: pro.isManuallyClosed,
-    manualClosureReason: pro.manualClosureReason,
-    manualClosureUntil: pro.manualClosureUntil,
-    manualClosureNote: pro.manualClosureNote,
-  });
+  // fermé (horaires, "En vacances"/"Fermé", ou en pause admin — voir
+  // lib/openingHours.ts). La pause admin (isPausedByAdmin) est LE verrou qui
+  // empêche un client de commander chez un Pro tout juste validé pendant
+  // qu'il est encore en test côté admin, même si ses horaires sont actifs.
+  const openStatus = computeOpenStatus(
+    pro.openingHours,
+    {
+      isManuallyClosed: pro.isManuallyClosed,
+      manualClosureReason: pro.manualClosureReason,
+      manualClosureUntil: pro.manualClosureUntil,
+      manualClosureNote: pro.manualClosureNote,
+    },
+    { isPausedByAdmin: pro.isPausedByAdmin, adminPauseNote: pro.adminPauseNote }
+  );
   if (!openStatus.isOpen) {
     throw new ApiError(400, "Ce commerçant est actuellement fermé — commande impossible pour le moment.");
   }

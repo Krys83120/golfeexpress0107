@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, TextInput, StyleSheet, Linking, Platform } from "react-native";
+import { View, Text, Pressable, TextInput, StyleSheet, Linking, Platform, Image } from "react-native";
 import { useKeepAwake } from "expo-keep-awake";
 import { OrderStatus, OrderReportCategory } from "@golfeexpress/types";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
@@ -308,7 +308,11 @@ export function CurrentDeliveryCard() {
 
       <View style={styles.proRow}>
         <View style={styles.iconCircle}>
-          <Text style={{ fontSize: 24 }}>{emoji}</Text>
+          {activeDelivery.pro?.logo ? (
+            <Image source={{ uri: activeDelivery.pro.logo }} style={styles.proLogoImage} />
+          ) : (
+            <Text style={{ fontSize: 24 }}>{emoji}</Text>
+          )}
         </View>
         <View>
           <Text style={styles.proName}>{activeDelivery.pro?.businessName ?? "Commerçant"}</Text>
@@ -429,7 +433,8 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 999, backgroundColor: "#F97316", paddingHorizontal: 12, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: "700", color: "white" },
   proRow: { marginBottom: 16, flexDirection: "row", alignItems: "center", gap: 12 },
-  iconCircle: { height: 50, width: 50, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: "#F97316" },
+  iconCircle: { height: 50, width: 50, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: "#F97316", overflow: "hidden" },
+  proLogoImage: { height: 50, width: 50, borderRadius: 999 },
   proName: { fontWeight: "700", color: "white" },
   routeLabel: { fontSize: 12, color: "rgba(255,255,255,0.7)" },
   earnings: { fontSize: 20, fontWeight: "800", color: "white" },

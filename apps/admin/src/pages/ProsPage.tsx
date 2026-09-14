@@ -36,6 +36,7 @@ export function ProsPage() {
       lat: p.addresses[0].lat,
       lng: p.addresses[0].lng,
       label: PRO_CATEGORY_EMOJIS[p.category] ?? "📦",
+      imageUrl: p.logo,
       color: "#2ECC71",
       popupContent: (
         <div>

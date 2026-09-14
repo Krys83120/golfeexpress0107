@@ -25,6 +25,88 @@ export async function renameAdminProductCategory(proId: string, oldName: string,
   return data.updatedCount;
 }
 
+export interface AdminResetMenuResult {
+  deletedCount: number;
+  keptCount: number;
+  kept: { id: string; name: string }[];
+}
+
+/**
+ * POST /api/admin/pros/:proId/products/reset — supprime tous les produits
+ * d'un Pro (nettoyage avant réimport CSV propre, ex: doublons/accents
+ * corrompus d'un import raté). Un produit déjà commandé ou ayant reçu un
+ * avis ne peut pas être supprimé (contrainte serveur) — il reste tel quel,
+ * voir `kept` dans le résultat.
+ */
+export async function resetAdminProProducts(proId: string): Promise<AdminResetMenuResult> {
+  return apiFetch<AdminResetMenuResult>(`/api/admin/pros/${proId}/products/reset`, {
+    method: "POST",
+  });
+}
+
+export interface AdminSetImagesResult {
+  updatedCount: number;
+  unmatched: string[];
+  ambiguous: string[];
+}
+
+/**
+ * POST /api/admin/pros/:proId/products/set-images — renseigne la photo
+ * (Product.image) d'un lot de produits déjà existants, retrouvés par leur
+ * nom exact (insensible à la casse/espaces). Complète un import CSV qui ne
+ * gère pas encore les images, sans y toucher — voir AdminImportMenuModal.
+ */
+export async function setAdminProductImages(
+  proId: string,
+  images: { productName: string; imageUrl: string }[]
+): Promise<AdminSetImagesResult> {
+  return apiFetch<AdminSetImagesResult>(`/api/admin/pros/${proId}/products/set-images`, {
+    method: "POST",
+    body: { images },
+  });
+}
+
+export interface AdminImportMenuResult {
+  importedCount: number;
+  productNames: string[];
+}
+
+/**
+ * POST /api/admin/pros/:proId/products/import — import CSV manuel d'un
+ * menu complet (produits + groupes d'options + choix) pour un Pro, sans
+ * passer par son compte. Réservé SUPER_ADMIN côté serveur.
+ */
+export async function importAdminMenuCsv(proId: string, csv: string): Promise<AdminImportMenuResult> {
+  return apiFetch<AdminImportMenuResult>(`/api/admin/pros/${proId}/products/import`, {
+    method: "POST",
+    body: { csv },
+  });
+}
+
+export interface ProPauseState {
+  id: string;
+  businessName: string;
+  isPausedByAdmin: boolean;
+  adminPauseNote: string | null;
+}
+
+/**
+ * GET /api/admin/pros/:proId/pause — état actuel de la pause "test" admin
+ * (distincte de la fermeture manuelle du Pro — voir la route serveur pour
+ * le détail). Route autonome, ne fait pas partie de AdminProRow.
+ */
+export async function fetchProPauseState(proId: string): Promise<ProPauseState> {
+  return apiFetch<ProPauseState>(`/api/admin/pros/${proId}/pause`);
+}
+
+/** PATCH /api/admin/pros/:proId/pause — active/désactive la pause "test" admin. Réservé ADMIN/SUPER_ADMIN. */
+export async function setProPauseState(proId: string, isPausedByAdmin: boolean, adminPauseNote?: string | null): Promise<ProPauseState> {
+  return apiFetch<ProPauseState>(`/api/admin/pros/${proId}/pause`, {
+    method: "PATCH",
+    body: { isPausedByAdmin, adminPauseNote },
+  });
+}
+
 interface FetchUsersParams {
   role?: string;
   search?: string;

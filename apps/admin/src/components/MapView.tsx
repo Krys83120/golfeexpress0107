@@ -26,20 +26,23 @@ export interface MapPin {
   lng: number;
   /** Couleur de fond du pin custom (sinon icône Leaflet par défaut). */
   color?: string;
-  /** Emoji/texte affiché dans le pin custom. */
+  /** Emoji/texte affiché dans le pin custom (repli si imageUrl absent). */
   label?: string;
+  /** Logo (ex: Pro.logo) affiché en photo de fond circulaire à la place du label. */
+  imageUrl?: string | null;
   popupContent?: React.ReactNode;
 }
 
-function createColoredIcon(color: string, label?: string) {
+function createColoredIcon(color: string, label?: string, imageUrl?: string | null) {
+  const background = imageUrl ? `white url('${imageUrl}') center/cover no-repeat` : color;
   return L.divIcon({
     className: "",
     html: `<div style="
-      width: 32px; height: 32px; border-radius: 999px; background:${color};
+      width: 32px; height: 32px; border-radius: 999px; background:${background};
       display:flex; align-items:center; justify-content:center;
       border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       font-size: 15px;
-    ">${label ?? ""}</div>`,
+    ">${imageUrl ? "" : (label ?? "")}</div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
     popupAnchor: [0, -16],
@@ -91,7 +94,7 @@ export function MapView({ pins, height = 260, emptyLabel = "Aucune position à a
           <Marker
             key={pin.id}
             position={[pin.lat, pin.lng]}
-            icon={pin.color ? createColoredIcon(pin.color, pin.label) : undefined}
+            icon={pin.color ? createColoredIcon(pin.color, pin.label, pin.imageUrl) : undefined}
           >
             {pin.popupContent && <Popup>{pin.popupContent}</Popup>}
           </Marker>

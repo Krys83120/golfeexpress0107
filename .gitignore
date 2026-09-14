@@ -65,3 +65,4 @@ deploy-client/
 deploy-livreur/
 .vercel
 .env*
+Claude outputs/

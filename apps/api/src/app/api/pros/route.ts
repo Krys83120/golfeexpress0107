@@ -92,12 +92,16 @@ async function getHandler(req: NextRequest) {
     // Calculé côté serveur (jamais côté client, pour éviter tout décalage de
     // fuseau horaire) — alimente le badge Ouvert/Fermé/En vacances côté
     // Client (voir apps/client/src/services/prosApi.ts).
-    openStatus: computeOpenStatus(p.openingHours, {
-      isManuallyClosed: p.isManuallyClosed,
-      manualClosureReason: p.manualClosureReason,
-      manualClosureUntil: p.manualClosureUntil,
-      manualClosureNote: p.manualClosureNote,
-    }),
+    openStatus: computeOpenStatus(
+      p.openingHours,
+      {
+        isManuallyClosed: p.isManuallyClosed,
+        manualClosureReason: p.manualClosureReason,
+        manualClosureUntil: p.manualClosureUntil,
+        manualClosureNote: p.manualClosureNote,
+      },
+      { isPausedByAdmin: p.isPausedByAdmin, adminPauseNote: p.adminPauseNote }
+    ),
   }));
 
   return NextResponse.json({ pros: serialized });

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { ProWithUi } from "@/services/prosApi";
 import { useProsStore } from "@/store/useProsStore";
@@ -23,6 +23,7 @@ export function MapScreen({ onClose, onOpenPro }: MapScreenProps) {
     emoji: pro.emoji,
     color: pro.gradientTo,
     label: pro.businessName,
+    logoUrl: pro.logo,
   }));
 
   function handlePinPress(proId: string) {
@@ -62,10 +63,14 @@ export function MapScreen({ onClose, onOpenPro }: MapScreenProps) {
             className="flex-row items-center gap-3 rounded-sm bg-gris-light p-3.5"
           >
             <View
-              className="h-14 w-14 items-center justify-center rounded-sm"
+              className="h-14 w-14 items-center justify-center overflow-hidden rounded-sm"
               style={{ backgroundColor: selectedPro.gradientTo }}
             >
-              <Text style={{ fontSize: 26 }}>{selectedPro.emoji}</Text>
+              {selectedPro.logo ? (
+                <Image source={{ uri: selectedPro.logo }} style={{ height: 56, width: 56 }} />
+              ) : (
+                <Text style={{ fontSize: 26 }}>{selectedPro.emoji}</Text>
+              )}
             </View>
             <View className="flex-1">
               <Text className="font-heading text-[15px] font-bold text-nuit">{selectedPro.businessName}</Text>
@@ -92,10 +97,14 @@ export function MapScreen({ onClose, onOpenPro }: MapScreenProps) {
                   className="w-[100px] items-center rounded-sm bg-gris-light p-3"
                 >
                   <View
-                    className="mb-1.5 h-10 w-10 items-center justify-center rounded-full"
+                    className="mb-1.5 h-10 w-10 items-center justify-center overflow-hidden rounded-full"
                     style={{ backgroundColor: pro.gradientTo }}
                   >
-                    <Text style={{ fontSize: 16 }}>{pro.emoji}</Text>
+                    {pro.logo ? (
+                      <Image source={{ uri: pro.logo }} style={{ height: 40, width: 40 }} />
+                    ) : (
+                      <Text style={{ fontSize: 16 }}>{pro.emoji}</Text>
+                    )}
                   </View>
                   <Text className="text-center text-[11px] font-semibold text-nuit" numberOfLines={1}>
                     {pro.businessName}

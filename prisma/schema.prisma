@@ -397,6 +397,20 @@ model Pro {
   /// Message optionnel affiché aux clients (ex: "Fermeture pour travaux").
   manualClosureNote    String?              @map("manual_closure_note")
 
+  /// Pause "test / développement" déclenchée UNIQUEMENT depuis l'admin
+  /// (ADMIN/SUPER_ADMIN) — distincte de isManuallyClosed ci-dessus, que le
+  /// Pro contrôle lui-même depuis ses Réglages : celle-ci, le Pro ne peut
+  /// jamais la lever. Prime sur isManuallyClosed et les horaires dans le
+  /// calcul ouvert/fermé (voir computeOpenStatus, lib/openingHours.ts) et
+  /// bloque la création de commandes côté serveur (orders/route.ts) tant
+  /// qu'elle est active — la boutique reste visible et consultable par les
+  /// clients, seule la commande est bloquée. Ajoutée le 14/09/2026 pour
+  /// éviter qu'un client ne passe commande chez un Pro tout juste validé,
+  /// pendant que la plateforme est encore en développement/test.
+  isPausedByAdmin      Boolean              @default(false) @map("is_paused_by_admin")
+  /// Message optionnel affiché aux clients pendant la pause admin.
+  adminPauseNote       String?              @map("admin_pause_note")
+
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   addresses         Address[]
   products          Product[]

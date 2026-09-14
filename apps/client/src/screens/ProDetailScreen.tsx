@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { ProWithUi } from "@/services/prosApi";
@@ -62,6 +62,44 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
     acc[p.category].push(p);
     return acc;
   }, {});
+
+  // Catégories dans l'ordre d'apparition des produits (celui déjà utilisé
+  // par `grouped` ci-dessus) -- pas de tri alphabétique, pour respecter
+  // l'ordre dans lequel le Pro/l'admin a saisi son menu.
+  const categories = useMemo(() => Object.keys(grouped), [products]);
+
+  // Vignettes catégories/produits (23/09/2026, sur demande explicite --
+  // remplace la liste verticale "toutes les catégories empilées avec tous
+  // leurs produits en dessous", trop longue à faire défiler sur mobile) :
+  // une rangée de vignettes-catégories en haut, puis une rangée de
+  // vignettes-produits filtrée sur la catégorie sélectionnée. Le tap sur
+  // une vignette-produit ouvre toujours la même fiche de composition
+  // (ProductOptionsModal) qu'avant.
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Présélectionne la première catégorie dès qu'on en connaît la liste,
+    // pour ne jamais laisser l'écran vide avant le premier tap -- ne touche
+    // pas à la sélection si elle a déjà été faite (par le client, ou par ce
+    // même effet à un rendu précédent).
+    if (!selectedCategory && categories.length > 0) {
+      setSelectedCategory(categories[0]);
+    }
+  }, [categories, selectedCategory]);
+
+  // Photo de la vignette catégorie : pas encore de champ dédié "photo de
+  // catégorie" côté Pro (à venir) -- en attendant, on reprend la première
+  // photo produit disponible dans cette catégorie, sinon un emoji de repli.
+  function categoryTilePhoto(items: Product[]): string | undefined {
+    return items.find((p) => p.image?.startsWith("http"))?.image;
+  }
+  function categoryTileEmoji(category: string): string {
+    const c = category.toLowerCase();
+    if (c.includes("boisson")) return "🥤";
+    if (c.includes("dessert")) return "🍰";
+    if (c.includes("kids") || c.includes("enfant")) return "🧒";
+    return "🍽️";
+  }
 
   function handleAdd(product: Product) {
     // Commerçant fermé (horaires, ou "En vacances"/"Fermé" côté Pro) : on
@@ -189,42 +227,63 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
           </View>
         </View>
 
-        <View className="mx-5 mt-4">
-          <View className="flex-row flex-wrap items-center gap-2">
-            <Text className="font-heading text-xl font-bold text-nuit">{pro.businessName}</Text>
-            {/* Badge pack partenaire — visible uniquement pour les packs payants
-                (voir apps/api/src/lib/partnerPacks.ts pour la définition des
-                packs), jamais pour FREE qui n'a pas de mise en avant spécifique. */}
-            {pro.subscriptionType === "PREMIUM" && (
-              <View className="flex-row items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5">
-                <Text style={{ fontSize: 10 }}>⭐</Text>
-                <Text className="text-[10px] font-bold text-amber-700">Premium</Text>
-              </View>
-            )}
-            {pro.subscriptionType === "PREMIUM_PLUS" && (
-              <View className="flex-row items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5">
-                <Text style={{ fontSize: 10 }}>👑</Text>
-                <Text className="text-[10px] font-bold text-violet-700">Premium+</Text>
-              </View>
-            )}
-          </View>
-          <View className="mt-1 flex-row flex-wrap items-center gap-3">
-            <View className="flex-row items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5">
-              <Text style={{ fontSize: 10 }}>⭐</Text>
-              <Text className="text-xs font-bold text-corail">{Number(pro.rating)?.toFixed(1) ?? "—"}</Text>
+        <View className="mx-5 mt-4 flex-row items-start gap-3">
+          {/* Logo du Pro — petit avatar rond à côté du nom (24/09/2026, sur
+              demande explicite : jusqu'ici seule la photo de couverture
+              (pro.coverImage) était affichée en haut, le logo (pro.logo)
+              n'apparaissait nulle part sur cette fiche). */}
+          {pro.logo && (
+            <Image
+              source={{ uri: pro.logo }}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: pro.gradientTo }}
+            />
+          )}
+          <View className="flex-1">
+            <View className="flex-row flex-wrap items-center gap-2">
+              <Text className="font-heading text-xl font-bold text-nuit">{pro.businessName}</Text>
+              {/* Badge pack partenaire — visible uniquement pour les packs payants
+                  (voir apps/api/src/lib/partnerPacks.ts pour la définition des
+                  packs), jamais pour FREE qui n'a pas de mise en avant spécifique. */}
+              {pro.subscriptionType === "PREMIUM" && (
+                <View className="flex-row items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5">
+                  <Text style={{ fontSize: 10 }}>⭐</Text>
+                  <Text className="text-[10px] font-bold text-amber-700">Premium</Text>
+                </View>
+              )}
+              {pro.subscriptionType === "PREMIUM_PLUS" && (
+                <View className="flex-row items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5">
+                  <Text style={{ fontSize: 10 }}>👑</Text>
+                  <Text className="text-[10px] font-bold text-violet-700">Premium+</Text>
+                </View>
+              )}
             </View>
-            {pro.googleRating !== null && pro.googleRating !== undefined && (
-              <View className="flex-row items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5">
-                <Text style={{ fontSize: 11 }}>🇬</Text>
-                <Text className="text-xs font-bold text-blue-600">{Number(pro.googleRating).toFixed(1)}</Text>
-                <Text className="text-[11px] text-gris">({pro.googleRatingCount})</Text>
+            <View className="mt-1 flex-row flex-wrap items-center gap-3">
+              <View className="flex-row items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5">
+                <Text style={{ fontSize: 10 }}>⭐</Text>
+                <Text className="text-xs font-bold text-corail">{Number(pro.rating)?.toFixed(1) ?? "—"}</Text>
               </View>
-            )}
-            <Text className="text-[13px] text-gris">
-              <Text style={{ fontSize: 11 }}>🕒</Text> {pro.estimatedMinMinutes}-{pro.estimatedMaxMinutes} min
-            </Text>
+              {pro.googleRating !== null && pro.googleRating !== undefined && (
+                <View className="flex-row items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5">
+                  <Text style={{ fontSize: 11 }}>🇬</Text>
+                  <Text className="text-xs font-bold text-blue-600">{Number(pro.googleRating).toFixed(1)}</Text>
+                  <Text className="text-[11px] text-gris">({pro.googleRatingCount})</Text>
+                </View>
+              )}
+              <Text className="text-[13px] text-gris">
+                <Text style={{ fontSize: 11 }}>🕒</Text> {pro.estimatedMinMinutes}-{pro.estimatedMaxMinutes} min
+              </Text>
+            </View>
           </View>
         </View>
+
+        {/* Description du Pro — absente de cette fiche jusqu'ici alors
+            qu'elle est déjà saisie côté Pro et renvoyée par l'API
+            (pro.description, voir apps/api/src/app/api/pros/route.ts). */}
+        {pro.description && (
+          <View className="mx-5 mt-3">
+            <Text className="text-[13px] leading-5 text-gris">{pro.description}</Text>
+          </View>
+        )}
 
         <BusinessInfoCard pro={pro} />
 
@@ -269,54 +328,101 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
           </View>
         )}
 
-        {Object.entries(grouped).map(([category, items]) => (
-          <View key={category} className="mx-5 mt-6">
-            <Text className="mb-3 font-heading text-base font-bold text-nuit">
-              {category === "Boissons" ? "🥤" : "🥗"} {category}
-            </Text>
-            {items.map((product) => (
-              <Pressable
-                key={product.id}
-                onPress={() => handleOpenProductDetail(product)}
-                className="mb-2.5 flex-row gap-3.5 rounded-sm bg-gris-light p-3.5"
-              >
-                <View
-                  className="h-[70px] w-[70px] items-center justify-center overflow-hidden rounded-sm"
-                  style={{ backgroundColor: "#2ECC71" }}
+        {categories.length > 0 && (
+          <View className="mt-6">
+            <Text className="mx-5 mb-3 font-heading text-base font-bold text-nuit">Catégories</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+            >
+              {categories.map((category) => {
+                const items = grouped[category];
+                const photo = categoryTilePhoto(items);
+                const isSelected = category === selectedCategory;
+                return (
+                  <Pressable key={category} onPress={() => setSelectedCategory(category)} style={{ width: 76 }}>
+                    <View
+                      className="items-center justify-center self-center overflow-hidden rounded-full"
+                      style={{
+                        height: 68,
+                        width: 68,
+                        backgroundColor: "#E8F5E9",
+                        borderWidth: isSelected ? 2.5 : 0,
+                        borderColor: "#2ECC71",
+                      }}
+                    >
+                      {photo ? (
+                        <Image source={{ uri: photo }} style={{ height: "100%", width: "100%" }} resizeMode="cover" />
+                      ) : (
+                        <Text style={{ fontSize: 28 }}>{categoryTileEmoji(category)}</Text>
+                      )}
+                    </View>
+                    <Text
+                      numberOfLines={2}
+                      className={`mt-1.5 text-center text-[12px] ${
+                        isSelected ? "font-bold text-golfe-green" : "font-medium text-nuit"
+                      }`}
+                    >
+                      {category}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {selectedCategory && grouped[selectedCategory] && (
+          <View className="mt-5">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+            >
+              {grouped[selectedCategory].map((product) => (
+                <Pressable
+                  key={product.id}
+                  onPress={() => handleOpenProductDetail(product)}
+                  className="overflow-hidden rounded-sm bg-gris-light"
+                  style={{ width: 136 }}
                 >
-                  {product.image?.startsWith("http") ? (
-                    <Image source={{ uri: product.image }} style={{ width: 70, height: 70 }} />
-                  ) : (
-                    <Text style={{ fontSize: 28 }}>{product.image ?? "🍽️"}</Text>
-                  )}
-                </View>
-                <View className="flex-1">
-                  <View className="flex-row items-center gap-1.5">
-                    <Text className="text-[15px] font-semibold text-nuit">{product.name}</Text>
-                    {product.rating != null && (product.ratingCount ?? 0) > 0 && (
-                      <Text className="text-[11px] font-bold text-corail">
-                        ⭐ {Number(product.rating).toFixed(1)} ({product.ratingCount})
-                      </Text>
+                  <View
+                    className="items-center justify-center overflow-hidden"
+                    style={{ height: 100, backgroundColor: "#2ECC71" }}
+                  >
+                    {product.image?.startsWith("http") ? (
+                      <Image source={{ uri: product.image }} style={{ height: "100%", width: "100%" }} resizeMode="cover" />
+                    ) : (
+                      <Text style={{ fontSize: 32 }}>{product.image ?? "🍽️"}</Text>
                     )}
                   </View>
-                  <Text className="mb-1.5 mt-1 text-xs leading-4 text-gris">{product.description}</Text>
-                  <Text className="text-[15px] font-bold text-golfe-green">
-                    {Number(product.price).toFixed(2).replace(".", ",")} €
-                    {product.options && product.options.length > 0 && (
-                      <Text className="text-xs font-normal text-gris"> • options</Text>
-                    )}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => handleQuickAdd(product)}
-                  className="h-8 w-8 self-center items-center justify-center rounded-full bg-golfe-green"
-                >
-                  <Text style={{ fontSize: 16, color: "white", fontWeight: "700" }}>+</Text>
+                  <View className="p-2.5">
+                    <View className="flex-row items-center gap-1">
+                      <Text numberOfLines={1} className="flex-1 text-[13px] font-semibold text-nuit">
+                        {product.name}
+                      </Text>
+                      {product.rating != null && (product.ratingCount ?? 0) > 0 && (
+                        <Text className="text-[10px] font-bold text-corail">⭐ {Number(product.rating).toFixed(1)}</Text>
+                      )}
+                    </View>
+                    <View className="mt-1.5 flex-row items-center justify-between">
+                      <Text className="text-[13px] font-bold text-golfe-green">
+                        {Number(product.price).toFixed(2).replace(".", ",")} €
+                      </Text>
+                      <Pressable
+                        onPress={() => handleQuickAdd(product)}
+                        className="h-6 w-6 items-center justify-center rounded-full bg-golfe-green"
+                      >
+                        <Text style={{ fontSize: 13, color: "white", fontWeight: "700" }}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
                 </Pressable>
-              </Pressable>
-            ))}
+              ))}
+            </ScrollView>
           </View>
-        ))}
+        )}
 
         {/* Avis clients — miroir de ce que le Pro voit déjà dans sa propre
             app (page "Avis clients"), mais en lecture seule côté client :

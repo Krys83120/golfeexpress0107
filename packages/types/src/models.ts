@@ -103,6 +103,9 @@ export interface Pro {
   manualClosureReason?: ManualClosureReason | null;
   manualClosureUntil?: string | null;
   manualClosureNote?: string | null;
+  /** Pause "test" déclenchée uniquement par un admin — voir prisma/schema.prisma Pro.isPausedByAdmin. */
+  isPausedByAdmin?: boolean;
+  adminPauseNote?: string | null;
   /** Ajouté par GET /api/pros et GET/PATCH /api/pros/me — pas un champ Prisma. */
   openStatus?: OpenStatus;
   addresses?: Address[];
@@ -138,7 +141,7 @@ export interface ProEmployee {
  */
 export interface OpenStatus {
   isOpen: boolean;
-  reason: "OPEN" | "OUTSIDE_HOURS" | "NO_HOURS_SET" | "VACATION" | "CLOSED";
+  reason: "OPEN" | "OUTSIDE_HOURS" | "NO_HOURS_SET" | "VACATION" | "CLOSED" | "ADMIN_PAUSE";
   manualClosureUntil?: string | null;
   manualClosureNote?: string | null;
 }

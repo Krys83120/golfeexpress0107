@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X, Star, CheckCircle2, XCircle, Package, FolderCog } from "lucide-react";
+import { X, Star, CheckCircle2, XCircle, Package, FolderCog, Upload } from "lucide-react";
 import type { ProStatus, Product, Review } from "@golfeexpress/types";
 import { PRO_STATUS_LABELS, PRO_CATEGORY_EMOJIS } from "@/services/proLabels";
 import {
@@ -7,11 +7,16 @@ import {
   fetchAdminProProducts,
   toggleAdminProduct,
   fetchAdminProReviews,
+  fetchProPauseState,
+  setProPauseState,
   type AdminProRow,
+  type ProPauseState,
 } from "@/services/adminEntitiesApi";
 import { validatePro } from "@/services/validationsApi";
+import { useAuthStore } from "@/store/useAuthStore";
 import { AdminCategoryManagerModal } from "@/components/AdminCategoryManagerModal";
 import { AdminProductDetailModal } from "@/components/AdminProductDetailModal";
+import { AdminImportMenuModal } from "@/components/AdminImportMenuModal";
 
 interface ProDetailModalProps {
   pro: AdminProRow;
@@ -55,11 +60,58 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
   const [productsStatus, setProductsStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showImportMenu, setShowImportMenu] = useState(false);
   const [showRejectReason, setShowRejectReason] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Import CSV manuel : ouvert à ADMIN et SUPER_ADMIN (même restriction que
+  // côté serveur, voir POST .../products/import) — initialement réservé au
+  // seul SUPER_ADMIN, élargi le 14/09/2026 sur demande explicite (le compte
+  // utilisé au quotidien est un compte ADMIN standard).
+  const currentRole = useAuthStore((s) => s.user?.role);
+  const canImportMenu = currentRole === "ADMIN" || currentRole === "SUPER_ADMIN";
+
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsStatus, setReviewsStatus] = useState<"loading" | "loaded" | "error">("loading");
+
+  // Pause "test" admin — voir GET/PATCH /api/admin/pros/[proId]/pause.
+  // Chargée séparément (route autonome, absente de AdminProRow) : le Pro
+  // reste ACTIVE et visible/consultable côté client, seule la commande est
+  // bloquée tant que c'est actif, et LUI SEUL (pas le Pro) peut la lever.
+  const [pauseState, setPauseState] = useState<ProPauseState | null>(null);
+  const [pauseSaving, setPauseSaving] = useState(false);
+  const [pauseNoteDraft, setPauseNoteDraft] = useState("");
+  const [pauseError, setPauseError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchProPauseState(pro.id)
+      .then((data) => {
+        if (!cancelled) {
+          setPauseState(data);
+          setPauseNoteDraft(data.adminPauseNote ?? "");
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pro.id]);
+
+  async function handleTogglePause() {
+    if (!pauseState) return;
+    const nextPaused = !pauseState.isPausedByAdmin;
+    setPauseSaving(true);
+    setPauseError(null);
+    try {
+      const updated = await setProPauseState(pro.id, nextPaused, nextPaused ? pauseNoteDraft.trim() || null : null);
+      setPauseState(updated);
+    } catch (err) {
+      setPauseError(err instanceof Error ? err.message : "Impossible de mettre à jour la pause.");
+    } finally {
+      setPauseSaving(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -388,15 +440,26 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
             <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gris">
               <Package size={13} /> Produits en ligne ({products.length})
             </h3>
-            {categoriesWithCounts.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowCategoryManager(true)}
-                className="flex items-center gap-1 text-xs font-semibold text-golfe-green"
-              >
-                <FolderCog size={13} /> Modérer les catégories
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {canImportMenu && (
+                <button
+                  type="button"
+                  onClick={() => setShowImportMenu(true)}
+                  className="flex items-center gap-1 text-xs font-semibold text-golfe-green"
+                >
+                  <Upload size={13} /> Importer un menu (CSV)
+                </button>
+              )}
+              {categoriesWithCounts.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryManager(true)}
+                  className="flex items-center gap-1 text-xs font-semibold text-golfe-green"
+                >
+                  <FolderCog size={13} /> Modérer les catégories
+                </button>
+              )}
+            </div>
           </div>
           {productsStatus === "loading" ? (
             <p className="rounded-sm bg-gris-light p-4 text-sm text-gris">Chargement...</p>
@@ -498,6 +561,52 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
           </div>
         </div>
 
+        {(currentRole === "ADMIN" || currentRole === "SUPER_ADMIN") && pauseState && (
+          <div className="mb-6 rounded-sm border border-gris-light p-4">
+            <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-gris">🧪 Pause commandes (test)</h3>
+            <p className="mb-3 text-xs leading-5 text-gris">
+              Bloque la prise de commande pour ce commerçant — la boutique reste visible et consultable par les
+              clients (menu, horaires...), mais aucune commande ne peut être passée. Utile pendant que tu configures
+              un Pro tout juste validé : contrairement à une fermeture, seul un admin peut la lever (le Pro ne la
+              voit pas dans ses Réglages).
+            </p>
+
+            {pauseState.isPausedByAdmin ? (
+              <div className="rounded-sm bg-orange-50 p-3">
+                <p className="mb-2 text-sm font-bold text-corail">🚫 Commandes bloquées pour ce commerçant</p>
+                {pauseState.adminPauseNote && <p className="mb-2 text-xs text-nuit">"{pauseState.adminPauseNote}"</p>}
+                <button
+                  type="button"
+                  onClick={handleTogglePause}
+                  disabled={pauseSaving}
+                  className="rounded-full bg-golfe-green px-3.5 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                >
+                  {pauseSaving ? "..." : "Réactiver les commandes"}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={pauseNoteDraft}
+                  onChange={(e) => setPauseNoteDraft(e.target.value)}
+                  placeholder="Note interne optionnelle (ex: en cours de configuration)"
+                  className="min-w-[220px] flex-1 rounded-sm border border-gris-light px-3 py-1.5 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={handleTogglePause}
+                  disabled={pauseSaving}
+                  className="rounded-full bg-corail px-3.5 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                >
+                  {pauseSaving ? "..." : "Mettre en pause"}
+                </button>
+              </div>
+            )}
+            {pauseError && <p className="mt-2 text-xs text-red-500">{pauseError}</p>}
+          </div>
+        )}
+
         {error && <div className="mb-4 rounded-sm bg-red-50 p-3 text-sm text-red-500">{error}</div>}
 
         <div className="flex justify-end">
@@ -525,6 +634,15 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
           categories={categoriesWithCounts}
           onClose={() => setShowCategoryManager(false)}
           onRenamed={reloadProducts}
+        />
+      )}
+
+      {showImportMenu && (
+        <AdminImportMenuModal
+          proId={pro.id}
+          proName={pro.businessName}
+          onClose={() => setShowImportMenu(false)}
+          onImported={reloadProducts}
         />
       )}
     </div>
