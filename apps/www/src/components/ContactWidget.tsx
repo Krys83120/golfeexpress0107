@@ -35,11 +35,12 @@ type Status = "idle" | "submitting" | "success" | "error";
  * messages (contrairement aux réclamations sur commande) : ce sont des
  * messages ponctuels de visiteurs, pas nécessairement de comptes existants.
  *
- * Bouton responsive (breakpoint sm=640px) : sur mobile, le sous-titre
- * "Nous contacter" est masqué et le bouton/l'icône réduits -- le bouton
- * plein format (pensé pour desktop) prenait trop de place visuelle en bas
- * de l'écran sur petit écran. Le formulaire déplié reste inchangé (déjà
- * plafonné à la largeur de l'écran via max-w-[calc(100vw-40px)]).
+ * Bouton responsive (breakpoint sm=640px) : sur mobile, seule la bulle
+ * (icône) ronde est affichée -- tout le texte ("Besoin d'aide ? / Nous
+ * contacter") est masqué, le bouton plein format étant pensé pour desktop
+ * et prenant trop de place visuelle en bas de l'écran sur petit écran. Le
+ * formulaire déplié reste inchangé (déjà plafonné à la largeur de l'écran
+ * via max-w-[calc(100vw-24px)]).
  */
 export function ContactWidget() {
   const [open, setOpen] = useState(false);
@@ -209,14 +210,15 @@ export function ContactWidget() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full bg-golfe-green py-2 pl-2.5 pr-3.5 shadow-2xl transition hover:bg-golfe-green-dark sm:gap-3 sm:py-2.5 sm:pl-3 sm:pr-5"
+        aria-label="Besoin d'aide ? Nous contacter"
+        className="flex items-center gap-3 rounded-full bg-golfe-green p-2.5 shadow-2xl transition hover:bg-golfe-green-dark sm:py-2.5 sm:pl-3 sm:pr-5"
       >
         <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-white/25 sm:h-9 sm:w-9">
           <ChatBubbleIcon color="#1A1A2E" />
         </span>
-        <span className="text-left leading-tight">
-          <span className="block text-xs font-extrabold text-nuit sm:text-sm">Besoin d'aide ?</span>
-          <span className="hidden text-xs text-nuit/70 sm:block">Nous contacter</span>
+        <span className="hidden text-left leading-tight sm:block">
+          <span className="block text-sm font-extrabold text-nuit">Besoin d'aide ?</span>
+          <span className="block text-xs text-nuit/70">Nous contacter</span>
         </span>
       </button>
     </div>

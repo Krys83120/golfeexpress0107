@@ -2,9 +2,9 @@ import React from "react";
 import { fetchPlatformReviewStats } from "@/lib/publicApi";
 
 /** Icône bouclier + coche -- SVG inline (pas de dépendance à une librairie d'icônes dans apps/www). */
-function ShieldCheckIcon() {
+function ShieldCheckIcon({ className = "h-[34px] w-[34px]" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 flex-shrink-0 sm:h-[34px] sm:w-[34px]">
+    <svg viewBox="0 0 24 24" fill="none" className={`flex-shrink-0 ${className}`}>
       <path
         d="M12 2.5L4.5 5.25V11c0 5.25 3.2 9.44 7.5 10.5 4.3-1.06 7.5-5.25 7.5-10.5V5.25L12 2.5z"
         fill="#2ECC71"
@@ -29,11 +29,12 @@ function ShieldCheckIcon() {
  * à gauche, "AVIS VÉRIFIÉS" en titre, note + étoiles sur la ligne suivante,
  * nombre d'avis en petit texte gris en dessous.
  *
- * Taille et position responsives (breakpoint sm=640px) : en dessous, le
- * badge prenait trop de place visuelle en bas de l'écran sur mobile (fixe,
- * pensé pour desktop à l'origine) -- réduit via des classes Tailwind
- * (padding/gap/texte/icône plus petits, ancré plus près du bord) plutôt que
- * du JS, ce composant restant un Server Component (pas de media query JS).
+ * Responsive (breakpoint sm=640px) : sur mobile, seule l'icône bouclier
+ * (dans un petit rond blanc) est affichée -- le badge complet avec tout le
+ * texte, pensé pour desktop, prenait trop de place visuelle en bas de
+ * l'écran sur petit écran. Pas de JS ici (Server Component) : les deux
+ * variantes sont dans le DOM et Tailwind bascule laquelle est visible via
+ * `sm:hidden` / `hidden sm:flex`.
  */
 export async function VerifiedReviewsBadge() {
   const { average, count } = await fetchPlatformReviewStats();
@@ -44,25 +45,30 @@ export async function VerifiedReviewsBadge() {
 
   return (
     <div className="fixed bottom-3 left-3 z-[400] sm:bottom-5 sm:left-5">
-      <div className="flex items-center gap-2 rounded-xl border border-gris-light bg-white px-2.5 py-2 shadow-2xl sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3">
+      {/* Mobile : icône seule */}
+      <div
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-gris-light bg-white shadow-2xl sm:hidden"
+        aria-label={`Avis vérifiés : ${rounded.toFixed(1)} sur 5 (${count} avis)`}
+      >
+        <ShieldCheckIcon className="h-5 w-5" />
+      </div>
+
+      {/* Desktop : badge complet */}
+      <div className="hidden items-center gap-3 rounded-2xl border border-gris-light bg-white px-4 py-3 shadow-2xl sm:flex">
         <ShieldCheckIcon />
         <div>
-          <p className="text-[9px] font-extrabold uppercase tracking-wide text-nuit sm:text-[11px]">Avis vérifiés</p>
-          <div className="mt-0.5 flex items-center gap-1 sm:gap-1.5">
-            <span className="text-xs font-extrabold text-nuit sm:text-sm">{rounded.toFixed(1)}</span>
+          <p className="text-[11px] font-extrabold uppercase tracking-wide text-nuit">Avis vérifiés</p>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <span className="text-sm font-extrabold text-nuit">{rounded.toFixed(1)}</span>
             <div className="flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map((i) => (
-                <span
-                  key={i}
-                  className="text-[10px] sm:text-xs"
-                  style={{ color: i <= Math.round(rounded) ? "#FF6B35" : "#E5E7EB" }}
-                >
+                <span key={i} style={{ fontSize: 12, color: i <= Math.round(rounded) ? "#FF6B35" : "#E5E7EB" }}>
                   ★
                 </span>
               ))}
             </div>
           </div>
-          <p className="mt-0.5 text-[9px] text-gris sm:text-[10px]">
+          <p className="mt-0.5 text-[10px] text-gris">
             {count} avis vérifié{count > 1 ? "s" : ""}
           </p>
         </div>
