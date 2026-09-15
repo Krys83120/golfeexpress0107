@@ -7,6 +7,8 @@ import {
   reorderAdminCategories,
   uploadAdminCategoryImage,
   reorderAdminProducts,
+  renameAdminProduct,
+  uploadAdminProductImage,
   type AdminMenuCategoryRow,
 } from "@/services/adminEntitiesApi";
 
@@ -36,6 +38,12 @@ export function AdminCategoryManagerModal({ proId, categories, products, onClose
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [productOrder, setProductOrder] = useState<Product[]>([]);
+
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [draftProductName, setDraftProductName] = useState("");
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [uploadingProductId, setUploadingProductId] = useState<string | null>(null);
+  const productFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const dragCategoryIndex = useRef<number | null>(null);
   const dragProductIndex = useRef<number | null>(null);
@@ -158,6 +166,51 @@ export function AdminCategoryManagerModal({ proId, categories, products, onClose
     }
   }
 
+  function startEditingProduct(product: Product) {
+    setEditingProductId(product.id);
+    setDraftProductName(product.name);
+    setError(null);
+  }
+
+  async function handleSaveProductName(productId: string) {
+    const current = productOrder.find((p) => p.id === productId);
+    const newName = draftProductName.trim();
+    if (!newName || !current || newName === current.name) {
+      setEditingProductId(null);
+      return;
+    }
+    setSavingProduct(true);
+    setError(null);
+    try {
+      await renameAdminProduct(proId, productId, newName);
+      setProductOrder((prev) => prev.map((p) => (p.id === productId ? { ...p, name: newName } : p)));
+      setEditingProductId(null);
+      onRenamed();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de renommer ce produit.");
+    } finally {
+      setSavingProduct(false);
+    }
+  }
+
+  async function handleProductPhotoChange(productId: string, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setUploadingProductId(productId);
+    try {
+      const image = await uploadAdminProductImage(proId, productId, file);
+      setProductOrder((prev) => prev.map((p) => (p.id === productId ? { ...p, image } : p)));
+      onRenamed();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de l'upload de la photo.");
+    } finally {
+      setUploadingProductId(null);
+      const input = productFileInputRefs.current[productId];
+      if (input) input.value = "";
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/40 p-4">
       <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded bg-white p-6 shadow-xl">
@@ -171,7 +224,8 @@ export function AdminCategoryManagerModal({ proId, categories, products, onClose
         <p className="mb-4 text-xs text-gris">
           Glissez une catégorie (⠿) pour la réordonner, ou une catégorie dépliée pour réordonner ses produits.
           Renommez avec le crayon — utiliser le nom d'une catégorie existante fusionne les deux. La photo est
-          optionnelle : sans elle, la vignette reprend la photo d'un produit, sinon un emoji générique.
+          optionnelle : sans elle, la vignette reprend la photo d'un produit, sinon un emoji générique. Une fois
+          une catégorie dépliée, vous pouvez aussi renommer chaque produit et lui ajouter une photo.
         </p>
 
         <div className="flex-1 overflow-y-auto">
@@ -268,7 +322,7 @@ export function AdminCategoryManagerModal({ proId, categories, products, onClose
                         {productOrder.map((product, pIndex) => (
                           <div
                             key={product.id}
-                            draggable
+                            draggable={editingProductId !== product.id}
                             onDragStart={() => (dragProductIndex.current = pIndex)}
                             onDragOver={(e) => e.preventDefault()}
                             onDrop={() => handleProductDrop(pIndex)}
@@ -277,8 +331,65 @@ export function AdminCategoryManagerModal({ proId, categories, products, onClose
                             <span className="cursor-grab text-gris" title="Glisser pour réordonner">
                               <GripVertical size={13} />
                             </span>
-                            <span className="flex-1 truncate text-[13px] text-nuit">{product.name}</span>
-                            <span className="text-xs text-gris">{Number(product.price).toFixed(2)} €</span>
+
+                            <button
+                              type="button"
+                              onClick={() => productFileInputRefs.current[product.id]?.click()}
+                              disabled={uploadingProductId === product.id}
+                              className="group relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-dashed border-gris bg-gris-light"
+                              title="Ajouter/changer la photo du produit (optionnel)"
+                            >
+                              {product.image && product.image.startsWith("http") ? (
+                                <img src={product.image} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <Camera size={12} className="text-gris" />
+                              )}
+                              {uploadingProductId === product.id && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                  <Loader2 size={12} className="animate-spin text-white" />
+                                </div>
+                              )}
+                            </button>
+                            <input
+                              ref={(el) => (productFileInputRefs.current[product.id] = el)}
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              onChange={(e) => handleProductPhotoChange(product.id, e)}
+                              className="hidden"
+                            />
+
+                            {editingProductId === product.id ? (
+                              <>
+                                <input
+                                  value={draftProductName}
+                                  onChange={(e) => setDraftProductName(e.target.value)}
+                                  autoFocus
+                                  onKeyDown={(e) => e.key === "Enter" && handleSaveProductName(product.id)}
+                                  className="flex-1 rounded-sm border border-gris-light bg-white px-2 py-1 text-[13px]"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveProductName(product.id)}
+                                  disabled={savingProduct}
+                                  className="rounded-sm bg-golfe-green p-1 text-white disabled:opacity-60"
+                                >
+                                  <Check size={12} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <span className="flex-1 truncate text-[13px] text-nuit">{product.name}</span>
+                                <span className="text-xs text-gris">{Number(product.price).toFixed(2)} €</span>
+                                <button
+                                  type="button"
+                                  onClick={() => startEditingProduct(product)}
+                                  className="rounded-sm p-1 text-gris hover:bg-gris-light"
+                                  title="Renommer ce produit"
+                                >
+                                  <Pencil size={12} />
+                                </button>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>

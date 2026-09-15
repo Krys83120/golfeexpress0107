@@ -72,6 +72,45 @@ export async function reorderAdminProducts(proId: string, productIds: string[]):
   await apiFetch(`/api/admin/pros/${proId}/products/reorder`, { method: "PUT", body: { productIds } });
 }
 
+/**
+ * PATCH /api/admin/pros/:proId/products/rename — renomme UN produit (à ne
+ * pas confondre avec renameAdminProductCategory, qui renomme/fusionne une
+ * catégorie entière). Utilisé pour corriger le nom d'un produit importé
+ * (ex: accents corrompus par un CSV) depuis la liste dépliée d'une
+ * catégorie dans AdminCategoryManagerModal.tsx.
+ */
+export async function renameAdminProduct(proId: string, productId: string, name: string): Promise<string> {
+  const data = await apiFetch<{ id: string; name: string }>(`/api/admin/pros/${proId}/products/rename`, {
+    method: "PATCH",
+    body: { productId, name },
+  });
+  return data.name;
+}
+
+/**
+ * POST /api/admin/pros/:proId/products/photo — upload la photo d'UN
+ * produit (à ne pas confondre avec uploadAdminCategoryImage, qui gère la
+ * photo d'une catégorie entière). Même logique de conversion en base64 que
+ * uploadAdminCategoryImage.
+ */
+export async function uploadAdminProductImage(proId: string, productId: string, file: File): Promise<string> {
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) {
+    throw new Error("Format non supporté. Utilisez JPEG, PNG ou WebP.");
+  }
+  const buffer = await file.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const imageBase64 = btoa(binary);
+
+  const data = await apiFetch<{ image: string }>(`/api/admin/pros/${proId}/products/photo`, {
+    method: "POST",
+    body: { productId, contentType: file.type, imageBase64 },
+  });
+  return data.image;
+}
+
 export interface AdminResetMenuResult {
   deletedCount: number;
   keptCount: number;
