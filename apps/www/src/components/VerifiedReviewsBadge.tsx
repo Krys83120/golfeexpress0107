@@ -4,7 +4,7 @@ import { fetchPlatformReviewStats } from "@/lib/publicApi";
 /** Icône bouclier + coche -- SVG inline (pas de dépendance à une librairie d'icônes dans apps/www). */
 function ShieldCheckIcon() {
   return (
-    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 flex-shrink-0 sm:h-[34px] sm:w-[34px]">
       <path
         d="M12 2.5L4.5 5.25V11c0 5.25 3.2 9.44 7.5 10.5 4.3-1.06 7.5-5.25 7.5-10.5V5.25L12 2.5z"
         fill="#2ECC71"
@@ -28,6 +28,12 @@ function ShieldCheckIcon() {
  * Mise en page calquée sur la maquette fournie : icône bouclier vert + coche
  * à gauche, "AVIS VÉRIFIÉS" en titre, note + étoiles sur la ligne suivante,
  * nombre d'avis en petit texte gris en dessous.
+ *
+ * Taille et position responsives (breakpoint sm=640px) : en dessous, le
+ * badge prenait trop de place visuelle en bas de l'écran sur mobile (fixe,
+ * pensé pour desktop à l'origine) -- réduit via des classes Tailwind
+ * (padding/gap/texte/icône plus petits, ancré plus près du bord) plutôt que
+ * du JS, ce composant restant un Server Component (pas de media query JS).
  */
 export async function VerifiedReviewsBadge() {
   const { average, count } = await fetchPlatformReviewStats();
@@ -37,22 +43,26 @@ export async function VerifiedReviewsBadge() {
   const rounded = Math.round(average * 10) / 10;
 
   return (
-    <div style={{ position: "fixed", left: 20, bottom: 20, zIndex: 400 }}>
-      <div className="flex items-center gap-3 rounded-2xl border border-gris-light bg-white px-4 py-3 shadow-2xl">
+    <div className="fixed bottom-3 left-3 z-[400] sm:bottom-5 sm:left-5">
+      <div className="flex items-center gap-2 rounded-xl border border-gris-light bg-white px-2.5 py-2 shadow-2xl sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3">
         <ShieldCheckIcon />
         <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-wide text-nuit">Avis vérifiés</p>
-          <div className="mt-0.5 flex items-center gap-1.5">
-            <span className="text-sm font-extrabold text-nuit">{rounded.toFixed(1)}</span>
+          <p className="text-[9px] font-extrabold uppercase tracking-wide text-nuit sm:text-[11px]">Avis vérifiés</p>
+          <div className="mt-0.5 flex items-center gap-1 sm:gap-1.5">
+            <span className="text-xs font-extrabold text-nuit sm:text-sm">{rounded.toFixed(1)}</span>
             <div className="flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map((i) => (
-                <span key={i} style={{ fontSize: 12, color: i <= Math.round(rounded) ? "#FF6B35" : "#E5E7EB" }}>
+                <span
+                  key={i}
+                  className="text-[10px] sm:text-xs"
+                  style={{ color: i <= Math.round(rounded) ? "#FF6B35" : "#E5E7EB" }}
+                >
                   ★
                 </span>
               ))}
             </div>
           </div>
-          <p className="mt-0.5 text-[10px] text-gris">
+          <p className="mt-0.5 text-[9px] text-gris sm:text-[10px]">
             {count} avis vérifié{count > 1 ? "s" : ""}
           </p>
         </div>

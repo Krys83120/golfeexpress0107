@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { X, Pencil, Check, GripVertical, Camera, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { X, Pencil, Check, GripVertical, Camera, ChevronDown, ChevronRight, Loader2, Eye, EyeOff } from "lucide-react";
 import type { Product } from "@golfeexpress/types";
 import {
   renameAdminProductCategory,
@@ -9,6 +9,7 @@ import {
   reorderAdminProducts,
   renameAdminProduct,
   uploadAdminProductImage,
+  toggleAdminProduct,
   type AdminMenuCategoryRow,
 } from "@/services/adminEntitiesApi";
 
@@ -43,6 +44,7 @@ export function AdminCategoryManagerModal({ proId, categories, products, onClose
   const [draftProductName, setDraftProductName] = useState("");
   const [savingProduct, setSavingProduct] = useState(false);
   const [uploadingProductId, setUploadingProductId] = useState<string | null>(null);
+  const [togglingProductId, setTogglingProductId] = useState<string | null>(null);
   const productFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const dragCategoryIndex = useRef<number | null>(null);
@@ -211,6 +213,27 @@ export function AdminCategoryManagerModal({ proId, categories, products, onClose
     }
   }
 
+  // Disponibilité (isAvailable) -- ce que je facture "produit désactivé" côté
+  // Client. Réutilise directement toggleAdminProduct (déjà utilisé par
+  // AdminProductDetailModal.tsx), pour ne pas dupliquer la route serveur.
+  // Nécessaire ici car un produit importé par CSV n'est vu par l'admin QUE
+  // dans cette liste dépliée -- pas d'autre endroit pour le désactiver.
+  async function handleToggleAvailability(product: Product) {
+    const nextAvailable = !product.isAvailable;
+    setError(null);
+    setTogglingProductId(product.id);
+    setProductOrder((prev) => prev.map((p) => (p.id === product.id ? { ...p, isAvailable: nextAvailable } : p)));
+    try {
+      await toggleAdminProduct(proId, product.id, nextAvailable);
+      onRenamed();
+    } catch (err) {
+      setProductOrder((prev) => prev.map((p) => (p.id === product.id ? { ...p, isAvailable: product.isAvailable } : p)));
+      setError(err instanceof Error ? err.message : "Impossible de changer la disponibilité de ce produit.");
+    } finally {
+      setTogglingProductId(null);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/40 p-4">
       <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded bg-white p-6 shadow-xl">
@@ -225,7 +248,8 @@ export function AdminCategoryManagerModal({ proId, categories, products, onClose
           Glissez une catégorie (⠿) pour la réordonner, ou une catégorie dépliée pour réordonner ses produits.
           Renommez avec le crayon — utiliser le nom d'une catégorie existante fusionne les deux. La photo est
           optionnelle : sans elle, la vignette reprend la photo d'un produit, sinon un emoji générique. Une fois
-          une catégorie dépliée, vous pouvez aussi renommer chaque produit et lui ajouter une photo.
+          une catégorie dépliée, vous pouvez aussi renommer chaque produit, lui ajouter une photo, et
+          l'activer/désactiver (œil).
         </p>
 
         <div className="flex-1 overflow-y-auto">
@@ -378,8 +402,22 @@ export function AdminCategoryManagerModal({ proId, categories, products, onClose
                               </>
                             ) : (
                               <>
-                                <span className="flex-1 truncate text-[13px] text-nuit">{product.name}</span>
+                                <span
+                                  className={`flex-1 truncate text-[13px] ${product.isAvailable ? "text-nuit" : "text-gris line-through"}`}
+                                >
+                                  {product.name}
+                                </span>
                                 <span className="text-xs text-gris">{Number(product.price).toFixed(2)} €</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleAvailability(product)}
+                                  disabled={togglingProductId === product.id}
+                                  className="rounded-sm p-1 disabled:opacity-60"
+                                  style={{ color: product.isAvailable ? "#2ECC71" : "#F44336" }}
+                                  title={product.isAvailable ? "En ligne — cliquer pour désactiver" : "Désactivé — cliquer pour réactiver"}
+                                >
+                                  {product.isAvailable ? <Eye size={13} /> : <EyeOff size={13} />}
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => startEditingProduct(product)}
