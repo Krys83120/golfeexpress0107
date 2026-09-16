@@ -191,6 +191,31 @@ export async function fetchPlatformReviewStats(): Promise<PlatformReviewStats> {
   }
 }
 
+export interface PublicPlatformReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  firstName: string;
+  lastInitial: string | null;
+}
+
+/**
+ * Détail des avis clients sur l'application Do You Geckoo elle-même (liste
+ * complète, contrairement à fetchPlatformReviewStats qui ne renvoie que la
+ * moyenne/le total) -- alimente la page /avis du site vitrine.
+ */
+export async function fetchPublicPlatformReviews(): Promise<PublicPlatformReview[]> {
+  try {
+    const res = await fetchWithTimeout(`${API_URL}/api/reviews/platform`, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.reviews ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export interface PublicServiceCity {
   id: string;
   name: string;
@@ -280,7 +305,7 @@ export const CATEGORY_SCHEMA_TYPE: Record<string, string> = {
 function slugify(text: string): string {
   return text
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // retire les accents (é, à, ç...)
+    .replace(/[̀-ͯ]/g, "") // retire les accents (é, à, ç...)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");

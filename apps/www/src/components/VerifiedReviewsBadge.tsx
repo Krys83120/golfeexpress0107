@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { fetchPlatformReviewStats } from "@/lib/publicApi";
 
 /** Icône bouclier + coche -- SVG inline (pas de dépendance à une librairie d'icônes dans apps/www). */
@@ -35,6 +36,10 @@ function ShieldCheckIcon({ className = "h-[34px] w-[34px]" }: { className?: stri
  * l'écran sur petit écran. Pas de JS ici (Server Component) : les deux
  * variantes sont dans le DOM et Tailwind bascule laquelle est visible via
  * `sm:hidden` / `hidden sm:flex`.
+ *
+ * Cliquable vers /avis (page détaillant chaque avis + comment fonctionne la
+ * vérification) -- un badge "Avis vérifiés" qui ne mène nulle part inviterait
+ * au doute plutôt qu'à la confiance.
  */
 export async function VerifiedReviewsBadge() {
   const { average, count } = await fetchPlatformReviewStats();
@@ -46,15 +51,19 @@ export async function VerifiedReviewsBadge() {
   return (
     <div className="fixed bottom-3 left-3 z-[400] sm:bottom-5 sm:left-5">
       {/* Mobile : icône seule */}
-      <div
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-gris-light bg-white shadow-2xl sm:hidden"
-        aria-label={`Avis vérifiés : ${rounded.toFixed(1)} sur 5 (${count} avis)`}
+      <Link
+        href="/avis"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-gris-light bg-white shadow-2xl transition hover:border-golfe-green sm:hidden"
+        aria-label={`Avis vérifiés : ${rounded.toFixed(1)} sur 5 (${count} avis) -- voir le détail`}
       >
         <ShieldCheckIcon className="h-5 w-5" />
-      </div>
+      </Link>
 
       {/* Desktop : badge complet */}
-      <div className="hidden items-center gap-3 rounded-2xl border border-gris-light bg-white px-4 py-3 shadow-2xl sm:flex">
+      <Link
+        href="/avis"
+        className="hidden items-center gap-3 rounded-2xl border border-gris-light bg-white px-4 py-3 shadow-2xl transition hover:border-golfe-green sm:flex"
+      >
         <ShieldCheckIcon />
         <div>
           <p className="text-[11px] font-extrabold uppercase tracking-wide text-nuit">Avis vérifiés</p>
@@ -72,7 +81,7 @@ export async function VerifiedReviewsBadge() {
             {count} avis vérifié{count > 1 ? "s" : ""}
           </p>
         </div>
-      </div>
+      </Link>
     </div>
   );
 }
