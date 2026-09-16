@@ -6,6 +6,7 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { ContactWidget } from "@/components/ContactWidget";
 import { VerifiedReviewsBadge } from "@/components/VerifiedReviewsBadge";
 import { VisitTracker } from "@/components/VisitTracker";
+import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { fetchWwwOgText } from "@/lib/brandingApi";
 import { isSeoPublicLaunchEnabled } from "@/lib/seoSettings";
 
@@ -170,6 +171,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ContactWidget />
         <VerifiedReviewsBadge />
         <VisitTracker />
+        <SmartlookLoader />
       </body>
     </html>
   );
