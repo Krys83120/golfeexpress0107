@@ -17,7 +17,7 @@ function loadSmartlook() {
   (function (d: Document) {
     const o = (window.smartlook = function (...args: unknown[]) {
       o.api!.push(args);
-    });
+    } as NonNullable<Window["smartlook"]>);
     o.api = [];
     const h = d.getElementsByTagName("head")[0];
     const c = d.createElement("script");
