@@ -84,6 +84,23 @@ export enum PaymentStatus {
   REFUNDED = "REFUNDED",
 }
 
+/** Colis Express -- voir model ParcelOrder dans prisma/schema.prisma. */
+export enum ParcelOrderStatus {
+  PENDING = "PENDING",
+  CONFIRMED = "CONFIRMED",
+  RIDER_ASSIGNED = "RIDER_ASSIGNED",
+  PICKED_UP = "PICKED_UP",
+  IN_DELIVERY = "IN_DELIVERY",
+  DELIVERED = "DELIVERED",
+  CANCELLED = "CANCELLED",
+}
+
+/** "Petits colis transportables par scooter ou véhicule léger" -- pas de L/XL pour l'instant. */
+export enum ParcelSize {
+  S = "S",
+  M = "M",
+}
+
 export enum EarningType {
   DELIVERY_FEE = "DELIVERY_FEE",
   TIP = "TIP",

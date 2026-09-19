@@ -16,6 +16,8 @@ import {
   OrderReportCategory,
   OrderReportStatus,
   AppSource,
+  ParcelOrderStatus,
+  ParcelSize,
 } from "./enums";
 
 /**
@@ -362,6 +364,47 @@ export interface Order {
   items?: OrderItem[];
   statusHistory?: OrderStatusHistoryEntry[];
   trackingEvents?: TrackingEvent[];
+}
+
+/** Colis Express -- voir model ParcelOrder dans prisma/schema.prisma pour le raisonnement complet (table séparée de Order). */
+export interface ParcelOrder {
+  id: string;
+  parcelNumber: string;
+  proId: string;
+  riderId?: string | null;
+  fromAddressId: string;
+  toAddressId: string;
+
+  recipientName: string;
+  recipientPhone: string;
+  size: ParcelSize;
+  instructions?: string | null;
+  /** Photo du colis ajoutée par le Pro (19/09/2026) -- voir ParcelOrder.photoUrl côté schema.prisma. */
+  photoUrl?: string | null;
+
+  status: ParcelOrderStatus;
+  paymentStatus: PaymentStatus;
+
+  deliveryFee: number;
+  expressFee: number;
+  total: number;
+
+  riderEarnings: number;
+  platformEarnings: number;
+
+  cardBrand?: string | null;
+  cardLast4?: string | null;
+
+  placedAt: string;
+  riderAssignedAt?: string | null;
+  pickedUpAt?: string | null;
+  deliveredAt?: string | null;
+  cancelledAt?: string | null;
+
+  pro?: Pro;
+  rider?: Rider | null;
+  fromAddress?: Address;
+  toAddress?: Address;
 }
 
 export interface OrderReport {
