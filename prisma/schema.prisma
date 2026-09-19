@@ -417,6 +417,9 @@ model Pro {
   openingHours      OpeningHours[]
   deliveryZones     DeliveryZone[]
   orders            Order[]
+  /// Demandes "Colis Express" passées par ce Pro -- voir model ParcelOrder,
+  /// table séparée de Order (19/09/2026).
+  parcelOrders      ParcelOrder[]
   reviews           Review[]
   /// Comptes employés créés par ce Pro (voir model ProEmployee).
   employees         ProEmployee[]
@@ -507,6 +510,9 @@ model Rider {
   
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   orders          Order[]
+  /// Courses "Colis Express" acceptées par ce livreur -- voir model
+  /// ParcelOrder, table séparée de Order (19/09/2026).
+  parcelOrders    ParcelOrder[]
   earnings        Earning[]
   withdrawals     Withdrawal[]
   reviews         Review[]
@@ -531,6 +537,9 @@ model Address {
   pro         Pro?     @relation(fields: [proId], references: [id])
   ordersFrom  Order[]  @relation("OrderFromAddress")
   ordersTo    Order[]  @relation("OrderToAddress")
+  /// Colis Express -- voir model ParcelOrder (19/09/2026).
+  parcelOrdersFrom ParcelOrder[] @relation("ParcelFromAddress")
+  parcelOrdersTo   ParcelOrder[] @relation("ParcelToAddress")
 }
 
 // ==================== ZONES DE LIVRAISON PRO ====================
@@ -923,6 +932,104 @@ model OrderReport {
   user          User                @relation(fields: [userId], references: [id])
 
   @@map("order_reports")
+}
+
+// ==================== COLIS EXPRESS ====================
+
+/// Livraison de colis à la demande d'un Pro (pas un Client) -- voir la
+/// proposition "Colis Express" envoyée à Krys le 19/09/2026, et sa décision
+/// du même jour sur le périmètre (gabarit S/M scooter/véhicule léger, pros
+/// et clients déjà inscrits à terme -- mais MVP limité à l'espace Pro pour
+/// l'instant, zone tout le Golfe, facturation directe par course).
+///
+/// Volontairement une table séparée de Order/OrderItem plutôt qu'une
+/// extension de celles-ci : Order suppose toujours un clientId (compte
+/// Client qui achète) et des OrderItem liés à un vrai Product du catalogue
+/// d'un Pro -- deux hypothèses fausses ici, le payeur est le Pro lui-même et
+/// il n'y a ni client destinataire avec compte ni produit, juste un nom, un
+/// téléphone et un colis. Ne pas toucher à Order limite le risque sur les
+/// commandes repas déjà en production. Réutilise en revanche Pro/Rider/
+/// Address tels quels, et un cycle de statuts calqué sur OrderStatus (sans
+/// PREPARING/READY, qui n'ont pas de sens sans préparation en cuisine).
+model ParcelOrder {
+  id              String            @id @default(uuid())
+  parcelNumber    String            @unique @map("parcel_number")
+  proId           String            @map("pro_id")
+  riderId         String?           @map("rider_id")
+  fromAddressId   String            @map("from_address_id")
+  toAddressId     String            @map("to_address_id")
+
+  /// Destinataire du colis -- pas un compte Client, juste les coordonnées
+  /// nécessaires au livreur pour la remise (voir raisonnement ci-dessus).
+  recipientName   String            @map("recipient_name")
+  recipientPhone  String            @map("recipient_phone")
+
+  /// "Petits colis transportables par scooter ou véhicule léger" (décision
+  /// Krys, 19/09/2026) -- pas de L/XL pour l'instant.
+  size            ParcelSize        @default(S)
+  /// Instruction libre du Pro pour le livreur (ex: "sonner à l'interphone
+  /// 3B", "fragile") -- équivalent de Order.clientNote.
+  instructions    String?
+  /// Photo du colis ajoutée par le Pro (19/09/2026, demande de Krys) --
+  /// bucket Supabase Storage dédié "parcel-photos" (À CRÉER manuellement,
+  /// public, même principe que "product-images"), chemin "{proId}/{id}.ext".
+  /// Pas encore affichée côté app Livreur -- ce volet n'existe pas encore
+  /// pour Colis Express (voir riders/me/available-orders, qui ne traite que
+  /// Order pour l'instant) ; ce champ est ajouté en préparation, prêt à être
+  /// affiché dès que cet écran Livreur sera construit.
+  photoUrl        String?           @map("photo_url")
+
+  status          ParcelOrderStatus @default(PENDING)
+  paymentStatus   PaymentStatus     @default(PENDING) @map("payment_status")
+
+  deliveryFee     Decimal           @db.Decimal(6,2) @map("delivery_fee")
+  /// Supplément "express" (priorité sur une tournée groupée plutôt
+  /// qu'attente du prochain passage) -- voir proposition, section
+  /// Tarification. 0 si non applicable.
+  expressFee      Decimal           @default(0) @db.Decimal(6,2) @map("express_fee")
+  total           Decimal           @db.Decimal(6,2)
+
+  riderEarnings     Decimal         @db.Decimal(6,2) @map("rider_earnings")
+  platformEarnings  Decimal         @db.Decimal(6,2) @map("platform_earnings")
+
+  /// Facturation directe par course (décision Krys, 19/09/2026) -- débitée
+  /// sur Pro.stripeCustomerId (le Customer Stripe de l'abonnement du Pro,
+  /// PAS son compte Connect stripeAccountId qui sert lui à RECEVOIR de
+  /// l'argent). Suppose qu'un moyen de paiement par défaut existe déjà sur
+  /// ce Customer -- à vérifier avant de coder le débit lui-même.
+  stripePaymentIntentId String?     @map("stripe_payment_intent_id")
+  cardBrand       String?           @map("card_brand")
+  cardLast4       String?           @map("card_last_4")
+
+  placedAt        DateTime          @default(now()) @map("placed_at")
+  riderAssignedAt DateTime?         @map("rider_assigned_at")
+  pickedUpAt      DateTime?         @map("picked_up_at")
+  deliveredAt     DateTime?         @map("delivered_at")
+  cancelledAt     DateTime?         @map("cancelled_at")
+
+  pro             Pro               @relation(fields: [proId], references: [id])
+  rider           Rider?            @relation(fields: [riderId], references: [id])
+  fromAddress     Address           @relation("ParcelFromAddress", fields: [fromAddressId], references: [id])
+  toAddress       Address           @relation("ParcelToAddress", fields: [toAddressId], references: [id])
+}
+
+enum ParcelOrderStatus {
+  PENDING
+  /// Paiement confirmé (Stripe) -- seulement à partir de ce statut qu'une
+  /// course doit apparaître comme disponible pour les livreurs. Pas encore
+  /// utilisé tant que le débit Stripe n'est pas câblé (19/09/2026) -- voir
+  /// la proposition, section 5.
+  CONFIRMED
+  RIDER_ASSIGNED
+  PICKED_UP
+  IN_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum ParcelSize {
+  S
+  M
 }
 
 // ==================== CONTACT SITE VITRINE ====================
