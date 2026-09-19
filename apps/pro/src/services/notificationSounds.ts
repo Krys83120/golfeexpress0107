@@ -45,7 +45,31 @@ function playTone(freq: number, startOffset: number, duration: number, volume = 
   osc.stop(startTime + duration + 0.05);
 }
 
+/**
+ * Fichier audio réel embarqué avec l'application (apps/pro/public/sounds/...),
+ * contrairement aux sons synthétisés ci-dessous (Web Audio API). Ajouté le
+ * 19/09/2026 : Krys a fourni ce fichier elle-même ("Notification Nouvelle
+ * Commande.mp3") pour remplacer le son par défaut, les sons synthétisés étant
+ * jugés "trop basiques" -- et il est devenu LE son par défaut de tous les Pros
+ * (voir soundId dans useNotificationSettingsStore.ts) après qu'un bug de
+ * policy RLS sur le bucket Supabase Storage "notification-sounds" l'a
+ * empêchée d'utiliser elle-même la fonctionnalité "son personnalisé" plus
+ * bas dans ce fichier.
+ */
+const BUILT_IN_FILE_SOUND_URL = "/sounds/notification-nouvelle-commande.mp3";
+
 export const NOTIFICATION_SOUNDS: NotificationSound[] = [
+  {
+    id: "nouvelle-commande",
+    label: "📦 Nouvelle commande (par défaut)",
+    // Durée réelle mesurée ~4.05s, arrondie à 4.2s pour laisser une marge de
+    // sécurité dans l'espacement des répétitions (voir playSoundRepeated).
+    durationSeconds: 4.2,
+    play: () => {
+      const audio = new Audio(BUILT_IN_FILE_SOUND_URL);
+      audio.play().catch(() => {});
+    },
+  },
   {
     id: "ding",
     label: "🔔 Ding simple",
@@ -111,4 +135,55 @@ export function playSoundRepeated(sound: NotificationSound, repeatCount: number)
   for (let i = 0; i < Math.max(1, repeatCount); i++) {
     setTimeout(() => sound.play(), i * step * 1000);
   }
+}
+
+/** Durée max acceptée pour un son personnalisé uploadé (19/09/2026, réglée à 5s par Krys). */
+export const MAX_CUSTOM_SOUND_DURATION_SECONDS = 5;
+
+/**
+ * Son personnalisé uploadé par le Pro (19/09/2026, demande de Krys -- les
+ * sons synthétisés ci-dessus sont jugés "trop basiques"). Contrairement aux
+ * sons ci-dessus (Web Audio API, générés à la volée), celui-ci joue un vrai
+ * fichier audio (MP3...) via un élément <audio> standard -- voir
+ * uploadNotificationSound dans uploadsApi.ts pour l'upload lui-même.
+ *
+ * `play()` recrée un nouvel élément <audio> à chaque appel plutôt que de
+ * réutiliser une instance partagée : nécessaire pour que les répétitions
+ * rapprochées (voir playSoundRepeated) puissent se chevaucher sans qu'une
+ * lecture n'interrompe la précédente.
+ */
+export function createCustomSound(url: string, label: string, durationSeconds: number): NotificationSound {
+  return {
+    id: "custom",
+    label,
+    durationSeconds,
+    play: () => {
+      const audio = new Audio(url);
+      audio.play().catch(() => {});
+    },
+  };
+}
+
+/**
+ * Mesure la durée d'un fichier audio local AVANT upload (via une URL
+ * blob éphémère, révoquée juste après lecture des métadonnées) -- sert à
+ * caler l'espacement des répétitions (voir playSoundRepeated /
+ * GAP_BETWEEN_REPEATS). Repli à 1.5s si la métadonnée ne peut pas être lue
+ * (fichier corrompu, format non supporté par le navigateur...).
+ */
+export function probeAudioDuration(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
+    const audio = new Audio();
+    const cleanup = () => URL.revokeObjectURL(objectUrl);
+    audio.addEventListener("loadedmetadata", () => {
+      resolve(Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 1.5);
+      cleanup();
+    });
+    audio.addEventListener("error", () => {
+      resolve(1.5);
+      cleanup();
+    });
+    audio.src = objectUrl;
+  });
 }
