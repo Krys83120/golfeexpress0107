@@ -108,6 +108,80 @@ export function withCacheBust(url: string): string {
 }
 
 /**
+ * Upload la photo d'une demande Colis Express (19/09/2026, demande de
+ * Krys) -- bucket dédié "parcel-photos" (À CRÉER manuellement dans Supabase
+ * Storage, public, même principe que "product-images"). Chemin
+ * "{proId}/{parcelOrderId}.ext" -- une seule photo par demande (upsert
+ * écrase la précédente si le Pro la remplace).
+ *
+ * Pas encore affichée côté app Livreur (l'écran Colis Express n'existe pas
+ * encore de ce côté) -- l'URL est stockée et prête à être exploitée dès que
+ * cet écran sera construit.
+ */
+export async function uploadParcelOrderPhoto(proId: string, parcelOrderId: string, file: File): Promise<string> {
+  assertValidImage(file);
+
+  const supabase = getSupabaseClient();
+  const ext = extensionFor(file);
+  const path = `${proId}/${parcelOrderId}.${ext}`;
+
+  const { error } = await supabase.storage.from("parcel-photos").upload(path, file, {
+    upsert: true,
+    contentType: file.type,
+  });
+
+  if (error) {
+    throw new UploadError(`Échec de l'upload : ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("parcel-photos").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+const MAX_SOUND_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 Mo -- un son de notification doit rester court
+const ALLOWED_SOUND_TYPES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/mp4", "audio/x-m4a", "audio/aac"];
+
+function assertValidSoundFile(file: File) {
+  const looksAudioByName = /\.(mp3|wav|m4a|aac)$/i.test(file.name);
+  if (!ALLOWED_SOUND_TYPES.includes(file.type) && !looksAudioByName) {
+    throw new UploadError("Format non supporté. Utilisez un MP3, WAV, M4A ou AAC.");
+  }
+  if (file.size > MAX_SOUND_FILE_SIZE_BYTES) {
+    throw new UploadError("Fichier trop lourd (2 Mo maximum -- un son de notification doit rester court).");
+  }
+}
+
+/**
+ * Upload un son de notification personnalisé (19/09/2026, demande de Krys :
+ * les sons synthétisés proposés par défaut sont jugés "trop basiques").
+ * Bucket dédié "notification-sounds" (À CRÉER manuellement dans Supabase
+ * Storage, public, même principe que "product-images"). Chemin
+ * "{proId}/{timestamp}-{nom fichier}.ext" -- volontairement PAS d'upsert sur
+ * un chemin fixe : les réglages de notification restent "par appareil" (voir
+ * useNotificationSettingsStore.ts), donc plusieurs appareils du même Pro
+ * peuvent chacun uploader/choisir un son différent sans s'écraser
+ * mutuellement.
+ */
+export async function uploadNotificationSound(proId: string, file: File): Promise<string> {
+  assertValidSoundFile(file);
+
+  const supabase = getSupabaseClient();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${proId}/${Date.now()}-${safeName}`;
+
+  const { error } = await supabase.storage.from("notification-sounds").upload(path, file, {
+    contentType: file.type || "audio/mpeg",
+  });
+
+  if (error) {
+    throw new UploadError(`Échec de l'upload : ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from("notification-sounds").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/**
  * Upload le Kbis d'un Pro (bucket "pro-assets", déjà existant) — accepte
  * PDF en plus des images (contrairement à assertValidImage utilisé pour
  * logo/couverture), un Kbis étant le plus souvent un PDF officiel plutôt
