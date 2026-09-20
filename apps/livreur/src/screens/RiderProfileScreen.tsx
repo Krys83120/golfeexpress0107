@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Alert, Switch, Platform } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Alert, Switch, Platform, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { VEHICLE_LABELS } from "@/services/vehicleLabels";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -79,6 +79,12 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
   const [savingNotifPref, setSavingNotifPref] = useState(false);
+  // Popup "priming" (20/09/2026, demande explicite de Krys) : sur mobile, la
+  // demande d'autorisation native du navigateur est une toute petite cloche
+  // discrète dans la barre du haut, facile à louper -- ce popup au centre de
+  // l'écran prévient qu'elle arrive, avant même de la déclencher, plutôt que
+  // de compter sur le livreur pour la repérer tout seul.
+  const [showEnableModal, setShowEnableModal] = useState(false);
   const pushNotifications = usePushNotifications();
 
   const firstName = user?.firstName ?? "Livreur";
@@ -115,6 +121,28 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
    * requis par le standard Web Push — la préférence seule ne suffit pas à
    * recevoir quoi que ce soit sans un abonnement actif).
    */
+  /**
+   * Point d'entrée depuis l'interrupteur. Pour l'activation, ne déclenche
+   * PAS directement la demande navigateur -- passe d'abord par le popup
+   * showEnableModal (voir plus bas) pour prévenir le livreur, sauf si la
+   * permission est déjà accordée (rien à demander, ex: reactivation après
+   * un simple désabonnement). La désactivation reste immédiate, pas besoin
+   * de prévenir pour retirer une permission.
+   */
+  function handleNotificationsSwitch(next: boolean) {
+    if (savingNotifPref) return;
+    if (next && pushNotifications.state !== "granted") {
+      setShowEnableModal(true);
+      return;
+    }
+    handleToggleNotifications(next);
+  }
+
+  async function confirmEnableNotifications() {
+    setShowEnableModal(false);
+    await handleToggleNotifications(true);
+  }
+
   async function handleToggleNotifications(next: boolean) {
     if (savingNotifPref) return;
     setSavingNotifPref(true);
@@ -256,7 +284,7 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
               </View>
               <Switch
                 value={profile?.notificationsEnabled ?? true}
-                onValueChange={handleToggleNotifications}
+                onValueChange={handleNotificationsSwitch}
                 disabled={savingNotifPref}
                 trackColor={{ true: "#2ECC71" }}
               />
@@ -287,6 +315,31 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
           <Text style={styles.version}>Do You Geckoo Livreur v0.1.0 🦎</Text>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showEnableModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEnableModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={{ fontSize: 36, textAlign: "center" }}>🔔</Text>
+            <Text style={styles.modalTitle}>Activer les notifications ?</Text>
+            <Text style={styles.modalBody}>
+              Soyez alerté dès qu'une commande proche de vous devient disponible, sans avoir à garder l'appli ouverte
+              en permanence.{"\n\n"}Votre navigateur va vous demander une autorisation juste après — acceptez-la
+              pour que ça marche.
+            </Text>
+            <Pressable onPress={confirmEnableNotifications} style={styles.modalPrimaryBtn}>
+              <Text style={styles.modalPrimaryBtnText}>Activer</Text>
+            </Pressable>
+            <Pressable onPress={() => setShowEnableModal(false)} style={styles.modalSecondaryBtn}>
+              <Text style={styles.modalSecondaryBtnText}>Plus tard</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -326,4 +379,18 @@ const styles = StyleSheet.create({
   logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, borderWidth: 2, borderColor: "#FEE2E2", backgroundColor: "#FEF2F2", paddingVertical: 14 },
   logoutText: { fontSize: 14, fontWeight: "700", color: "#EF4444" },
   version: { marginTop: 16, textAlign: "center", fontSize: 12, color: "#6B7280" },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(26,26,46,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalCard: { width: "100%", maxWidth: 360, borderRadius: 20, backgroundColor: "white", padding: 24, alignItems: "center" },
+  modalTitle: { marginTop: 8, fontSize: 17, fontWeight: "800", color: "#1A1A2E", textAlign: "center" },
+  modalBody: { marginTop: 10, fontSize: 13, lineHeight: 19, color: "#6B7280", textAlign: "center" },
+  modalPrimaryBtn: { marginTop: 20, width: "100%", borderRadius: 999, backgroundColor: "#2ECC71", paddingVertical: 14, alignItems: "center" },
+  modalPrimaryBtnText: { fontSize: 15, fontWeight: "800", color: "#1A1A2E" },
+  modalSecondaryBtn: { marginTop: 8, paddingVertical: 10 },
+  modalSecondaryBtnText: { fontSize: 13, fontWeight: "700", color: "#6B7280" },
 });
