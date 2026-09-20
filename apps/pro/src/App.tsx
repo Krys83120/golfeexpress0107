@@ -4,6 +4,7 @@ import { SplashLoader } from "@/components/SplashLoader";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { MenuPage } from "@/pages/MenuPage";
+import { ColisExpressPage } from "@/pages/ColisExpressPage";
 import { FinancesPage } from "@/pages/FinancesPage";
 import { SubscriptionPage } from "@/pages/SubscriptionPage";
 import { ReviewsPage } from "@/pages/ReviewsPage";
@@ -12,6 +13,8 @@ import { EmployeesPage } from "@/pages/EmployeesPage";
 import { NotificationsPage } from "@/pages/NotificationsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
+import { CookieConsent } from "@/components/CookieConsent";
+import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProOrdersStore } from "@/store/useProOrdersStore";
 import { useNewOrderNotifications } from "@/hooks/useNewOrderNotifications";
@@ -77,6 +80,8 @@ function MainApp() {
         return <OrdersPage />;
       case "menu":
         return <MenuPage />;
+      case "colis-express":
+        return <ColisExpressPage />;
       case "finances":
         return <FinancesPage />;
       case "subscription":
@@ -138,30 +143,50 @@ export default function App() {
 
   if (resetToken) {
     return (
-      <ResetPasswordPage
-        token={resetToken}
-        onDone={() => {
-          window.history.replaceState({}, "", window.location.pathname);
-          window.location.reload();
-        }}
-      />
+      <>
+        <ResetPasswordPage
+          token={resetToken}
+          onDone={() => {
+            window.history.replaceState({}, "", window.location.pathname);
+            window.location.reload();
+          }}
+        />
+        <CookieConsent />
+        <SmartlookLoader />
+      </>
     );
   }
 
   if (showSplash) {
     return (
-      <SplashLoader
-        ready={status !== "idle" && status !== "loading"}
-        onFinished={() => setShowSplash(false)}
-        badgeUrl={splashUrl}
-        runnerUrl={splashRunnerUrl}
-      />
+      <>
+        <SplashLoader
+          ready={status !== "idle" && status !== "loading"}
+          onFinished={() => setShowSplash(false)}
+          badgeUrl={splashUrl}
+          runnerUrl={splashRunnerUrl}
+        />
+        <CookieConsent />
+        <SmartlookLoader />
+      </>
     );
   }
 
   if (status === "authenticated") {
-    return <MainApp />;
+    return (
+      <>
+        <MainApp />
+        <CookieConsent />
+        <SmartlookLoader />
+      </>
+    );
   }
 
-  return <LoginPage />;
+  return (
+    <>
+      <LoginPage />
+      <CookieConsent />
+      <SmartlookLoader />
+    </>
+  );
 }

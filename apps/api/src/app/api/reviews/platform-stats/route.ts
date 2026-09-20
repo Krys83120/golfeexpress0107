@@ -13,7 +13,18 @@ import { prisma } from "@/lib/prisma";
  * d'un service de certification tiers auquel Do You Geckoo n'est pas
  * abonné (contrairement à reparmonphone.fr, qui sert de référence
  * stylistique uniquement).
+ *
+ * `export const dynamic = "force-dynamic"` OBLIGATOIRE (même bug que
+ * /api/partner-packs, corrigé le 19/09/2026 en même temps -- voir le
+ * commentaire détaillé là-bas) : ce handler ne lit ni header, ni
+ * searchParams, ni cookie, donc rien ne force Next.js à le traiter comme
+ * dynamique. Sans cette ligne, la note moyenne et le nombre d'avis
+ * affichés sur le badge "Avis vérifiés" du site restent figés à leur
+ * valeur au moment du dernier build/déploiement, jamais mis à jour au fil
+ * des nouveaux avis clients.
  */
+export const dynamic = "force-dynamic";
+
 async function getHandler() {
   const agg = await prisma.review.aggregate({
     where: { platformRating: { not: null }, isVisible: true },

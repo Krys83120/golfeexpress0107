@@ -13,7 +13,9 @@ import {
   fetchBrandingSplashRunnerUrl,
 } from "@/services/brandingApi";
 import { SplashLoader } from "@/components/SplashLoader";
-import { AuthScreen } from "@/screens/AuthScreen";
+import { CookieConsent } from "@/components/CookieConsent";
+import { SmartlookLoader } from "@/components/SmartlookLoader";
+import { AuthGate } from "@/components/AuthGate";
 import { ResetPasswordScreen } from "@/screens/ResetPasswordScreen";
 import { HomeScreen } from "@/screens/HomeScreen";
 import { ProDetailScreen } from "@/screens/ProDetailScreen";
@@ -59,9 +61,55 @@ function MainApp() {
   const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
 
+  // Mode invité (19/09/2026) : un client sans compte peut naviguer librement
+  // dans MainApp (Accueil, fiches commerçant, panier). Seuls les onglets
+  // Commandes/Fidélité/Profil nécessitent un compte, puisqu'ils sont
+  // indissociables d'un profil Client. `showAuthGate` affiche alors AuthGate
+  // (connexion/inscription) par-dessus MainApp ; `pendingAction` mémorise ce
+  // que l'utilisateur voulait faire pour l'exécuter automatiquement une fois
+  // connecté, sans qu'il ait à retaper sa demande. Le paiement, lui, est géré
+  // séparément dans CartScreen.tsx (même mécanisme, mais propre à l'écran
+  // panier).
+  //
+  // La sélection d'adresse (openAddressPicker ci-dessous), elle, n'est plus
+  // gatée depuis le 19/09/2026 : un invité peut choisir une adresse
+  // temporaire (locale, non enregistrée) pour filtrer les commerçants par
+  // zone -- voir AddressPickerScreen.tsx et GUEST_ADDRESS_ID dans
+  // useAddressStore.ts. Elle n'est convertie en vraie adresse enregistrée
+  // que si l'invité se connecte ensuite pour payer (CartScreen.tsx).
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"orders" | "fidelity" | "profile" | null>(null);
+
+  const authStatus = useAuthStore((s) => s.status);
   const logout = useAuthStore((s) => s.logout);
   const clearCart = useCartStore((s) => s.clear);
   const cartItemCount = useCartStore((s) => s.itemCount());
+
+  useEffect(() => {
+    if (!showAuthGate || authStatus !== "authenticated") return;
+    setShowAuthGate(false);
+    if (pendingAction) {
+      setActiveTab(pendingAction);
+    }
+    setPendingAction(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus]);
+
+  /** Onglets Commandes/Fidélité/Profil -- nécessitent un compte. */
+  function requireAuthForTab(tab: Tab) {
+    if (authStatus === "authenticated") {
+      setActiveTab(tab);
+    } else {
+      setPendingAction(tab as "orders" | "fidelity" | "profile");
+      setShowAuthGate(true);
+    }
+  }
+
+  /** Sélection d'adresse -- ouverte à tous, y compris en mode invité (voir
+   * commentaire plus haut). */
+  function openAddressPicker() {
+    setAddressPickerOpen(true);
+  }
 
   // Deep-link depuis le site vitrine (doyougeckoo.fr) : un clic sur
   // "Commander chez X" ou sur un produit précis ajoute ?pro=<id>[&product=<id>]
@@ -145,7 +193,7 @@ function MainApp() {
               setSelectedPro(pro);
             }}
             onOpenCart={() => setCartOpen(true)}
-            onOpenAddressPicker={() => setAddressPickerOpen(true)}
+            onOpenAddressPicker={openAddressPicker}
             onOpenMap={() => setMapOpen(true)}
           />
         );
@@ -170,6 +218,17 @@ function MainApp() {
           />
         );
     }
+  }
+
+  if (showAuthGate) {
+    return (
+      <AuthGate
+        onClose={() => {
+          setShowAuthGate(false);
+          setPendingAction(null);
+        }}
+      />
+    );
   }
 
   return (
@@ -223,13 +282,14 @@ function MainApp() {
             </Text>
           </Pressable>
 
-          {/* Reste des onglets (Commandes, Fidélité, Profil) */}
+          {/* Reste des onglets (Commandes, Fidélité, Profil) -- nécessitent
+              un compte, voir requireAuthForTab ci-dessus. */}
           {TABS.slice(1).map((tab) => {
             const isActive = activeTab === tab.key;
             return (
               <Pressable
                 key={tab.key}
-                onPress={() => setActiveTab(tab.key)}
+                onPress={() => requireAuthForTab(tab.key)}
                 className="items-center gap-1 rounded-xl px-3 py-1"
                 style={{ backgroundColor: isActive ? "rgba(46,204,113,0.08)" : "transparent" }}
               >
@@ -270,7 +330,7 @@ function MainApp() {
         <CartScreen
           onClose={() => setCartOpen(false)}
           onOrderCreated={handleOrderCreated}
-          onOpenAddressPicker={() => setAddressPickerOpen(true)}
+          onOpenAddressPicker={openAddressPicker}
         />
       </Modal>
 
@@ -363,6 +423,8 @@ export default function App() {
             window.location.reload();
           }}
         />
+        <CookieConsent />
+        <SmartlookLoader />
       </SafeAreaProvider>
     );
   }
@@ -377,11 +439,18 @@ export default function App() {
           badgeUrl={splashUrl}
           runnerUrl={splashRunnerUrl}
         />
-      ) : status === "authenticated" ? (
-        <MainApp />
       ) : (
-        <AuthScreen />
+        // Mode invité (19/09/2026) : MainApp s'affiche que le client soit
+        // connecté ou non -- consulter les commerçants/produits/fiches ne
+        // nécessite plus de compte (voir prosApi.ts, déjà 100% public côté
+        // API). Seuls les endroits qui ont vraiment besoin d'un compte
+        // (Commandes/Fidélité/Profil, adresses, paiement) demandent une
+        // connexion au moment où l'utilisateur les sollicite, via AuthGate
+        // -- jamais en bloquant l'accès au catalogue lui-même.
+        <MainApp />
       )}
+      <CookieConsent />
+      <SmartlookLoader />
     </SafeAreaProvider>
   );
 }

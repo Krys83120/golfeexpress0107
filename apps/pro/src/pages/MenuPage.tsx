@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Copy, FolderCog, HelpCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy, FolderCog, HelpCircle, Eye } from "lucide-react";
 import { useProMenuStore } from "@/store/useProMenuStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ProductFormModal } from "@/components/ProductFormModal";
 import { CategoryManagerModal } from "@/components/CategoryManagerModal";
 import { ProductTutorialModal } from "@/components/ProductTutorialModal";
+import { fetchMyViews } from "@/services/viewsApi";
 import type { Product } from "@golfeexpress/types";
 
 function ProductThumbnail({ image }: { image: string | null | undefined }) {
@@ -35,8 +36,18 @@ export function MenuPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState<string | null>(null);
 
+  // Compteur de vues par produit (19/09/2026, demande explicite de Krys) --
+  // une Map plutôt qu'ajouter un champ sur Product : évite de toucher au
+  // store/au type Product pour une donnée annexe calculée à part, voir
+  // GET /api/pros/me/views. 0 par défaut pour un produit jamais vu (absent
+  // de la réponse, qui ne liste que les produits ayant au moins une vue).
+  const [productViews, setProductViews] = useState<Map<string, number>>(new Map());
+
   useEffect(() => {
     loadProducts();
+    fetchMyViews()
+      .then((data) => setProductViews(new Map(data.productViews.map((p) => [p.productId, p.views]))))
+      .catch(() => setProductViews(new Map()));
   }, []);
 
   async function handleSave(data: Omit<Product, "id" | "proId">) {
@@ -194,7 +205,11 @@ export function MenuPage() {
                     <p className="font-semibold text-nuit">{product.name}</p>
                     {product.isFeatured && <span className="text-xs">⭐</span>}
                   </div>
-                  <p className="mb-3 line-clamp-2 text-xs text-gris">{product.description}</p>
+                  <p className="mb-1 line-clamp-2 text-xs text-gris">{product.description}</p>
+                  <p className="mb-3 flex items-center gap-1 text-[11px] text-gris">
+                    <Eye size={11} />
+                    {productViews.get(product.id) ?? 0} vue{(productViews.get(product.id) ?? 0) > 1 ? "s" : ""}
+                  </p>
 
                   <div className="flex items-center justify-between border-t border-gris-light pt-3">
                     <p className="font-bold text-golfe-green">{Number(product.price).toFixed(2)} €</p>

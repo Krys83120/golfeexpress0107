@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OrderStatus, PaymentStatus, SubscriptionType } from "@golfeexpress/types";
+import { OrderStatus, PaymentStatus, SubscriptionType, ParcelOrderStatus } from "@golfeexpress/types";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendOrderConfirmedEmail, sendNewOrderToProEmail, sendOrderRefundedEmail } from "@/lib/emails/orderEmails";
@@ -44,6 +44,27 @@ import { findPack } from "@/lib/partnerPacks";
  * connectés" et "Votre compte" vers des destinations distinctes, chacune
  * avec sa propre clé de signature ; les mélanger dans un seul endpoint
  * casserait la vérification de signature pour l'un des deux types d'event.
+ *
+ * COLIS EXPRESS (ajout du 19/09/2026) : payment_intent.succeeded,
+ * payment_intent.payment_failed et charge.refunded gèrent maintenant AUSSI
+ * les PaymentIntent créés pour une demande Colis Express (metadata.parcelOrderId,
+ * voir /api/parcel-orders/payment-intent). Chaque branche ParcelOrder est un
+ * simple `if` ajouté À CÔTÉ du `if (orderId)` existant, jamais à l'intérieur
+ * -- le code Order d'origine n'est pas modifié.
+ *
+ * FRAIS STRIPE RÉELS (ajout du 19/09/2026, demande explicite de Krys) : dans
+ * payment_intent.succeeded, on va chercher le vrai balance_transaction.fee
+ * de la transaction (Order ET ParcelOrder) et on le retire de
+ * platformEarnings via un decrement atomique -- avant cet ajout, les frais
+ * Stripe (prélevés automatiquement par Stripe sur l'encaissement, la
+ * plateforme n'utilisant PAS de comptes Connect pour les paiements entrants,
+ * voir lib/stripeConnect.ts) n'étaient jamais reflétés en base :
+ * platformEarnings affichait un montant brut, supérieur à ce qui est
+ * réellement encaissé. proEarnings et riderEarnings ne sont JAMAIS touchés
+ * par cet ajout : leurs virements Stripe Connect (voir
+ * orders/[orderId]/status/route.ts) sont des transferts internes qui
+ * n'engendrent aucun frais additionnel, donc totalement insensibles aux
+ * frais de la charge carte initiale.
  */
 export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
@@ -117,6 +138,46 @@ export async function POST(req: NextRequest) {
               }
             }
 
+            // Frais réels Stripe (demande explicite de Krys, 19/09/2026) --
+            // on va chercher le VRAI montant prélevé par Stripe sur cette
+            // transaction précise (balance_transaction.fee, en centimes)
+            // plutôt que d'estimer un pourcentage fixe : reste exact quel
+            // que soit le type de carte (UE/hors UE), une éventuelle
+            // conversion de devise, etc. Purement soustractif sur
+            // platformEarnings via un decrement atomique -- ne touche JAMAIS
+            // proEarnings ni riderEarnings (leur virement Stripe Connect
+            // interne, déclenché depuis orders/[orderId]/status/route.ts,
+            // n'engendre aucun frais Stripe supplémentaire : seule la charge
+            // carte initiale sur le compte plateforme en génère un).
+            //
+            // IMPORTANT idempotence : contrairement à cardBrand/cardLast4
+            // (un simple `set`, sans risque à réécrire plusieurs fois), un
+            // `decrement` n'est PAS idempotent -- si Stripe rejoue ce même
+            // event (retry réseau, etc.), il ne faut le faire qu'UNE SEULE
+            // fois. On se base sur order.paymentStatus AVANT cette mise à
+            // jour (alreadyCaptured) plutôt que sur wasPending (qui reflète
+            // le statut métier, pas le statut de paiement) : un replay a
+            // déjà paymentStatus = CAPTURED de la fois précédente, donc on
+            // saute entièrement l'appel Stripe et le decrement.
+            const alreadyCaptured = order.paymentStatus === PaymentStatus.CAPTURED;
+            let stripeFeeAmount: number | null = null;
+            if (!alreadyCaptured) {
+              try {
+                const fullIntent = (await stripe.paymentIntents.retrieve(paymentIntent.id, {
+                  expand: ["latest_charge.balance_transaction"],
+                })) as unknown as {
+                  latest_charge: { balance_transaction: { fee: number } | string | null } | string | null;
+                };
+                const charge = fullIntent.latest_charge;
+                const balanceTransaction = charge && typeof charge === "object" ? charge.balance_transaction : null;
+                if (balanceTransaction && typeof balanceTransaction === "object" && typeof balanceTransaction.fee === "number") {
+                  stripeFeeAmount = balanceTransaction.fee / 100;
+                }
+              } catch (err) {
+                console.error(`[stripe webhook] Échec récupération des frais Stripe réels (commande ${orderId}):`, err);
+              }
+            }
+
             await prisma.order.update({
               where: { id: orderId },
               data: {
@@ -126,6 +187,10 @@ export async function POST(req: NextRequest) {
                 // "null" en cas d'échec sur un replay/retry du webhook.
                 ...(cardBrand ? { cardBrand } : {}),
                 ...(cardLast4 ? { cardLast4 } : {}),
+                // Uniquement si alreadyCaptured était false ET la
+                // récupération a réussi (voir le bloc alreadyCaptured
+                // ci-dessus) -- jamais appliqué deux fois sur un replay.
+                ...(stripeFeeAmount !== null ? { platformEarnings: { decrement: stripeFeeAmount } } : {}),
                 // On ne fait avancer le statut métier vers CONFIRMED que si
                 // la commande était encore PENDING — si le Pro/Rider l'a
                 // déjà fait progresser (webhook reçu en retard, replay
@@ -168,6 +233,103 @@ export async function POST(req: NextRequest) {
             }
           }
         }
+
+        // COLIS EXPRESS -- ajout pur (19/09/2026), ne touche jamais à la
+        // branche Order ci-dessus. Même logique exactement : paymentStatus
+        // -> CAPTURED, status métier -> CONFIRMED uniquement au premier
+        // passage (jamais de régression sur replay/retry Stripe), et
+        // remboursement automatique si la demande a été annulée par le Pro
+        // entre la création du PaymentIntent et la confirmation du paiement.
+        const parcelOrderId = paymentIntent.metadata.parcelOrderId;
+        if (parcelOrderId) {
+          const parcelOrder = await prisma.parcelOrder.findUnique({ where: { id: parcelOrderId } });
+          if (parcelOrder) {
+            const wasPending = parcelOrder.status === ParcelOrderStatus.PENDING;
+
+            if (parcelOrder.status === ParcelOrderStatus.CANCELLED) {
+              try {
+                await stripe.refunds.create({ payment_intent: paymentIntent.id });
+                await prisma.parcelOrder.update({
+                  where: { id: parcelOrderId },
+                  data: { paymentStatus: PaymentStatus.REFUNDED },
+                });
+              } catch (err) {
+                console.error(
+                  `[stripe webhook] Échec remboursement auto (Colis Express ${parcelOrderId} déjà annulé avant confirmation du paiement):`,
+                  err
+                );
+              }
+              break;
+            }
+
+            // Marque + 4 derniers chiffres de la carte -- même récupération
+            // "best effort" que côté Order (voir plus haut), utile pour un
+            // futur reçu/justificatif Colis Express côté Pro.
+            let cardBrand: string | null = null;
+            let cardLast4: string | null = null;
+            if (paymentIntent.payment_method) {
+              try {
+                const paymentMethod = await stripe.paymentMethods.retrieve(paymentIntent.payment_method);
+                cardBrand = paymentMethod.card?.brand ?? null;
+                cardLast4 = paymentMethod.card?.last4 ?? null;
+              } catch (err) {
+                console.error(
+                  `[stripe webhook] Échec récupération du moyen de paiement (Colis Express ${parcelOrderId}):`,
+                  err
+                );
+              }
+            }
+
+            // Frais réels Stripe -- même logique exacte que côté Order (voir
+            // le commentaire détaillé plus haut) : decrement atomique sur
+            // platformEarnings à partir du vrai balance_transaction.fee,
+            // jamais sur riderEarnings, gardé idempotent via
+            // alreadyCaptured pour ne jamais s'appliquer deux fois en cas de
+            // replay/retry Stripe.
+            const alreadyCaptured = parcelOrder.paymentStatus === PaymentStatus.CAPTURED;
+            let stripeFeeAmount: number | null = null;
+            if (!alreadyCaptured) {
+              try {
+                const fullIntent = (await stripe.paymentIntents.retrieve(paymentIntent.id, {
+                  expand: ["latest_charge.balance_transaction"],
+                })) as unknown as {
+                  latest_charge: { balance_transaction: { fee: number } | string | null } | string | null;
+                };
+                const charge = fullIntent.latest_charge;
+                const balanceTransaction = charge && typeof charge === "object" ? charge.balance_transaction : null;
+                if (balanceTransaction && typeof balanceTransaction === "object" && typeof balanceTransaction.fee === "number") {
+                  stripeFeeAmount = balanceTransaction.fee / 100;
+                }
+              } catch (err) {
+                console.error(
+                  `[stripe webhook] Échec récupération des frais Stripe réels (Colis Express ${parcelOrderId}):`,
+                  err
+                );
+              }
+            }
+
+            await prisma.parcelOrder.update({
+              where: { id: parcelOrderId },
+              data: {
+                paymentStatus: PaymentStatus.CAPTURED,
+                ...(cardBrand ? { cardBrand } : {}),
+                ...(cardLast4 ? { cardLast4 } : {}),
+                // Idem Order : on ne fait avancer le statut métier vers
+                // CONFIRMED que si la demande était encore PENDING -- pas de
+                // régression sur replay/retry Stripe.
+                ...(wasPending ? { status: ParcelOrderStatus.CONFIRMED } : {}),
+                ...(stripeFeeAmount !== null ? { platformEarnings: { decrement: stripeFeeAmount } } : {}),
+              },
+            });
+
+            // Pas d'email de confirmation dédié Colis Express pour l'instant
+            // (aucun template existant côté lib/emails -- MVP paiement,
+            // voir la proposition envoyée à Krys) -- la confirmation est
+            // visible immédiatement dans l'interface Pro (statut "Payé" +
+            // rafraîchissement de la liste des demandes récentes).
+          }
+        }
+
         break;
       }
 
@@ -180,13 +342,23 @@ export async function POST(req: NextRequest) {
             data: { paymentStatus: PaymentStatus.FAILED },
           });
         }
+
+        // COLIS EXPRESS -- ajout pur, même principe que ci-dessus.
+        const parcelOrderId = paymentIntent.metadata.parcelOrderId;
+        if (parcelOrderId) {
+          await prisma.parcelOrder.update({
+            where: { id: parcelOrderId },
+            data: { paymentStatus: PaymentStatus.FAILED },
+          });
+        }
         break;
       }
 
       case "charge.refunded": {
-        // metadata.orderId vit sur le PaymentIntent, pas directement sur le
-        // Charge (Stripe ne les copie pas automatiquement) — on doit donc
-        // relire le PaymentIntent associé pour retrouver la commande.
+        // metadata.orderId (ou metadata.parcelOrderId pour Colis Express)
+        // vit sur le PaymentIntent, pas directement sur le Charge (Stripe ne
+        // les copie pas automatiquement) — on doit donc relire le
+        // PaymentIntent associé pour retrouver la commande ou la demande.
         const charge = event.data.object as { payment_intent: string | null; amount_refunded: number };
         if (charge.payment_intent) {
           const paymentIntent = await stripe.paymentIntents.retrieve(charge.payment_intent);
@@ -204,6 +376,19 @@ export async function POST(req: NextRequest) {
                   charge.amount_refunded / 100
                 ).catch((err) => console.error("[stripe webhook] Échec email remboursement:", err));
               }
+            }
+          }
+
+          // COLIS EXPRESS -- ajout pur, même principe (pas d'email dédié
+          // pour l'instant, voir la remarque dans payment_intent.succeeded).
+          const parcelOrderId = paymentIntent.metadata.parcelOrderId;
+          if (parcelOrderId) {
+            const parcelOrder = await prisma.parcelOrder.findUnique({ where: { id: parcelOrderId } });
+            if (parcelOrder) {
+              await prisma.parcelOrder.update({
+                where: { id: parcelOrderId },
+                data: { paymentStatus: PaymentStatus.REFUNDED },
+              });
             }
           }
         }

@@ -8,5 +8,5 @@
     "noEmit": false,
     "paths": {}
   },
-  "include": ["seed.ts"]
+  "include": ["seed.ts", "apply-times-food-menu-options.ts"]
 }

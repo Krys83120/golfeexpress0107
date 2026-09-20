@@ -13,6 +13,8 @@ import {
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
 import { useRiderStatsStore } from "@/store/useRiderStatsStore";
 import { SplashLoader } from "@/components/SplashLoader";
+import { CookieConsent } from "@/components/CookieConsent";
+import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
 import { useOnlineKeepAwake } from "@/hooks/useOnlineKeepAwake";
 import { AuthScreen } from "@/screens/AuthScreen";
@@ -152,6 +154,8 @@ export default function App() {
             window.location.reload();
           }}
         />
+        <CookieConsent />
+        <SmartlookLoader />
       </SafeAreaProvider>
     );
   }
@@ -171,6 +175,8 @@ export default function App() {
       ) : (
         <AuthScreen />
       )}
+      <CookieConsent />
+      <SmartlookLoader />
     </SafeAreaProvider>
   );
 }

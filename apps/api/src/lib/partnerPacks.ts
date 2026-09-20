@@ -16,12 +16,22 @@ import { stripe } from "@/lib/stripe";
  */
 export const PACKS_SETTING_KEY = "partner_packs";
 
+/**
+ * Commissions relevées de +3 points sur les 3 paliers le 19/09/2026 (18/15/12
+ * -> 21/18/15), décision explicite de Krys pour compenser les frais réels
+ * Stripe désormais déduits de platformEarnings (voir
+ * webhooks/stripe/route.ts, section "FRAIS STRIPE RÉELS") sans réduire la
+ * marge plateforme ni toucher à la rémunération livreur -- ces frais ne
+ * portent QUE sur platformEarnings, jamais sur riderEarnings. Les 3 chiffres
+ * publics du site vitrine (apps/www/src/lib/economics.ts, PLATFORM_COMMISSION)
+ * ont été mis à jour en même temps -- toujours garder les deux synchronisés.
+ */
 export const DEFAULT_PACKS: AdminPartnerPack[] = [
   {
     tier: SubscriptionType.FREE,
     name: "Découverte",
     priceMonthly: 0,
-    commissionRate: 0.18,
+    commissionRate: 0.21,
     features: [
       "Fiche commerçant visible sur l'application et le site",
       "Réception et gestion des commandes en temps réel",
@@ -35,9 +45,9 @@ export const DEFAULT_PACKS: AdminPartnerPack[] = [
     tier: SubscriptionType.PREMIUM,
     name: "Premium",
     priceMonthly: 49.9,
-    commissionRate: 0.15,
+    commissionRate: 0.18,
     features: [
-      "Commission réduite à 15% (au lieu de 18%)",
+      "Commission réduite à 18% (au lieu de 21%)",
       "Classement prioritaire dans les résultats de recherche",
       'Badge "Partenaire Premium" affiché sur votre fiche',
     ],
@@ -49,9 +59,9 @@ export const DEFAULT_PACKS: AdminPartnerPack[] = [
     tier: SubscriptionType.PREMIUM_PLUS,
     name: "Premium+",
     priceMonthly: 79.9,
-    commissionRate: 0.12,
+    commissionRate: 0.15,
     features: [
-      "Commission réduite à 12% (au lieu de 18%)",
+      "Commission réduite à 15% (au lieu de 21%)",
       "Classement prioritaire maximal dans les résultats de recherche",
       'Badge "Partenaire Premium+" affiché sur votre fiche',
     ],

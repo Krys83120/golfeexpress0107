@@ -22,7 +22,16 @@ import { prisma } from "@/lib/prisma";
  * paginer l'historique complet, seulement à donner un aperçu représentatif
  * (voir aussi platform-stats pour la moyenne/le total réels, qui eux ne
  * sont jamais tronqués).
+ *
+ * `export const dynamic = "force-dynamic"` OBLIGATOIRE -- même bug que
+ * /api/partner-packs et /api/reviews/platform-stats (corrigé le 19/09/2026
+ * en même temps, voir le commentaire détaillé sur /api/partner-packs) :
+ * sans lecture de header/searchParams/cookie, Next.js traiterait sinon ce
+ * handler comme statique et figerait la liste des avis affichés sur /avis
+ * au moment du dernier déploiement.
  */
+export const dynamic = "force-dynamic";
+
 async function getHandler() {
   const reviews = await prisma.review.findMany({
     where: { platformRating: { not: null }, isVisible: true },

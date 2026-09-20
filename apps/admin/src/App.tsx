@@ -4,6 +4,7 @@ import { Sidebar } from "./components/Sidebar";
 import { SplashLoader } from "./components/SplashLoader";
 import { DashboardPage } from "./pages/DashboardPage";
 import { OrdersPage } from "./pages/OrdersPage";
+import { AdminColisExpressPage } from "./pages/AdminColisExpressPage";
 import { StatsPage } from "./pages/StatsPage";
 import { VisitsPage } from "./pages/VisitsPage";
 import { ValidationsPage } from "./pages/ValidationsPage";
@@ -50,6 +51,8 @@ function MainApp() {
         return <DashboardPage onNavigate={setActivePage} />;
       case "orders":
         return <OrdersPage />;
+      case "colis-express":
+        return <AdminColisExpressPage />;
       case "stats":
         return <StatsPage />;
       case "visits":

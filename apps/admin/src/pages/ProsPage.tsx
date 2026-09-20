@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Search, MoreVertical, Star } from "lucide-react";
+import { Search, MoreVertical, Star, Eye } from "lucide-react";
 import { PRO_STATUS_LABELS, SUBSCRIPTION_LABELS, PRO_CATEGORY_EMOJIS } from "@/services/proLabels";
 import { fetchAdminPros, type AdminProRow } from "@/services/adminEntitiesApi";
+import { fetchAdminProViews, type AdminProductViewRow } from "@/services/proViewsApi";
 import { MapView, type MapPin } from "@/components/MapView";
 import { ProDetailModal } from "@/components/ProDetailModal";
 
@@ -13,6 +14,14 @@ export function ProsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedPro, setSelectedPro] = useState<AdminProRow | null>(null);
 
+  // Compteurs de vues (19/09/2026, demande explicite de Krys) -- chargés à
+  // part de fetchAdminPros (route dédiée, voir proViewsApi.ts) : proViews en
+  // Map pour un lookup direct par ligne du tableau, topProducts gardé tel
+  // quel (déjà trié par vues décroissantes côté serveur) pour le panneau
+  // "Produits les plus vus" plus bas.
+  const [proViews, setProViews] = useState<Map<string, number>>(new Map());
+  const [topProducts, setTopProducts] = useState<AdminProductViewRow[]>([]);
+
   useEffect(() => {
     fetchAdminPros()
       .then((data) => {
@@ -22,6 +31,15 @@ export function ProsPage() {
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Impossible de charger les commerçants.");
         setStatus("error");
+      });
+    fetchAdminProViews()
+      .then((data) => {
+        setProViews(new Map(data.proViews.map((p) => [p.proId, p.views])));
+        setTopProducts(data.productViews.slice(0, 10));
+      })
+      .catch(() => {
+        // Compteur secondaire -- une erreur ici ne doit pas empêcher
+        // d'afficher la liste des commerçants elle-même.
       });
   }, []);
 
@@ -87,6 +105,7 @@ export function ProsPage() {
                 <th className="py-2 pr-4 font-medium">Abonnement</th>
                 <th className="py-2 pr-4 font-medium">Note</th>
                 <th className="py-2 pr-4 font-medium">Commandes</th>
+                <th className="py-2 pr-4 font-medium">Vues</th>
                 <th className="py-2 pr-4 font-medium">Statut</th>
                 <th className="py-2 pr-4 font-medium"></th>
               </tr>
@@ -124,6 +143,12 @@ export function ProsPage() {
                       )}
                     </td>
                     <td className="py-3 pr-4 text-sm text-nuit">{pro._count.orders}</td>
+                    <td className="py-3 pr-4">
+                      <span className="flex items-center gap-1 text-sm text-nuit">
+                        <Eye size={13} className="text-gris" />
+                        {proViews.get(pro.id) ?? 0}
+                      </span>
+                    </td>
                     <td className="py-3 pr-4">
                       <span
                         className="rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -163,6 +188,30 @@ export function ProsPage() {
           </table>
         )}
       </div>
+
+      {topProducts.length > 0 && (
+        <div className="mt-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+          <h3 className="mb-4 font-heading text-base font-bold text-nuit">👁️ Produits les plus vus</h3>
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-gris-light text-xs uppercase tracking-wide text-gris">
+                <th className="py-2 pr-4 font-medium">Produit</th>
+                <th className="py-2 pr-4 font-medium">Commerçant</th>
+                <th className="py-2 pr-4 font-medium">Vues</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topProducts.map((p) => (
+                <tr key={p.productId} className="border-b border-gris-light last:border-0">
+                  <td className="py-2.5 pr-4 text-sm font-semibold text-nuit">{p.name}</td>
+                  <td className="py-2.5 pr-4 text-sm text-gris">{p.businessName}</td>
+                  <td className="py-2.5 pr-4 text-sm text-nuit">{p.views}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {selectedPro && (
         <ProDetailModal

@@ -25,3 +25,29 @@ export function trackAppOpen(): void {
     // Silencieux -- voir doc ci-dessus.
   });
 }
+
+/**
+ * Compteur de vues "fiche commerçant" / "fiche produit" (19/09/2026, demande
+ * explicite de Krys) -- réutilise EXACTEMENT le même mécanisme que
+ * trackAppOpen ci-dessus (même endpoint, même sessionId de session), en plus
+ * de lui (jamais à sa place : "app_open" continue de compter une visite par
+ * lancement d'app pour Admin > Visites, inchangé). Sert de source aux
+ * compteurs de GET /api/pros/me/views (Pro) et GET /api/admin/analytics/pro-views
+ * (Admin) qui reconnaissent ces chemins via leur préfixe -- voir leurs
+ * commentaires. `path` attendu : `/pro/<proId>` pour l'ouverture d'une fiche
+ * commerçant, `/pro/<proId>/product/<productId>` pour l'ouverture d'une
+ * fiche produit -- voir ProDetailScreen.tsx pour les deux appels.
+ *
+ * "Fire and forget" comme trackAppOpen : ne doit jamais bloquer ni faire
+ * planter l'app, appelée librement à chaque ouverture (pas de dédoublonnage
+ * -- "une vue" = une ouverture, choix explicite de Krys).
+ */
+export function trackPageView(path: string): void {
+  apiFetch("/api/analytics/visit", {
+    method: "POST",
+    skipAuth: true,
+    body: { app: "CLIENT", sessionId, path },
+  }).catch(() => {
+    // Silencieux -- voir doc ci-dessus.
+  });
+}

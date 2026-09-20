@@ -18,6 +18,7 @@ import {
   Euro,
   BarChart3,
   Eye,
+  PackageSearch,
   LogOut,
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
@@ -56,6 +57,7 @@ export function Sidebar({
   const navItems: NavItem[] = [
     { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
     { key: "orders", label: "Commandes", icon: <Package size={18} /> },
+    { key: "colis-express", label: "Colis Express", icon: <PackageSearch size={18} /> },
     { key: "stats", label: "Statistiques", icon: <BarChart3 size={18} /> },
     { key: "visits", label: "Visites", icon: <Eye size={18} /> },
     { key: "validations", label: "Validations KYC", icon: <ShieldCheck size={18} />, badge: pendingCount },

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StatCard } from "@/components/StatCard";
 import { RevenueChart } from "@/components/RevenueChart";
 import { TopProductsCard } from "@/components/TopProductsCard";
@@ -6,6 +6,7 @@ import { OrdersTable } from "@/components/OrdersTable";
 import { useProDashboardStore, type PeriodFilter } from "@/store/useProDashboardStore";
 import { useProOrdersStore } from "@/store/useProOrdersStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { fetchMyViews } from "@/services/viewsApi";
 import {
   computeWeeklyRevenue,
   computeTopProducts,
@@ -34,8 +35,18 @@ export function DashboardPage({ onViewAllOrders }: DashboardPageProps) {
 
   const profile = useAuthStore((s) => s.profile);
 
+  // Compteur de vues (19/09/2026, demande explicite de Krys) -- "vues" =
+  // ouvertures de la fiche boutique côté app Client, cumul depuis toujours
+  // (pas filtré par période contrairement au reste du dashboard, voir
+  // GET /api/pros/me/views). null tant que non chargé, jamais affiché comme
+  // "0" par erreur pendant le chargement.
+  const [pageViews, setPageViews] = useState<number | null>(null);
+
   useEffect(() => {
     loadOrders();
+    fetchMyViews()
+      .then((data) => setPageViews(data.pageViews))
+      .catch(() => setPageViews(null));
   }, []);
 
   const periodOrders = filterOrdersByPeriod(orders, period);
@@ -96,6 +107,12 @@ export function DashboardPage({ onViewAllOrders }: DashboardPageProps) {
           label="Statut boutique"
           value={profile?.status === "ACTIVE" ? "Actif" : "En attente"}
           accentColor="#9C27B0"
+        />
+        <StatCard
+          icon="👁️"
+          label="Vues de ma boutique"
+          value={pageViews !== null ? String(pageViews) : "—"}
+          accentColor="#2ECC71"
         />
       </div>
 

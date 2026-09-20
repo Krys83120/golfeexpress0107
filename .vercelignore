@@ -1,0 +1,75 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environnement
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# Expo
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Next.js
+.next/
+next-env.d.ts.bak
+
+# Prisma (le client généré ne doit pas être commité, regénéré via prisma generate)
+generated/
+**/node_modules/.prisma/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editeurs
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+
+# Tests / coverage
+coverage/
+
+# Misc
+*.local
+package-lock.json
+
+deploy-client/
+deploy-livreur/
+.vercel
+.env*
+Claude outputs/
+
+# Exception : on a besoin du lockfile pendant le déploiement Vercel pour que
+# npm installe a partir d'un arbre de dependances deja resolu (voir le bug
+# npm "Tracker idealTree already exists" en l'absence de lockfile, rencontre
+# lors du deploiement de apps/api le 19/09/2026). Le fichier reste absent de
+# git (.gitignore) -- cette exception ne concerne que l'upload vers Vercel.
+!package-lock.json

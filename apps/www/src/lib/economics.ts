@@ -10,8 +10,12 @@
  * la plateforme -- jamais inventées :
  *
  * - Commission commerçant : apps/api/src/lib/partnerPacks.ts (DEFAULT_PACKS)
- *   -> Découverte (FREE) 18%, Croissance (PREMIUM) 15%, Premium+ 12%.
- *   "12 à 18% selon la formule" est donc la formulation exacte, pas un
+ *   -> Découverte (FREE) 21%, Croissance (PREMIUM) 18%, Premium+ 15%.
+ *   Relevées de +3 points sur les 3 paliers le 19/09/2026 (étaient 18/15/12)
+ *   -- décision explicite de Krys pour compenser les frais réels Stripe
+ *   désormais déduits de platformEarnings (voir webhooks/stripe/route.ts),
+ *   sans réduire la marge plateforme ni la rémunération livreur.
+ *   "15 à 21% selon la formule" est donc la formulation exacte, pas un
  *   arrondi -- si un pack change ces valeurs mêmes, il faut mettre à jour
  *   ici aussi (pas de lien dynamique à l'API : ce sont des composants
  *   serveur statiques au build, un affichage dynamique viendrait avec un
@@ -35,14 +39,14 @@
  */
 
 export const PLATFORM_COMMISSION = {
-  /** Premium+ (meilleur taux) -- apps/api/src/lib/partnerPacks.ts, PREMIUM_PLUS.commissionRate = 0.12 */
-  minPct: 12,
-  /** Découverte / gratuit (taux de base) -- apps/api/src/lib/partnerPacks.ts, FREE.commissionRate = 0.18 */
-  maxPct: 18,
+  /** Premium+ (meilleur taux) -- apps/api/src/lib/partnerPacks.ts, PREMIUM_PLUS.commissionRate = 0.15 */
+  minPct: 15,
+  /** Découverte / gratuit (taux de base) -- apps/api/src/lib/partnerPacks.ts, FREE.commissionRate = 0.21 */
+  maxPct: 21,
   /** Formulation courte, utilisée partout où une seule phrase suffit. */
-  shortLabel: "12 à 18% selon la formule",
+  shortLabel: "15 à 21% selon la formule",
   /** Formulation "meilleur cas", pour un contexte qui veut mettre en avant le plancher. */
-  fromLabel: "à partir de 12%",
+  fromLabel: "à partir de 15%",
 } as const;
 
 export const RIDER_PAY = {

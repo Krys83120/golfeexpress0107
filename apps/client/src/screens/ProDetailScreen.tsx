@@ -7,6 +7,7 @@ import { useCartStore } from "@/store/useCartStore";
 import { ProductOptionsModal } from "@/components/ProductOptionsModal";
 import { BusinessInfoCard } from "@/components/BusinessInfoCard";
 import { FloatingCart } from "@/components/FloatingCart";
+import { trackPageView } from "@/services/analyticsApi";
 import type { Product } from "@golfeexpress/types";
 
 interface ProDetailScreenProps {
@@ -42,6 +43,26 @@ export function ProDetailScreen({ pro, onClose, onOpenCart, initialProductId }: 
     loadProductsForPro(pro.id);
     loadReviewsForPro(pro.id);
   }, [pro.id]);
+
+  // Compteur de vues "fiche commerçant" (19/09/2026, demande explicite de
+  // Krys) -- une vue par ouverture de cette fiche, voir trackPageView pour
+  // le détail. Effet séparé (déclenché uniquement par pro.id, jamais par les
+  // effets produits/avis ci-dessus) pour ne compter qu'une seule fois par
+  // montage de l'écran, pas à chaque re-render.
+  useEffect(() => {
+    trackPageView(`/pro/${pro.id}`);
+  }, [pro.id]);
+
+  // Compteur de vues "fiche produit" -- une vue à chaque ouverture de la
+  // modal de composition (ProductOptionsModal), quel que soit le chemin qui
+  // y mène (tap direct, "+" rapide sur un produit à options, deep-link
+  // depuis le site vitrine) : un seul point d'écoute sur optionsModalProduct
+  // plutôt que dupliquer l'appel dans chaque handler qui l'ouvre.
+  useEffect(() => {
+    if (optionsModalProduct) {
+      trackPageView(`/pro/${pro.id}/product/${optionsModalProduct.id}`);
+    }
+  }, [optionsModalProduct]);
 
   const products = productsByPro[pro.id] ?? [];
   const reviews = reviewsByPro[pro.id] ?? [];

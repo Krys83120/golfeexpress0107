@@ -31,11 +31,12 @@
     "patch-package": "^8.0.1"
   },
   "dependencies": {
+    "merge-options": "^3.0.4",
     "ws": "^8.21.0"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.62.4",
-    "@esbuild/linux-x64": "0.21.5"
+    "@esbuild/linux-x64": "0.21.5",
+    "@rollup/rollup-linux-x64-gnu": "4.62.4"
   },
   "overrides": {
     "react-native": "0.81.4"

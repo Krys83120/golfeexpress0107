@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useCartStore } from "@/store/useCartStore";
-import { useAddressStore } from "@/store/useAddressStore";
+import { useAddressStore, isGuestAddress } from "@/store/useAddressStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { createOrder, createPaymentIntent, cancelOrder } from "@/services/ordersApi";
 import { ApiRequestError } from "@/services/apiClient";
+import { AuthGate } from "@/components/AuthGate";
 import type { CheckoutPayment as CheckoutPaymentComponent } from "@/components/CheckoutPayment";
 import { haversineDistanceKm } from "@/services/categoryVisuals";
 import {
@@ -47,10 +49,29 @@ export function CartScreen({ onClose, onOrderCreated, onOpenAddressPicker }: Car
   const clearCart = useCartStore((s) => s.clear);
 
   const activeAddress = useAddressStore((s) => s.activeAddress);
+  const setActiveAddress = useAddressStore((s) => s.setActiveAddress);
+  const addAddress = useAddressStore((s) => s.addAddress);
+  const authStatus = useAuthStore((s) => s.status);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>(DEFAULT_PRICING_CONFIG);
+
+  // Mode invité (19/09/2026) : un client sans compte peut remplir son panier
+  // librement -- la connexion n'est demandée qu'au moment de payer (voir
+  // handleCheckout ci-dessous), pas avant. `showAuthGate` affiche
+  // AuthGate (connexion/inscription) par-dessus le panier ; dès que la
+  // connexion réussit, l'effet ci-dessous relance automatiquement le
+  // paiement, sans que le client ait à retaper "Payer".
+  const [showAuthGate, setShowAuthGate] = useState(false);
+
+  useEffect(() => {
+    if (showAuthGate && authStatus === "authenticated") {
+      setShowAuthGate(false);
+      handleCheckout();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus]);
 
   // Étape de paiement carte — dès que non-null, remplace le contenu du
   // panier par le formulaire Stripe (voir rendu plus bas). order.id sert au
@@ -122,6 +143,15 @@ export function CartScreen({ onClose, onOrderCreated, onOpenAddressPicker }: Car
   async function handleCheckout() {
     setError(null);
 
+    // Connexion requise seulement à ce stade (paiement) -- jamais avant,
+    // pour laisser un client sans compte parcourir le catalogue et remplir
+    // son panier librement (19/09/2026). S'il est déjà connecté depuis une
+    // session précédente, ce test passe immédiatement et rien ne change.
+    if (authStatus !== "authenticated") {
+      setShowAuthGate(true);
+      return;
+    }
+
     if (!proId || !pickupAddressId) {
       setError("Panier invalide — réessayez d'ajouter vos articles.");
       return;
@@ -136,10 +166,39 @@ export function CartScreen({ onClose, onOrderCreated, onOpenAddressPicker }: Car
 
     setSubmitting(true);
     try {
+      // L'adresse active peut encore être l'adresse temporaire choisie en
+      // mode invité, avant connexion (voir AddressPickerScreen.tsx et
+      // GUEST_ADDRESS_ID dans useAddressStore.ts) -- /api/orders exige un
+      // toAddressId qui existe réellement en base, donc on l'enregistre pour
+      // de vrai sur le compte qui vient de se connecter avant de créer la
+      // commande. Invisible pour le client : aucune étape supplémentaire à
+      // l'écran, l'adresse qu'il a choisie en parcourant le catalogue est
+      // simplement reprise telle quelle.
+      let deliveryAddress = activeAddress;
+      if (isGuestAddress(activeAddress)) {
+        await addAddress({
+          label: activeAddress.label,
+          street: activeAddress.street,
+          complement: activeAddress.complement,
+          zipCode: activeAddress.zipCode,
+          city: activeAddress.city,
+          lat: activeAddress.lat,
+          lng: activeAddress.lng,
+          isDefault: useAddressStore.getState().addresses.length === 0,
+        });
+        const saved = useAddressStore.getState().addresses.at(-1);
+        if (!saved) {
+          setError("Impossible d'enregistrer votre adresse de livraison. Réessayez.");
+          return;
+        }
+        deliveryAddress = saved;
+        setActiveAddress(saved);
+      }
+
       const order = await createOrder({
         proId,
         fromAddressId: pickupAddressId,
-        toAddressId: activeAddress.id,
+        toAddressId: deliveryAddress.id,
         items,
       });
 
@@ -177,6 +236,10 @@ export function CartScreen({ onClose, onOrderCreated, onOpenAddressPicker }: Car
     } finally {
       setPendingPayment(null);
     }
+  }
+
+  if (showAuthGate) {
+    return <AuthGate onClose={() => setShowAuthGate(false)} />;
   }
 
   if (pendingPayment) {

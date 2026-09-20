@@ -12,7 +12,8 @@
     "prisma:migrate": "dotenv -e .env.local -- prisma migrate dev --schema=../../prisma/schema.prisma",
     "prisma:push": "dotenv -e .env.local -- prisma db push --schema=../../prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema=../../prisma/schema.prisma",
-    "prisma:seed": "dotenv -e .env.local -- ts-node --project ../../prisma/seed/tsconfig.seed.json ../../prisma/seed/seed.ts"
+    "prisma:seed": "dotenv -e .env.local -- ts-node --project ../../prisma/seed/tsconfig.seed.json ../../prisma/seed/seed.ts",
+    "apply:times-food-menu-options": "dotenv -e .env.local -- ts-node --project ../../prisma/seed/tsconfig.seed.json ../../prisma/seed/apply-times-food-menu-options.ts"
   },
   "dependencies": {
     "@golfeexpress/types": "*",

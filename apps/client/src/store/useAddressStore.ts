@@ -25,6 +25,21 @@ interface AddressState {
   removeAddress: (id: string) => Promise<void>;
 }
 
+/**
+ * Id réservé à l'adresse temporaire choisie par un client en mode invité
+ * (sans compte, voir AddressPickerScreen.tsx) -- jamais une vraie adresse
+ * enregistrée en base (GET/POST/DELETE /api/addresses restent authentifiés,
+ * on n'y touche pas). Sert à la reconnaître ailleurs dans l'app : CartScreen
+ * -> handleCheckout doit la convertir en vraie adresse enregistrée (via
+ * addAddress) avant de passer commande, /api/orders exigeant un
+ * toAddressId qui existe réellement en base.
+ */
+export const GUEST_ADDRESS_ID = "guest-temp";
+
+export function isGuestAddress(address: Address | null): boolean {
+  return address?.id === GUEST_ADDRESS_ID;
+}
+
 export const useAddressStore = create<AddressState>((set, get) => ({
   addresses: [],
   activeAddress: null,
