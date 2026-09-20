@@ -29,9 +29,16 @@ export function Hero() {
             client) : au premier rendu, un crawler qui n'exécute pas le JS
             n'y trouvait qu'un curseur clignotant vide. L'animation reste
             inchangée visuellement juste en dessous, elle porte maintenant un
-            <p aria-hidden> plutôt que le <h1>. */}
+            <p aria-hidden> plutôt que le <h1>.
+            Complété le 20/09/2026 : le nom "Do You Geckoo" a été ajouté en
+            tête du H1 (auparavant purement géographique). Le H1 est le
+            signal on-page le plus fort pour qu'un moteur associe le site à
+            une recherche exacte du nom de marque -- sans ce texte, seule une
+            recherche géographique ("livraison Golfe de Saint-Tropez")
+            pouvait faire remonter la page. */}
         <h1 className="font-heading text-2xl font-extrabold leading-tight sm:text-4xl md:text-5xl">
-          Livraison locale dans le Golfe de Saint-Tropez
+          <span className="notranslate" translate="no">Do You Geckoo</span> — Livraison locale dans le Golfe de
+          Saint-Tropez
         </h1>
 
         {/* Slogan signature — animation type machine à écrire, en boucle. Purement décorative (voir TypewriterSlogan.tsx). */}
