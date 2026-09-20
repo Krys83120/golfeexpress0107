@@ -90,6 +90,100 @@ function drawCover(ctx: CanvasRenderingContext2D, source: HTMLImageElement, widt
 }
 
 /**
+ * Réglages de police/couleur/position du texte dessiné sur les images OG --
+ * réglables depuis Admin > SEO/GEO (23/09/2026, retour de Krys : placement
+ * fixe pas toujours adapté à la photo de fond choisie, et sous-titre pas
+ * assez épais). Un seul jeu de réglages, partagé par les 4 apps (cohérence
+ * visuelle de la marque) -- seuls le décalage horizontal/vertical ont un
+ * usage qui varie vraiment d'une photo à l'autre, mais on les garde ici
+ * plutôt que par app pour rester simple ; à affiner par app plus tard si
+ * besoin.
+ */
+export type OgFontId = "system" | "poppins" | "montserrat" | "inter";
+
+export interface OgTextStyle {
+  fontFamily: OgFontId;
+  titleColor: string;
+  subtitleColor: string;
+  subtitleWeight: number;
+  titleSize: number;
+  subtitleSize: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+export const OG_FONT_OPTIONS: { id: OgFontId; label: string; cssFamily: string; googleFontHref: string | null }[] = [
+  { id: "system", label: "Par défaut (sans-serif)", cssFamily: "Arial, sans-serif", googleFontHref: null },
+  {
+    id: "poppins",
+    label: "Poppins — rond, percutant",
+    cssFamily: "'Poppins', sans-serif",
+    googleFontHref: "https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap",
+  },
+  {
+    id: "montserrat",
+    label: "Montserrat — carré, moderne",
+    cssFamily: "'Montserrat', sans-serif",
+    googleFontHref: "https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap",
+  },
+  {
+    id: "inter",
+    label: "Inter — net, très lisible",
+    cssFamily: "'Inter', sans-serif",
+    googleFontHref: "https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap",
+  },
+];
+
+export const DEFAULT_OG_TEXT_STYLE: OgTextStyle = {
+  fontFamily: "system",
+  titleColor: "#FFFFFF",
+  subtitleColor: "#FFFFFF",
+  subtitleWeight: 700, // avant : 500 fixe, jugé "pas assez épais" par Krys
+  titleSize: 64,
+  subtitleSize: 32,
+  offsetX: 0,
+  offsetY: 0,
+};
+
+const loadedFontHrefs = new Set<string>();
+
+/**
+ * Charge une police Google Fonts dans le document (balise <link>, une seule
+ * fois par police) puis attend qu'elle soit réellement utilisable par le
+ * canvas (document.fonts) avant de dessiner -- sans cette attente, la
+ * première génération après un changement de police dessinerait encore
+ * avec la police précédente (le navigateur charge la police en tâche de
+ * fond, de façon asynchrone).
+ */
+async function ensureFontLoaded(fontId: OgFontId): Promise<void> {
+  const font = OG_FONT_OPTIONS.find((f) => f.id === fontId);
+  if (!font || !font.googleFontHref) return; // "system" : rien à charger, sans-serif du navigateur
+
+  if (!loadedFontHrefs.has(font.googleFontHref)) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = font.googleFontHref;
+    document.head.appendChild(link);
+    loadedFontHrefs.add(font.googleFontHref);
+  }
+
+  const family = font.cssFamily.split(",")[0].replace(/'/g, "");
+  try {
+    await Promise.all([
+      document.fonts.load(`700 64px "${family}"`),
+      document.fonts.load(`800 64px "${family}"`),
+      document.fonts.load(`500 32px "${family}"`),
+      document.fonts.load(`600 32px "${family}"`),
+    ]);
+    await document.fonts.ready;
+  } catch {
+    // Si le chargement échoue (offline, police invalide...), on continue
+    // avec le fallback sans-serif du cssFamily plutôt que de bloquer toute
+    // la génération de l'image.
+  }
+}
+
+/**
  * Génère une image OpenGraph 1200×630 (format standard partagé par
  * Facebook/WhatsApp/iMessage/LinkedIn...) : fond (couleur de marque, ou
  * photo perso si `backgroundImageUrl` est fourni), logo, nom de l'app et
@@ -101,7 +195,8 @@ async function generateOgImage(
   appName: string,
   tagline: string,
   bgColor: string,
-  backgroundImageUrl?: string
+  backgroundImageUrl?: string,
+  textStyle: OgTextStyle = DEFAULT_OG_TEXT_STYLE
 ): Promise<Blob> {
   const width = 1200;
   const height = 630;
@@ -109,6 +204,9 @@ async function generateOgImage(
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d")!;
+
+  await ensureFontLoaded(textStyle.fontFamily);
+  const fontFamily = OG_FONT_OPTIONS.find((f) => f.id === textStyle.fontFamily)?.cssFamily ?? "sans-serif";
 
   if (backgroundImageUrl) {
     const bg = await loadImageFromUrl(backgroundImageUrl);
@@ -134,27 +232,44 @@ async function generateOgImage(
   const h = source.height * scale;
   ctx.drawImage(source, 100, (height - h) / 2, w, h);
 
-  // Textes à droite
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = "800 64px sans-serif";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText(appName, 460, 300);
+  // Textes à droite -- position/police/couleur/épaisseur réglables via
+  // `textStyle` (voir Admin > SEO/GEO > "Réglages du texte", 23/09/2026).
+  // `offsetX`/`offsetY` permettent de décaler tout le bloc texte pour
+  // l'adapter à chaque photo de fond, le placement fixe d'origine ne
+  // convenant pas à toutes (ex: sujet de la photo caché sous le texte).
+  const textX = 460 + textStyle.offsetX;
+  // Marge droite fixe : le texte ne dépasse jamais du cadre quel que soit
+  // le décalage choisi -- corrige le débordement hors-image des noms d'app
+  // longs (ex. "Do You Geckoo Livreur", coupé net dans l'ancienne version
+  // qui ne limitait la largeur que pour le sous-titre, pas pour le titre).
+  const maxTextWidth = Math.max(200, width - textX - 40);
+  const titleY = 300 + textStyle.offsetY;
 
-  ctx.font = "500 32px sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  wrapText(ctx, tagline, 460, 360, 620, 42);
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = textStyle.titleColor;
+  ctx.font = `800 ${textStyle.titleSize}px ${fontFamily}`;
+  const titleLineHeight = textStyle.titleSize * 1.05;
+  const titleLines = wrapText(ctx, appName, textX, titleY, maxTextWidth, titleLineHeight);
+
+  ctx.font = `${textStyle.subtitleWeight} ${textStyle.subtitleSize}px ${fontFamily}`;
+  ctx.fillStyle = textStyle.subtitleColor;
+  const subtitleY = titleY + titleLineHeight * (titleLines - 1) + 60;
+  wrapText(ctx, tagline, textX, subtitleY, maxTextWidth, textStyle.subtitleSize * 1.3);
 
   return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob!), "image/png"));
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) {
+/** Dessine `text` en l'enveloppant sur plusieurs lignes si besoin. Renvoie le nombre de lignes dessinées. */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
   const words = text.split(" ");
   let line = "";
   let currentY = y;
+  let lines = 0;
   for (const word of words) {
     const testLine = line + word + " ";
     if (ctx.measureText(testLine).width > maxWidth && line !== "") {
       ctx.fillText(line, x, currentY);
+      lines++;
       line = word + " ";
       currentY += lineHeight;
     } else {
@@ -162,6 +277,8 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
     }
   }
   ctx.fillText(line, x, currentY);
+  lines++;
+  return lines;
 }
 
 function loadImage(file: File): Promise<HTMLImageElement> {
@@ -330,6 +447,23 @@ export async function clearOgBackground(app: OgAppKey): Promise<void> {
   await apiFetch(`/api/admin/settings/branding.og_bg_${app}_url`, { method: "PUT", body: { value: { url: null } } });
 }
 
+const OG_TEXT_STYLE_SETTING_KEY = "branding.og_text_style";
+
+/** Réglages actuellement enregistrés (police/couleurs/épaisseur/position) pour le texte des images de partage, ou les valeurs par défaut si jamais réglés. */
+export async function fetchOgTextStyle(): Promise<OgTextStyle> {
+  try {
+    const data = await apiFetch<{ setting: { value: Partial<OgTextStyle> } }>(`/api/admin/settings/${OG_TEXT_STYLE_SETTING_KEY}`);
+    return { ...DEFAULT_OG_TEXT_STYLE, ...(data.setting?.value ?? {}) };
+  } catch {
+    return DEFAULT_OG_TEXT_STYLE;
+  }
+}
+
+/** Enregistre les réglages de police/couleurs/épaisseur/position du texte des images de partage -- appliqués aux 4 apps à la prochaine régénération. */
+export async function saveOgTextStyle(style: OgTextStyle): Promise<void> {
+  await apiFetch(`/api/admin/settings/${OG_TEXT_STYLE_SETTING_KEY}`, { method: "PUT", body: { value: style } });
+}
+
 /**
  * Génère une image OpenGraph pour une app donnée et l'upload à un chemin
  * STABLE (og-{app}.png, toujours le même nom) — c'est ce chemin fixe qui
@@ -344,10 +478,11 @@ export async function generateAndUploadOgImage(
   appName: string,
   tagline: string,
   bgColor: string,
-  backgroundImageUrl?: string
+  backgroundImageUrl?: string,
+  textStyle?: OgTextStyle
 ): Promise<string> {
   const img = await loadImage(file);
-  const blob = await generateOgImage(img, appName, tagline, bgColor, backgroundImageUrl);
+  const blob = await generateOgImage(img, appName, tagline, bgColor, backgroundImageUrl, textStyle);
 
   const supabase = getPublicStorageClient();
   const path = `og-${app}.png`;

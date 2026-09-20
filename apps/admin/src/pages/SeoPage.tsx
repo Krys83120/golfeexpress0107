@@ -10,7 +10,13 @@ import {
   clearOgBackground,
   fetchSeoPublicLaunch,
   saveSeoPublicLaunch,
+  fetchOgTextStyle,
+  saveOgTextStyle,
+  OG_FONT_OPTIONS,
+  DEFAULT_OG_TEXT_STYLE,
   type OgAppKey,
+  type OgTextStyle,
+  type OgFontId,
 } from "@/services/brandingApi";
 
 type AppKey = OgAppKey;
@@ -44,6 +50,13 @@ const APPS: { key: AppKey; name: string; tagline: string; bgColor: string; domai
     bgColor: "#2ECC71",
     domain: "doyougeckoo.fr",
   },
+];
+
+const SUBTITLE_WEIGHT_OPTIONS: { value: number; label: string }[] = [
+  { value: 500, label: "Normal" },
+  { value: 600, label: "Semi-gras" },
+  { value: 700, label: "Gras" },
+  { value: 800, label: "Extra-gras" },
 ];
 
 /**
@@ -99,6 +112,171 @@ function BackgroundPhotoField({
   );
 }
 
+/**
+ * Panneau "Réglages du texte" (23/09/2026, retour de Krys : placement du
+ * texte pas judicieux selon la photo, et sous-titre pas assez épais) --
+ * police, couleurs, épaisseur du sous-titre, taille des deux textes, et
+ * décalage horizontal/vertical du bloc texte entier. Un seul jeu de
+ * réglages partagé par les 4 apps (cohérence visuelle), pris en compte à
+ * chaque "Régénérer l'image de partage" tant qu'il n'est pas changé à
+ * nouveau -- il faut cliquer "Enregistrer les réglages" pour qu'il soit
+ * aussi mémorisé d'une visite à l'autre de la page.
+ */
+function TextStyleControls({
+  style,
+  onChange,
+  onSave,
+  status,
+}: {
+  style: OgTextStyle;
+  onChange: (next: OgTextStyle) => void;
+  onSave: () => void;
+  status: "idle" | "loading" | "saving" | "saved" | "error";
+}) {
+  function set<K extends keyof OgTextStyle>(key: K, value: OgTextStyle[K]) {
+    onChange({ ...style, [key]: value });
+  }
+
+  return (
+    <div className="mt-6 rounded bg-white p-6 shadow-sm">
+      <h2 className="font-heading text-base font-bold text-nuit">🎨 Réglages du texte</h2>
+      <p className="mt-1 text-sm text-gris">
+        Police, couleurs, épaisseur et position du texte dessiné sur les 4 images de partage. Pris en compte à la
+        prochaine "Régénérer l'image de partage" ; clique "Enregistrer les réglages" pour les garder d'une visite à
+        l'autre.
+      </p>
+
+      <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <label className="block text-xs font-semibold text-nuit">Police</label>
+          <select
+            value={style.fontFamily}
+            onChange={(e) => set("fontFamily", e.target.value as OgFontId)}
+            className="mt-1 w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+          >
+            {OG_FONT_OPTIONS.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-nuit">Épaisseur du sous-titre</label>
+          <select
+            value={style.subtitleWeight}
+            onChange={(e) => set("subtitleWeight", Number(e.target.value))}
+            className="mt-1 w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+          >
+            {SUBTITLE_WEIGHT_OPTIONS.map((w) => (
+              <option key={w.value} value={w.value}>
+                {w.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-nuit">Couleur du titre</label>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="color"
+              value={style.titleColor}
+              onChange={(e) => set("titleColor", e.target.value)}
+              className="h-9 w-12 cursor-pointer rounded-sm border border-gris-light"
+            />
+            <span className="text-xs text-gris">{style.titleColor}</span>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-nuit">Couleur du sous-titre</label>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="color"
+              value={style.subtitleColor}
+              onChange={(e) => set("subtitleColor", e.target.value)}
+              className="h-9 w-12 cursor-pointer rounded-sm border border-gris-light"
+            />
+            <span className="text-xs text-gris">{style.subtitleColor}</span>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-nuit">Taille du titre — {style.titleSize}px</label>
+          <input
+            type="range"
+            min={40}
+            max={90}
+            value={style.titleSize}
+            onChange={(e) => set("titleSize", Number(e.target.value))}
+            className="mt-2 w-full"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-nuit">Taille du sous-titre — {style.subtitleSize}px</label>
+          <input
+            type="range"
+            min={20}
+            max={48}
+            value={style.subtitleSize}
+            onChange={(e) => set("subtitleSize", Number(e.target.value))}
+            className="mt-2 w-full"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-nuit">
+            Décalage horizontal — {style.offsetX > 0 ? `+${style.offsetX}` : style.offsetX}px
+          </label>
+          <input
+            type="range"
+            min={-300}
+            max={300}
+            value={style.offsetX}
+            onChange={(e) => set("offsetX", Number(e.target.value))}
+            className="mt-2 w-full"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-nuit">
+            Décalage vertical — {style.offsetY > 0 ? `+${style.offsetY}` : style.offsetY}px
+          </label>
+          <input
+            type="range"
+            min={-200}
+            max={200}
+            value={style.offsetY}
+            onChange={(e) => set("offsetY", Number(e.target.value))}
+            className="mt-2 w-full"
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          onClick={onSave}
+          disabled={status === "saving" || status === "loading"}
+          className="rounded-sm bg-golfe-green px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+        >
+          {status === "saving" ? "Enregistrement..." : "Enregistrer les réglages"}
+        </button>
+        <button
+          onClick={() => onChange(DEFAULT_OG_TEXT_STYLE)}
+          className="text-xs font-semibold text-gris hover:text-nuit"
+        >
+          Réinitialiser aux valeurs par défaut
+        </button>
+        {status === "saved" && <span className="text-xs text-golfe-green">✅ Réglages enregistrés.</span>}
+        {status === "error" && <span className="text-xs text-red-500">Échec de l'enregistrement.</span>}
+      </div>
+    </div>
+  );
+}
+
 // Corrigé le 23/08/2026 (audit SEO/GEO) : l'ancien titre par défaut
 // ("...en juste") était une phrase tronquée, jamais terminée -- voir aussi
 // apps/www/src/app/layout.tsx (DEFAULT_OG_TITLE, même correction).
@@ -124,6 +302,13 @@ export function SeoPage() {
   // en base (comme le logo) donc rechargées à chaque visite de la page.
   const [backgroundUrls, setBackgroundUrls] = useState<Record<AppKey, string | null>>({} as any);
   const [backgroundBusyFor, setBackgroundBusyFor] = useState<AppKey | null>(null);
+
+  // Réglages de police/couleurs/épaisseur/position du texte des images de
+  // partage -- voir TextStyleControls plus haut et generateOgImage côté
+  // brandingApi. Chargés depuis les settings au montage, comme le texte du
+  // site vitrine juste en dessous.
+  const [textStyle, setTextStyle] = useState<OgTextStyle>(DEFAULT_OG_TEXT_STYLE);
+  const [textStyleStatus, setTextStyleStatus] = useState<"idle" | "loading" | "saving" | "saved" | "error">("loading");
 
   // Garde-fou d'indexation publique (seo.public_launch) -- voir
   // brandingApi.ts. null = chargement, jamais utilisé comme valeur "réelle"
@@ -183,6 +368,28 @@ export function SeoPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchOgTextStyle()
+      .then((style) => {
+        if (!cancelled) setTextStyle(style);
+      })
+      .finally(() => !cancelled && setTextStyleStatus("idle"));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleSaveTextStyle() {
+    setTextStyleStatus("saving");
+    try {
+      await saveOgTextStyle(textStyle);
+      setTextStyleStatus("saved");
+    } catch {
+      setTextStyleStatus("error");
+    }
+  }
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -227,7 +434,8 @@ export function SeoPage() {
         app.name,
         app.tagline,
         app.bgColor,
-        backgroundUrls[app.key] ?? undefined
+        backgroundUrls[app.key] ?? undefined,
+        textStyle
       );
       setGeneratedUrls((prev) => ({ ...prev, [app.key]: `${url}?t=${Date.now()}` }));
     } catch (err) {
@@ -311,8 +519,16 @@ export function SeoPage() {
           </label>
           {preview && <img src={preview} alt="Aperçu" className="h-14 w-14 rounded-sm border border-gris-light object-cover" />}
         </div>
+        {!file && (
+          <p className="mt-3 text-xs text-corail">
+            ⚠️ Choisis d'abord un logo ici — tant qu'aucun fichier n'est sélectionné (même s'il l'a déjà été lors
+            d'une précédente visite), les boutons "Régénérer l'image de partage" ci-dessous restent inactifs.
+          </p>
+        )}
         {error && <div className="mt-4 rounded-sm bg-red-50 p-3 text-sm text-red-500">{error}</div>}
       </div>
+
+      <TextStyleControls style={textStyle} onChange={setTextStyle} onSave={handleSaveTextStyle} status={textStyleStatus} />
 
       {/* Une carte par app (client/livreur/pro) */}
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -359,6 +575,7 @@ export function SeoPage() {
               <button
                 onClick={() => handleGenerate(app)}
                 disabled={!file || generatingFor === app.key}
+                title={!file ? "Choisis d'abord un logo tout en haut de la page" : undefined}
                 className="mt-3 w-full rounded-sm bg-nuit py-2 text-xs font-semibold text-white disabled:opacity-50"
               >
                 {generatingFor === app.key ? "Génération..." : "Régénérer l'image de partage"}
@@ -418,6 +635,7 @@ export function SeoPage() {
             <button
               onClick={() => handleGenerate(APPS.find((a) => a.key === "www")!)}
               disabled={!file || generatingFor === "www"}
+              title={!file ? "Choisis d'abord un logo tout en haut de la page" : undefined}
               className="mt-3 w-full rounded-sm bg-nuit py-2 text-xs font-semibold text-white disabled:opacity-50"
             >
               {generatingFor === "www" ? "Génération..." : "Régénérer l'image de partage"}
