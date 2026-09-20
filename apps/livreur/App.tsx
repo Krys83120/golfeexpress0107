@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
@@ -114,6 +114,19 @@ export default function App() {
   // ici).
   const [splashUrl, setSplashUrl] = useState<string | null>(null);
   const [splashRunnerUrl, setSplashRunnerUrl] = useState<string | null>(null);
+
+  // Enregistre le service worker de notifications dès le lancement de
+  // l'app (web uniquement) -- séparé de l'ABONNEMENT effectif (qui demande
+  // la permission navigateur, voir usePushNotifications.ts / toggle dans
+  // RiderProfileScreen.tsx). L'enregistrement seul ne déclenche aucune
+  // popup de permission, juste préparer le terrain pour que le navigateur
+  // retrouve un abonnement déjà accordé lors d'une session précédente sans
+  // que le livreur ait besoin de rouvrir son profil.
+  useEffect(() => {
+    if (Platform.OS === "web" && typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     restoreSession();

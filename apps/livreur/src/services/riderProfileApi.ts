@@ -25,6 +25,7 @@ export interface UpdateRiderProfileInput {
   insuranceProvider?: string | null;
   insurancePolicyNumber?: string | null;
   autoOfflineTimeoutMinutes?: number;
+  notificationsEnabled?: boolean;
   acceptTerms?: boolean;
   termsVersion?: string;
 }

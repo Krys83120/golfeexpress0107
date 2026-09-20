@@ -179,6 +179,8 @@ export interface Rider {
   currentLocationUpdatedAt?: string | null;
   /** Délai (minutes) sans position avant déconnexion auto -- réglable par le livreur, 60 par défaut. */
   autoOfflineTimeoutMinutes: number;
+  /** Notifications "nouvelle commande à proximité" -- réglable par le livreur, true par défaut. */
+  notificationsEnabled: boolean;
   rating?: number | null;
   ratingCount: number;
   totalDeliveries: number;

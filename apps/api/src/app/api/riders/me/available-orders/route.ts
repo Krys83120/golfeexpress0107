@@ -3,6 +3,7 @@ import { OrderStatus, UserRole, RiderStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { isWithinRiderSearchWindow } from "@/lib/riderSearchWindow";
+import { notifyNearbyRidersForOrder } from "@/lib/riderNotifications";
 
 /**
  * GET /api/riders/me/available-orders
@@ -21,6 +22,18 @@ import { isWithinRiderSearchWindow } from "@/lib/riderSearchWindow";
  * disponibles sont renvoyées, triées par urgence. TODO: une fois
  * `Rider.currentLat/currentLng` peuplé en continu, filtrer par rayon avec
  * une requête PostGIS ou un calcul Haversine simple en SQL brut.
+ *
+ * Notifications push "commande à proximité" (voir riderNotifications.ts) —
+ * piggybackées sur ce même endpoint plutôt qu'un cron dédié, puisqu'il est
+ * déjà interrogé toutes les 10s par chaque livreur en ligne (voir
+ * useAvailableOrdersPolling côté apps/livreur). Pour chaque commande
+ * candidate pas encore notifiée (`riderNotifiedAt === null`), un
+ * `updateMany` avec ce même filtre dans le WHERE sert de verrou atomique :
+ * si plusieurs livreurs pollent au même instant, un seul appel "gagne"
+ * (count === 1) et déclenche réellement l'envoi des push — les autres
+ * voient count === 0 et ne font rien. Best-effort : n'affecte jamais la
+ * liste renvoyée ni le code de statut de cette réponse, une erreur ici est
+ * seulement loguée.
  */
 async function getHandler(req: NextRequest) {
   const auth = await requireAuth(req, [UserRole.RIDER]);
@@ -57,6 +70,24 @@ async function getHandler(req: NextRequest) {
       return isWithinRiderSearchWindow(order.preparingStartedAt!, order.estimatedPrepMinutes!);
     })
     .slice(0, 20);
+
+  await Promise.all(
+    orders
+      .filter((order) => order.riderNotifiedAt === null)
+      .map(async (order) => {
+        try {
+          const claim = await prisma.order.updateMany({
+            where: { id: order.id, riderNotifiedAt: null },
+            data: { riderNotifiedAt: new Date() },
+          });
+          if (claim.count === 1) {
+            await notifyNearbyRidersForOrder(order);
+          }
+        } catch (err) {
+          console.error(`[available-orders] Échec notification proximité (commande ${order.id}):`, err);
+        }
+      })
+  );
 
   return NextResponse.json({ orders });
 }

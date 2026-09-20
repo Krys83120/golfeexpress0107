@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Linking, Alert, Switch, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { VEHICLE_LABELS } from "@/services/vehicleLabels";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -10,6 +10,22 @@ import { updateMyRiderProfile } from "@/services/riderProfileApi";
 import { deleteMyAccount } from "@/services/accountApi";
 import { ApiRequestError } from "@/services/apiClient";
 import { RiderKycScreen } from "@/screens/RiderKycScreen";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+
+/**
+ * true si Safari iOS ET pas encore lancé depuis l'icône ajoutée à l'écran
+ * d'accueil (mode "standalone") -- Apple n'autorise les notifications web
+ * QUE dans ce mode. `navigator.standalone` est une extension propriétaire
+ * Safari (pas dans le typage DOM standard, d'où le cast), sans équivalent
+ * fiable multi-navigateur -- purement indicatif pour afficher un message
+ * d'aide, jamais utilisé pour bloquer une action.
+ */
+function isIosNotStandalone(): boolean {
+  if (Platform.OS !== "web" || typeof navigator === "undefined") return false;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone = (navigator as unknown as { standalone?: boolean }).standalone === true;
+  return isIos && !standalone;
+}
 
 // Choix proposés pour le délai de déconnexion automatique en cas
 // d'inactivité (aucune mise à jour de position) -- 1h coché par défaut côté
@@ -62,6 +78,8 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
   const [showKyc, setShowKyc] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
+  const [savingNotifPref, setSavingNotifPref] = useState(false);
+  const pushNotifications = usePushNotifications();
 
   const firstName = user?.firstName ?? "Livreur";
   const lastName = user?.lastName ?? "";
@@ -85,6 +103,42 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
       Alert.alert("Erreur", "Impossible de mettre à jour ce réglage pour le moment.");
     } finally {
       setSavingTimeout(false);
+    }
+  }
+
+  /**
+   * Active/désactive les notifications "nouvelle commande à proximité".
+   * Deux volets distincts gérés ensemble ici pour que le livreur n'ait
+   * qu'un seul interrupteur à comprendre : la préférence côté serveur
+   * (Rider.notificationsEnabled, contrôle si le serveur essaie d'envoyer)
+   * ET l'abonnement navigateur concret (voir usePushNotifications.ts,
+   * requis par le standard Web Push — la préférence seule ne suffit pas à
+   * recevoir quoi que ce soit sans un abonnement actif).
+   */
+  async function handleToggleNotifications(next: boolean) {
+    if (savingNotifPref) return;
+    setSavingNotifPref(true);
+    try {
+      if (next) {
+        const subscribed = await pushNotifications.enable();
+        if (!subscribed) {
+          Alert.alert(
+            "Notifications non activées",
+            pushNotifications.state === "denied"
+              ? "Les notifications sont bloquées pour ce navigateur — vérifiez les réglages de notifications de votre téléphone/navigateur pour doyougeckoo.fr."
+              : "Impossible d'activer les notifications sur cet appareil pour le moment."
+          );
+          return;
+        }
+      } else {
+        await pushNotifications.disable();
+      }
+      const updated = await updateMyRiderProfile({ notificationsEnabled: next });
+      setProfile(updated);
+    } catch {
+      Alert.alert("Erreur", "Impossible de mettre à jour ce réglage pour le moment.");
+    } finally {
+      setSavingNotifPref(false);
     }
   }
 
@@ -190,6 +244,29 @@ export function RiderProfileScreen({ onLogout }: RiderProfileScreenProps) {
                 );
               })}
             </View>
+          </View>
+
+          <View style={{ borderRadius: 8, backgroundColor: "#F3F4F6", padding: 16, marginTop: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.infoTitle}>Notifications de nouvelles commandes</Text>
+                <Text style={[styles.subtle, { marginTop: 4 }]}>
+                  Recevez une alerte sur votre téléphone dès qu'une commande proche de vous devient disponible.
+                </Text>
+              </View>
+              <Switch
+                value={profile?.notificationsEnabled ?? true}
+                onValueChange={handleToggleNotifications}
+                disabled={savingNotifPref}
+                trackColor={{ true: "#2ECC71" }}
+              />
+            </View>
+            {isIosNotStandalone() && (
+              <Text style={[styles.subtle, { marginTop: 10, color: "#FF6B35" }]}>
+                📱 Sur iPhone, les notifications ne fonctionnent que si vous avez ajouté Do You Geckoo à votre écran
+                d'accueil : dans Safari, appuyez sur le bouton Partager, puis "Sur l'écran d'accueil".
+              </Text>
+            )}
           </View>
         </View>
 

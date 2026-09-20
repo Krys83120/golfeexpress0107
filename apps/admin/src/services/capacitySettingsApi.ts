@@ -111,3 +111,31 @@ export interface CapacitySnapshot {
 export async function fetchCapacitySnapshot(): Promise<CapacitySnapshot> {
   return apiFetch<CapacitySnapshot>("/api/admin/capacity");
 }
+
+/**
+ * Rayon de notification push livreurs (voir apps/api/src/lib/riderNotifications.ts
+ * — même clé GlobalSetting et même valeur par défaut des deux côtés). Contrairement
+ * aux interrupteurs ci-dessus, une valeur numérique plutôt qu'un booléen, donc pas
+ * via fetchFlag/setFlag mais le même principe (clé/valeur générique
+ * /api/admin/settings/:key).
+ */
+const RIDER_NOTIFICATION_RADIUS_KEY = "riders.notification_radius_km";
+const DEFAULT_RIDER_NOTIFICATION_RADIUS_KM = 5;
+
+/** GET /api/admin/settings/:key — absent (jamais créé) = valeur par défaut. */
+export async function fetchRiderNotificationRadiusKm(): Promise<number> {
+  const data = await apiFetch<{ setting: RawSetting | null }>(`/api/admin/settings/${RIDER_NOTIFICATION_RADIUS_KEY}`);
+  const value = data.setting?.value;
+  return typeof value === "number" && value > 0 ? value : DEFAULT_RIDER_NOTIFICATION_RADIUS_KM;
+}
+
+export async function setRiderNotificationRadiusKm(radiusKm: number): Promise<void> {
+  await apiFetch(`/api/admin/settings/${RIDER_NOTIFICATION_RADIUS_KEY}`, {
+    method: "PUT",
+    body: {
+      value: radiusKm,
+      description:
+        "Rayon (km, à vol d'oiseau) autour du point de retrait dans lequel un livreur reçoit une notification push pour une nouvelle commande disponible. N'affecte jamais qui peut voir/accepter la commande dans la liste, seulement qui est notifié par un bip.",
+    },
+  });
+}

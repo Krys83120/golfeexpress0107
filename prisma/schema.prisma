@@ -492,6 +492,13 @@ model Rider {
   /// (échange produit du 23/08/2026 -- était fixé à 30 min pour tout le
   /// monde, désormais configurable, valeur par défaut portée à 60).
   autoOfflineTimeoutMinutes Int @default(60) @map("auto_offline_timeout_minutes")
+  /// Notifications "nouvelle commande à proximité" (ajout du 20/09/2026,
+  /// demande explicite de Krys) -- réglable par le livreur lui-même depuis
+  /// son profil, indépendamment du fait qu'il ait ou non accepté
+  /// l'autorisation navigateur (Web Push). true par défaut : un livreur qui
+  /// vient d'activer les notifications dans son navigateur s'attend à les
+  /// recevoir tout de suite, pas à devoir cocher un 2e interrupteur.
+  notificationsEnabled Boolean @default(true) @map("notifications_enabled")
   rating          Decimal?     @db.Decimal(2,1)
   ratingCount     Int          @default(0) @map("rating_count")
   totalDeliveries Int          @default(0) @map("total_deliveries")
@@ -516,6 +523,36 @@ model Rider {
   earnings        Earning[]
   withdrawals     Withdrawal[]
   reviews         Review[]
+  /// Abonnements Web Push (un par navigateur/appareil sur lequel le livreur
+  /// a activé les notifications, voir RiderPushSubscription ci-dessous).
+  pushSubscriptions RiderPushSubscription[]
+}
+
+/// Abonnement Web Push d'un livreur sur UN navigateur/appareil donné (ajout
+/// du 20/09/2026, notifications "nouvelle commande à proximité"). Table
+/// séparée plutôt que des colonnes sur Rider : un même livreur peut ouvrir
+/// livreur.doyougeckoo.fr depuis plusieurs téléphones/navigateurs, chacun
+/// avec son propre `endpoint` (fourni par le navigateur, unique par
+/// abonnement) -- on notifie alors tous les abonnements actifs de ce
+/// livreur. `onDelete: Cascade` : supprimé automatiquement si le compte
+/// livreur est supprimé, jamais laissé orphelin.
+model RiderPushSubscription {
+  id        String   @id @default(uuid())
+  riderId   String   @map("rider_id")
+  /// URL unique fournie par le navigateur pour ce couple (livreur,
+  /// appareil, navigateur) -- sert d'identifiant naturel : un même
+  /// navigateur qui se réabonne (ex: permissions réinitialisées) obtient un
+  /// nouvel endpoint, l'ancien devient caduc et sera nettoyé au prochain
+  /// envoi en échec (voir webPush.ts).
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  rider     Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@index([riderId])
+  @@map("rider_push_subscriptions")
 }
 
 // ==================== ADRESSES ====================
@@ -794,6 +831,14 @@ model Order {
   /// bloquée ; jamais remis à false ensuite (même si un livreur finit par
   /// accepter, ce n'est qu'un flag anti-doublon, pas un état métier).
   riderSearchAlertSent Boolean @default(false) @map("rider_search_alert_sent")
+  /// Horodatage du 1er envoi de notification "commande à proximité" aux
+  /// livreurs pour cette commande (ajout du 20/09/2026) -- évite de
+  /// renotifier à chaque appel de GET /api/riders/me/available-orders tant
+  /// que la commande reste visible dans la fenêtre de recherche (voir
+  /// riderSearchWindow.ts). null = pas encore notifiée. Jamais réinitialisé
+  /// ensuite, même si la commande change de statut -- simple flag anti-
+  /// doublon, comme riderSearchAlertSent ci-dessus.
+  riderNotifiedAt DateTime? @map("rider_notified_at")
 
   clientNote      String?     @map("client_note")
   deliveryPhoto   String?     @map("delivery_photo")

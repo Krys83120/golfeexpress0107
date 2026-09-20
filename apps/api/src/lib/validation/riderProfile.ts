@@ -31,6 +31,9 @@ export const updateRiderProfileSchema = z.object({
     .max(RIDER_AUTO_OFFLINE_TIMEOUT_MAX_MINUTES)
     .optional(),
 
+  /** Notifications "nouvelle commande à proximité" -- voir schema.prisma. */
+  notificationsEnabled: z.boolean().optional(),
+
   /** true = le livreur vient d'accepter les CGU/CGV dans ce même appel. */
   acceptTerms: z.boolean().optional(),
   termsVersion: z.string().optional(),

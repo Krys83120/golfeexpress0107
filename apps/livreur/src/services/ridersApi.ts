@@ -113,3 +113,23 @@ export async function fetchMyReviews(): Promise<Review[]> {
   const data = await apiFetch<{ reviews: Review[] }>("/api/riders/me/reviews");
   return data.reviews;
 }
+
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+/**
+ * POST /api/riders/push-subscription -- enregistre l'abonnement Web Push du
+ * navigateur courant (voir hooks/usePushNotifications.ts pour l'appelant).
+ * Note : PAS sous /riders/me/ malgré la convention des autres endpoints
+ * ci-dessus (voir le commentaire dans la route API elle-même).
+ */
+export async function savePushSubscription(subscription: PushSubscriptionPayload): Promise<void> {
+  await apiFetch("/api/riders/push-subscription", { method: "POST", body: subscription });
+}
+
+/** DELETE /api/riders/push-subscription */
+export async function deletePushSubscription(endpoint: string): Promise<void> {
+  await apiFetch("/api/riders/push-subscription", { method: "DELETE", body: { endpoint } });
+}

@@ -13,6 +13,8 @@ import {
   setStuckOrderAlertEnabled,
   setStaleRiderAutoOfflineEnabled,
   setOpeningHoursMandatoryEnabled,
+  fetchRiderNotificationRadiusKm,
+  setRiderNotificationRadiusKm,
 } from "@/services/capacitySettingsApi";
 
 // Suggestions rapides pour le Golfe de Saint-Tropez — juste des raccourcis
@@ -70,6 +72,13 @@ export function CapacityPage() {
   const [flagsLoading, setFlagsLoading] = useState(true);
   const [flagsSaving, setFlagsSaving] = useState<string | null>(null);
 
+  // Rayon de notification push livreurs (voir riderNotifications.ts) — valeur
+  // numérique, pas un interrupteur, donc état séparé des 5 booléens ci-dessus.
+  const [riderNotificationRadiusKm, setRiderNotificationRadiusKmState] = useState(5);
+  const [radiusInput, setRadiusInput] = useState("5");
+  const [radiusLoading, setRadiusLoading] = useState(true);
+  const [radiusSaving, setRadiusSaving] = useState(false);
+
   const [cities, setCities] = useState<ServiceCity[]>([]);
   const [citiesStatus, setCitiesStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [newCityName, setNewCityName] = useState("");
@@ -107,6 +116,12 @@ export function CapacityPage() {
         }
       )
       .finally(() => setFlagsLoading(false));
+    fetchRiderNotificationRadiusKm()
+      .then((km) => {
+        setRiderNotificationRadiusKmState(km);
+        setRadiusInput(String(km));
+      })
+      .finally(() => setRadiusLoading(false));
     loadCities();
   }, []);
 
@@ -177,6 +192,24 @@ export function CapacityPage() {
       alert("Impossible de mettre à jour ce réglage pour le moment.");
     } finally {
       setFlagsSaving(null);
+    }
+  }
+
+  async function handleSaveRadius() {
+    const parsed = Number(radiusInput);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      alert("Entrez un nombre de kilomètres valide (supérieur à 0).");
+      return;
+    }
+    setRadiusSaving(true);
+    try {
+      await setRiderNotificationRadiusKm(parsed);
+      setRiderNotificationRadiusKmState(parsed);
+      setRadiusInput(String(parsed));
+    } catch {
+      alert("Impossible de mettre à jour ce réglage pour le moment.");
+    } finally {
+      setRadiusSaving(false);
     }
   }
 
@@ -347,7 +380,7 @@ export function CapacityPage() {
           />
         </div>
 
-        <div className="flex items-start justify-between gap-4 pt-5">
+        <div className="flex items-start justify-between gap-4 border-b border-gris-light py-5">
           <div>
             <p className="text-sm font-semibold text-nuit">Horaires d'ouverture obligatoires</p>
             <p className="mt-1 text-xs text-gris">
@@ -362,6 +395,42 @@ export function CapacityPage() {
             onChange={handleToggleOpeningHoursMandatory}
             disabled={flagsLoading || flagsSaving === "openingHoursMandatory"}
           />
+        </div>
+
+        <div className="flex items-start justify-between gap-4 pt-5">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-nuit">Rayon de notification livreurs (km)</p>
+            <p className="mt-1 text-xs text-gris">
+              Distance à vol d'oiseau autour du point de retrait dans laquelle un livreur reçoit une notification
+              push ("Nouvelle commande à proximité") quand une commande devient disponible. Ne change jamais qui
+              peut voir ou accepter une commande — un livreur plus loin la voit toujours dans sa liste "commandes
+              disponibles", juste sans le bip. Nécessite aussi que le livreur ait activé les notifications depuis
+              son profil dans l'app Livreur.
+            </p>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <input
+              type="number"
+              min={0.5}
+              step={0.5}
+              value={radiusInput}
+              onChange={(e) => setRadiusInput(e.target.value)}
+              disabled={radiusLoading}
+              className="w-20 rounded-sm border border-gris-light px-3 py-2 text-sm focus:border-golfe-green focus:outline-none"
+            />
+            <button
+              onClick={handleSaveRadius}
+              disabled={
+                radiusSaving ||
+                radiusLoading ||
+                !radiusInput.trim() ||
+                Number(radiusInput) === riderNotificationRadiusKm
+              }
+              className="rounded-sm bg-nuit px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+            >
+              {radiusSaving ? "..." : "Enregistrer"}
+            </button>
+          </div>
         </div>
       </div>
 
