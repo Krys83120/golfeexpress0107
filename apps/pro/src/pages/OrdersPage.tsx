@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
 import { OrderStatus, type Order } from "@golfeexpress/types";
 import { useProOrdersStore } from "@/store/useProOrdersStore";
 import { ProOrderCard } from "@/components/ProOrderCard";
@@ -70,6 +71,15 @@ export function OrdersPage() {
   // haut, ces commandes ne sont plus affichées dans le kanban principal.
   const [showCancelled, setShowCancelled] = useState(false);
 
+  // Vignettes tactiles (25/09/2026, demande explicite de Krys) : sous "lg",
+  // le kanban en scroll horizontal est remplacé par 5 grandes vignettes
+  // (une par colonne) affichant juste le compte -- on clique/tape dessus
+  // pour ouvrir le détail de cette colonne dans un panneau plein écran.
+  // À partir de "lg" (PC), l'ancien kanban horizontal reste inchangé, jugé
+  // déjà lisible sur grand écran. `openColumnTitle` sert de clé vers COLUMNS
+  // plutôt qu'un index, pour rester lisible si l'ordre des colonnes change.
+  const [openColumnTitle, setOpenColumnTitle] = useState<string | null>(null);
+
   // Accessible ici (plutôt que seulement depuis Finances, réservée au
   // patron) car un employé qui ferme la boutique doit pouvoir faire le Z de
   // fin de journée -- voir requireProOrEmployee() dans
@@ -135,6 +145,33 @@ export function OrdersPage() {
     () => filteredOrders.filter((o) => o.status === OrderStatus.CANCELLED),
     [filteredOrders]
   );
+
+  // Commandes groupées par colonne -- calculé une seule fois et réutilisé à
+  // la fois par le kanban PC et par les vignettes mobile/tablette, pour ne
+  // jamais risquer un écart entre les deux vues.
+  const ordersByColumn = useMemo(() => {
+    const map = new Map<string, Order[]>();
+    for (const column of COLUMNS) {
+      map.set(
+        column.title,
+        filteredOrders.filter((o) => column.statuses.includes(o.status))
+      );
+    }
+    return map;
+  }, [filteredOrders]);
+
+  const openColumn = COLUMNS.find((c) => c.title === openColumnTitle) ?? null;
+  const openColumnOrders = openColumn ? ordersByColumn.get(openColumn.title) ?? [] : [];
+
+  // Ferme automatiquement le panneau si la colonne ouverte se retrouve vide
+  // (dernière commande de "Nouvelles" traitée pendant que le panneau est
+  // ouvert, par ex.) -- évite un panneau plein écran vide et confus.
+  useEffect(() => {
+    if (openColumnTitle && openColumnOrders.length === 0) {
+      setOpenColumnTitle(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openColumnOrders.length]);
 
   const selectClass =
     "rounded-sm border border-gris-light bg-white px-3 py-2 text-sm text-nuit focus:border-golfe-green focus:outline-none";
@@ -209,44 +246,113 @@ export function OrdersPage() {
       {status === "loading" && orders.length === 0 ? (
         <p className="py-12 text-center text-sm text-gris">Chargement des commandes...</p>
       ) : (
-        // Colonnes en scroll horizontal sous lg (chacune garde une largeur
-        // lisible, on fait défiler plutôt que d'écraser 5 colonnes dans un
-        // écran de téléphone) -- redevient une vraie grille à partir de lg,
-        // où les 5 colonnes tiennent confortablement côte à côte.
-        <div className="flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0">
-          {COLUMNS.map((column) => {
-            const columnOrders = filteredOrders.filter((o) => column.statuses.includes(o.status));
-            return (
-              <div key={column.title} className="flex w-64 shrink-0 flex-col gap-3 lg:w-auto lg:shrink">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-sm font-bold text-nuit">
-                    {column.emoji} {column.title}
-                  </h3>
-                  <span className="rounded-full bg-gris-light px-2 py-0.5 text-xs font-semibold text-gris">
+        <>
+          {/* Vignettes tactiles -- sous lg (mobile/tablette) : un coup d'oeil
+              suffit pour voir où il y a du travail (gros chiffre), et on
+              tape la vignette pour ouvrir le détail de cette colonne dans un
+              panneau plein écran. Bien plus simple à traiter sur petit
+              écran qu'un kanban en scroll horizontal. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:hidden">
+            {COLUMNS.map((column) => {
+              const columnOrders = ordersByColumn.get(column.title) ?? [];
+              const hasOrders = columnOrders.length > 0;
+              return (
+                <button
+                  key={column.title}
+                  type="button"
+                  onClick={() => hasOrders && setOpenColumnTitle(column.title)}
+                  disabled={!hasOrders}
+                  className={
+                    "flex flex-col items-center justify-center gap-1 rounded bg-white px-3 py-5 text-center shadow-sm disabled:opacity-60 " +
+                    (hasOrders ? "ring-1 ring-golfe-green/30 active:scale-[0.98]" : "")
+                  }
+                  style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}
+                >
+                  <span className="text-2xl">{column.emoji}</span>
+                  <span
+                    className="font-heading text-3xl font-extrabold"
+                    style={{ color: hasOrders ? "#2ECC71" : "#9AA0A6" }}
+                  >
                     {columnOrders.length}
                   </span>
-                </div>
+                  <span className="text-xs font-semibold text-nuit">{column.title}</span>
+                </button>
+              );
+            })}
+          </div>
 
-                <div className="flex flex-col gap-3">
-                  {columnOrders.length === 0 ? (
-                    <div className="rounded border-2 border-dashed border-gris-light p-6 text-center text-xs text-gris">
-                      Aucune commande
-                    </div>
-                  ) : (
-                    columnOrders.map((order) => (
-                      <ProOrderCard
-                        key={order.id}
-                        order={order}
-                        onAdvance={advanceStatus}
-                        onMarkReady={markReady}
-                        onCancel={cancelOrder}
-                      />
-                    ))
-                  )}
+          {/* Kanban -- inchangé, réservé à lg et plus (PC), où l'affichage
+              horizontal reste jugé le plus pratique. */}
+          <div className="hidden lg:grid lg:grid-cols-5 lg:gap-4">
+            {COLUMNS.map((column) => {
+              const columnOrders = ordersByColumn.get(column.title) ?? [];
+              return (
+                <div key={column.title} className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-sm font-bold text-nuit">
+                      {column.emoji} {column.title}
+                    </h3>
+                    <span className="rounded-full bg-gris-light px-2 py-0.5 text-xs font-semibold text-gris">
+                      {columnOrders.length}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    {columnOrders.length === 0 ? (
+                      <div className="rounded border-2 border-dashed border-gris-light p-6 text-center text-xs text-gris">
+                        Aucune commande
+                      </div>
+                    ) : (
+                      columnOrders.map((order) => (
+                        <ProOrderCard
+                          key={order.id}
+                          order={order}
+                          onAdvance={advanceStatus}
+                          onMarkReady={markReady}
+                          onCancel={cancelOrder}
+                        />
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Panneau de détail d'une vignette -- mobile/tablette uniquement (le
+          bouton qui l'ouvre n'existe que sous lg), plein écran pour rester
+          confortable au doigt. Referme automatiquement dès que la colonne
+          se vide (voir l'effet plus haut). */}
+      {openColumn && (
+        <div className="fixed inset-0 z-[1400] flex flex-col bg-black/40 lg:hidden">
+          <div className="mt-auto flex max-h-[88vh] flex-col rounded-t-lg bg-white sm:mx-auto sm:mb-auto sm:mt-16 sm:max-h-[80vh] sm:w-full sm:max-w-lg sm:rounded">
+            <div className="flex items-center justify-between border-b border-gris-light px-4 py-3">
+              <h2 className="font-heading text-base font-bold text-nuit">
+                {openColumn.emoji} {openColumn.title}{" "}
+                <span className="ml-1 text-sm font-semibold text-gris">({openColumnOrders.length})</span>
+              </h2>
+              <button
+                type="button"
+                onClick={() => setOpenColumnTitle(null)}
+                className="rounded-full p-1.5 hover:bg-gris-light"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex flex-col gap-3 overflow-y-auto p-4">
+              {openColumnOrders.map((order) => (
+                <ProOrderCard
+                  key={order.id}
+                  order={order}
+                  onAdvance={advanceStatus}
+                  onMarkReady={markReady}
+                  onCancel={cancelOrder}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
