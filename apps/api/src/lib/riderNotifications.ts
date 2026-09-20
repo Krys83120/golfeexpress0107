@@ -31,18 +31,18 @@ export const DEFAULT_RIDER_NOTIFICATION_RADIUS_KM = 5;
  */
 const MAX_LOCATION_AGE_MINUTES = 10;
 
+/**
+ * Lecture seule ici -- l'écriture de ce réglage passe par la route générique
+ * existante PUT /api/admin/settings/:key (voir Admin >
+ * apps/admin/src/services/capacitySettingsApi.ts, setRiderNotificationRadiusKm),
+ * le même mécanisme déjà utilisé par les 5 interrupteurs de
+ * capacitySettings.ts -- pas de second chemin d'écriture direct ici pour ne
+ * pas dupliquer la logique (ex: `updatedBy`) que cette route gère déjà.
+ */
 export async function getRiderNotificationRadiusKm(): Promise<number> {
   const setting = await prisma.globalSetting.findUnique({ where: { key: RIDER_NOTIFICATION_RADIUS_SETTING_KEY } });
   const value = setting?.value;
   return typeof value === "number" && value > 0 ? value : DEFAULT_RIDER_NOTIFICATION_RADIUS_KM;
-}
-
-export async function setRiderNotificationRadiusKm(radiusKm: number): Promise<void> {
-  await prisma.globalSetting.upsert({
-    where: { key: RIDER_NOTIFICATION_RADIUS_SETTING_KEY },
-    create: { key: RIDER_NOTIFICATION_RADIUS_SETTING_KEY, value: radiusKm },
-    update: { value: radiusKm },
-  });
 }
 
 interface NotifiableOrder {
