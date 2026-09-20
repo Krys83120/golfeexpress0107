@@ -1,7 +1,12 @@
 const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
+const { withNativeWind } = require("nativewind/metro");
 
-const config = getDefaultConfig(__dirname);
+// Important : on applique withNativeWind AVANT notre propre correctif de
+// résolution React, pour ne pas risquer d'écraser une config posée par
+// NativeWind (transformer CSS, resolver, etc.) si on l'appliquait après.
+let config = getDefaultConfig(__dirname);
+config = withNativeWind(config, { input: "./global.css" });
 
 // Le monorepo mélange React 19 (apps mobiles) et React 18 (dashboards web
 // Pro/Admin). npm "remonte" (hoist) parfois des paquets partagés comme
@@ -14,6 +19,7 @@ const config = getDefaultConfig(__dirname);
 // cohabitent et l'app plante avec "ReactCurrentDispatcher" indéfini.
 const FORCE_LOCAL = ["react", "react-native", "react-dom", "react-native-web"];
 const localOrigin = path.join(__dirname, "package.json");
+const defaultResolveRequest = config.resolver.resolveRequest;
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   const isForced = FORCE_LOCAL.some(
@@ -25,6 +31,9 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       moduleName,
       platform
     );
+  }
+  if (defaultResolveRequest) {
+    return defaultResolveRequest(context, moduleName, platform);
   }
   return context.resolveRequest(context, moduleName, platform);
 };
