@@ -12,6 +12,7 @@ import { useNotificationSettingsStore } from "@/store/useNotificationSettingsSto
 import { useAuthStore } from "@/store/useAuthStore";
 import { uploadNotificationSound } from "@/services/uploadsApi";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { sendTestPush } from "@/services/pushNotificationsApi";
 
 const REPEAT_OPTIONS = [
   { value: 1, label: "Court (x1)" },
@@ -77,6 +78,38 @@ export function NotificationsPage() {
   const pushNotifications = usePushNotifications();
   const [pushLoading, setPushLoading] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
+
+  // Bouton "Tester" (22/09/2026, suite au signalement de Krys : toggle
+  // activé mais rien reçu appli fermée) -- envoie une vraie notification de
+  // test au lieu d'attendre une vraie commande, et affiche un diagnostic
+  // précis (abonnement bien enregistré côté serveur ? config VAPID
+  // présente ?) pour savoir où ça bloque sans deviner. Voir sendTestPush /
+  // PATCH /api/pros/push-subscription.
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  async function handleTestPush() {
+    setTestSending(true);
+    setTestResult(null);
+    try {
+      const { subscriptionCount, vapidConfigured } = await sendTestPush();
+      if (subscriptionCount === 0) {
+        setTestResult(
+          "⚠️ Aucun abonnement enregistré côté serveur pour cet appareil — l'activation n'a pas fonctionné. Désactive puis réactive le toggle ci-dessus."
+        );
+      } else if (!vapidConfigured) {
+        setTestResult("⚠️ Configuration serveur manquante — contacte le support technique.");
+      } else {
+        setTestResult(
+          `✅ Notification de test envoyée à ${subscriptionCount} appareil${subscriptionCount > 1 ? "s" : ""} abonné${subscriptionCount > 1 ? "s" : ""}. Tu dois la recevoir dans quelques secondes — si rien n'arrive, le souci vient des réglages de notifications de ton téléphone/navigateur pour ce site, pas de l'appli.`
+        );
+      }
+    } catch (err) {
+      setTestResult(err instanceof Error ? `⚠️ ${err.message}` : "⚠️ Échec de l'envoi du test.");
+    } finally {
+      setTestSending(false);
+    }
+  }
 
   async function handleTogglePush(next: boolean) {
     if (pushLoading) return;
@@ -169,6 +202,20 @@ export function NotificationsPage() {
         />
         {pushLoading && <p className="mt-1.5 text-xs text-gris">Mise à jour...</p>}
         {pushError && <p className="mt-1.5 text-xs text-red-500">{pushError}</p>}
+
+        {pushNotifications.state === "granted" && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={handleTestPush}
+              disabled={testSending}
+              className="flex items-center gap-1.5 rounded-full border border-gris-light bg-white px-4 py-2 text-xs font-semibold text-nuit shadow-sm hover:bg-gris-light disabled:opacity-60"
+            >
+              <Play size={12} /> {testSending ? "Envoi..." : "Tester la notification"}
+            </button>
+            {testResult && <p className="mt-1.5 text-xs text-nuit">{testResult}</p>}
+          </div>
+        )}
       </div>
 
       <div className="mb-4">

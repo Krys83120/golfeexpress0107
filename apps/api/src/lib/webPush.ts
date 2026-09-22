@@ -34,6 +34,16 @@ function ensureConfigured(): boolean {
   return true;
 }
 
+/**
+ * Expose si les clés VAPID sont bien configurées côté serveur, sans envoyer
+ * de notification -- utilisé par PATCH /api/pros/push-subscription (bouton
+ * "Tester" de NotificationsPage.tsx, 22/09/2026) pour distinguer un problème
+ * de configuration serveur d'un problème d'abonnement/livraison.
+ */
+export function isVapidConfigured(): boolean {
+  return ensureConfigured();
+}
+
 export interface PushPayload {
   title: string;
   body: string;
