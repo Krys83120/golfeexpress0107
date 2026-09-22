@@ -9,6 +9,7 @@ import {
   sendOrderOnTheWayEmail,
   sendOrderDeliveredEmail,
 } from "@/lib/emails/orderEmails";
+import { sendPushToPro } from "@/lib/webPush";
 
 /**
  * PATCH /api/admin/orders/[orderId]/test-transition
@@ -43,6 +44,12 @@ import {
  * ATTENTION : le contenu de ces emails (ex: "le paiement a bien été
  * accepté") est celui du vrai flux et n'est pas modifié pour le mode test
  * -- à ignorer, aucun paiement n'a réellement eu lieu.
+ *
+ * PUSH PRO (ajout du 22/09/2026) : à CONFIRMED, envoie aussi la notification
+ * push "nouvelle commande" au Pro (voir sendPushToPro, lib/webPush.ts) --
+ * exactement le même appel que le vrai webhook Stripe
+ * (webhooks/stripe/route.ts), pour permettre à Krys de tester ce canal
+ * (reçu même appli Pro fermée) sans avoir à passer une vraie commande.
  *
  * La notification livreur ("commande à proximité") n'a PAS besoin d'être
  * déclenchée ici : elle part automatiquement de
@@ -174,6 +181,15 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
           emailData,
           client ? `${client.user.firstName} ${client.user.lastName}` : "Client"
         ).catch((err) => console.error("[test-transition] Échec email nouvelle commande pro (test):", err));
+
+        // Notification push (ajout du 22/09/2026) -- teste le même envoi
+        // que le vrai webhook Stripe (voir webhooks/stripe/route.ts),
+        // best-effort, ne bloque jamais la transition de test.
+        sendPushToPro(pro.id, {
+          title: "🔔 Nouvelle commande !",
+          body: `${emailData.orderNumber} -- ${emailData.total.toFixed(2)} € à préparer.`,
+          url: "/commandes",
+        }).catch((err) => console.error("[test-transition] Échec push nouvelle commande pro (test):", err));
       }
     } else if (nextStatus === OrderStatus.PREPARING && client) {
       sendOrderPreparingEmail(client.user.email, emailData, TEST_ESTIMATED_PREP_MINUTES).catch((err) =>

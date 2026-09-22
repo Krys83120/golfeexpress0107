@@ -428,6 +428,9 @@ model Pro {
   /// jamais été personnalisée depuis l'admin (ordre alphabétique par défaut,
   /// pas de photo).
   menuCategories    MenuCategory[]
+  /// Abonnements Web Push "nouvelle commande à préparer" (ajout du
+  /// 22/09/2026, demande de Krys) -- voir ProPushSubscription ci-dessous.
+  pushSubscriptions ProPushSubscription[]
 }
 
 // ==================== LIVREUR (RIDER) ====================
@@ -553,6 +556,34 @@ model RiderPushSubscription {
 
   @@index([riderId])
   @@map("rider_push_subscriptions")
+}
+
+/// Abonnements Web Push "nouvelle commande à préparer" côté Pro (ajout du
+/// 22/09/2026, demande de Krys : "imaginons le pro a Uber et doyougeckoo en
+/// même temps... avant de nous choisir car on est local et moins cher" --
+/// être notifié même appli fermée est un vrai argument concurrentiel).
+/// Structure identique à RiderPushSubscription ci-dessus, mais rattachée à
+/// `proId` (la BOUTIQUE) et non à un utilisateur précis : le patron ET ses
+/// employés (voir ProEmployee) peuvent chacun s'abonner depuis leur propre
+/// appareil, et TOUS les abonnements actifs de la boutique reçoivent la
+/// notification (voir webPush.ts, sendPushToPro, et
+/// apps/api/src/app/api/pros/push-subscription/route.ts qui résout proId
+/// depuis requireProOrEmployee -- patron ou employé, indifféremment).
+/// `onDelete: Cascade` : supprimé automatiquement si la boutique est
+/// supprimée, jamais laissé orphelin.
+model ProPushSubscription {
+  id        String   @id @default(uuid())
+  proId     String   @map("pro_id")
+  /// Voir le commentaire équivalent sur RiderPushSubscription.endpoint.
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pro       Pro      @relation(fields: [proId], references: [id], onDelete: Cascade)
+
+  @@index([proId])
+  @@map("pro_push_subscriptions")
 }
 
 // ==================== ADRESSES ====================

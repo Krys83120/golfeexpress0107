@@ -37,7 +37,7 @@ function ensureConfigured(): boolean {
 export interface PushPayload {
   title: string;
   body: string;
-  /** Chemin ouvert au clic sur la notification (relatif à livreur.doyougeckoo.fr). */
+  /** Chemin ouvert au clic sur la notification (relatif à livreur.doyougeckoo.fr, ou pro.doyougeckoo.fr pour sendPushToPro). */
   url?: string;
 }
 
@@ -76,6 +76,43 @@ export async function sendPushToRider(riderId: string, payload: PushPayload): Pr
           await prisma.riderPushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
         } else {
           console.error(`[webPush] Échec envoi (livreur ${riderId}, endpoint ${sub.endpoint.slice(0, 40)}...):`, err);
+        }
+      }
+    })
+  );
+}
+
+/**
+ * Équivalent sendPushToRider ci-dessus, pour le Pro (ajout du 22/09/2026,
+ * demande de Krys -- être notifié même appli fermée, argument concurrentiel
+ * face à des plateformes comme Uber Eats). `proId` correspond à la BOUTIQUE
+ * (voir ProPushSubscription, prisma/schema.prisma) : envoie à TOUS les
+ * abonnements actifs, patron et employés confondus, chacun ayant pu
+ * s'abonner depuis son propre appareil. Même config VAPID que les livreurs
+ * -- une seule paire de clés sert l'ensemble de la plateforme, ce n'est pas
+ * un identifiant par appli mais par serveur émetteur.
+ */
+export async function sendPushToPro(proId: string, payload: PushPayload): Promise<void> {
+  if (!ensureConfigured()) return;
+
+  const subscriptions = await prisma.proPushSubscription.findMany({ where: { proId } });
+  if (subscriptions.length === 0) return;
+
+  const body = JSON.stringify(payload);
+
+  await Promise.all(
+    subscriptions.map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          body
+        );
+      } catch (err) {
+        const statusCode = (err as { statusCode?: number }).statusCode;
+        if (statusCode === 404 || statusCode === 410) {
+          await prisma.proPushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
+        } else {
+          console.error(`[webPush] Échec envoi (pro ${proId}, endpoint ${sub.endpoint.slice(0, 40)}...):`, err);
         }
       }
     })

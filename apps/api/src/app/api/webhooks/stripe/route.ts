@@ -3,6 +3,7 @@ import { OrderStatus, PaymentStatus, SubscriptionType, ParcelOrderStatus } from 
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendOrderConfirmedEmail, sendNewOrderToProEmail, sendOrderRefundedEmail } from "@/lib/emails/orderEmails";
+import { sendPushToPro } from "@/lib/webPush";
 import {
   sendSubscriptionConfirmedEmail,
   sendSubscriptionCancelledEmail,
@@ -229,6 +230,17 @@ export async function POST(req: NextRequest) {
                   emailData,
                   client ? `${client.user.firstName} ${client.user.lastName}` : "Client"
                 ).catch((err) => console.error("[stripe webhook] Échec email nouvelle commande pro:", err));
+
+                // Notification push "nouvelle commande" (ajout du
+                // 22/09/2026, demande de Krys) -- best-effort, pure addition
+                // à côté de l'email ci-dessus, ne touche à rien d'autre sur
+                // cette route critique. Ne fait rien si le Pro n'a aucun
+                // abonnement actif (voir sendPushToPro, lib/webPush.ts).
+                sendPushToPro(pro.id, {
+                  title: "🔔 Nouvelle commande !",
+                  body: `${emailData.orderNumber} -- ${emailData.total.toFixed(2)} € à préparer.`,
+                  url: "/commandes",
+                }).catch((err) => console.error("[stripe webhook] Échec push nouvelle commande pro:", err));
               }
             }
           }

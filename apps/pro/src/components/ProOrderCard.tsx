@@ -272,75 +272,97 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
         </div>
       )}
 
-      <div className="flex items-center justify-between border-t border-gris-light pt-3">
-        <p className="text-sm font-bold text-nuit">{Number(order.total).toFixed(2)} €</p>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => printOrderLabel(order)}
-            title="Imprimer l'étiquette"
-            className="flex items-center gap-1.5 rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light"
-          >
-            <Printer size={13} /> Étiquette
-          </button>
-          <button
-            onClick={() => {
-              setShowReportPanel((v) => !v);
-              setReportSubmitted(false);
-            }}
-            title="Signaler un problème"
-            className="flex items-center gap-1.5 rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light"
-          >
-            <Flag size={13} /> Signaler
-          </button>
-          {order.paymentStatus === "CAPTURED" && (
+      {/*
+        RESPONSIVE MOBILE (correctif du 22/09/2026, demande de Krys) : ce
+        pied de carte servait auparavant une seule ligne `flex justify-between`
+        contenant le prix ET tous les boutons (Étiquette/Signaler/Ticket +
+        Annuler/action principale) -- sur mobile, leur largeur cumulée
+        dépassait l'écran et forçait un défilement horizontal pour atteindre
+        le bouton d'action (ex: "Démarrer la préparation"), ce qui n'était pas
+        praticable au doigt. Cette carte étant PARTAGÉE par toutes les
+        colonnes/étapes (Nouvelles, En préparation, Prêtes, En livraison,
+        Terminées, Annulées -- voir OrdersPage.tsx), corriger ici corrige
+        automatiquement toutes les étapes d'un coup.
+        Nouvelle structure en 3 lignes qui passent à la ligne (`flex-wrap`)
+        au lieu de déborder :
+          1. Prix + boutons secondaires (Étiquette/Signaler/Ticket)
+          2. Action principale (Annuler + bouton d'avancement), toujours sur
+             sa propre ligne et en pleine largeur (`flex-1`) pour rester
+             immédiatement visible et facile à taper, jamais coupée par le
+             bord de l'écran.
+      */}
+      <div className="flex flex-col gap-2.5 border-t border-gris-light pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-bold text-nuit">{Number(order.total).toFixed(2)} €</p>
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={handleDownloadReceipt}
-              disabled={loadingReceipt}
-              title="Télécharger le ticket"
-              className="flex items-center gap-1.5 rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light disabled:opacity-50"
+              onClick={() => printOrderLabel(order)}
+              title="Imprimer l'étiquette"
+              className="flex items-center gap-1.5 rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light"
             >
-              <Receipt size={13} /> {loadingReceipt ? "..." : "Ticket"}
+              <Printer size={13} /> Étiquette
             </button>
-          )}
-          {!isTerminal && !showPrepPicker && (
-            <div className="flex gap-2">
-              {canCancel && (
-                <button
-                  onClick={() => onCancel(order.id)}
-                  className="rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light"
-                >
-                  Annuler
-                </button>
-              )}
-
-              {needsMarkReadyOnly ? (
-                <button
-                  onClick={() => onMarkReady(order.id)}
-                  className="rounded-sm bg-golfe-green px-3 py-1.5 text-xs font-semibold text-white hover:bg-golfe-green-dark"
-                >
-                  ✅ Marquer prête
-                </button>
-              ) : order.status === OrderStatus.CONFIRMED ? (
-                <button
-                  onClick={() => setShowPrepPicker(true)}
-                  className="rounded-sm bg-golfe-green px-3 py-1.5 text-xs font-semibold text-white hover:bg-golfe-green-dark"
-                >
-                  Démarrer la préparation
-                </button>
-              ) : (
-                nextStatus &&
-                actionLabel && (
-                  <button
-                    onClick={() => onAdvance(order.id, nextStatus)}
-                    className="rounded-sm bg-golfe-green px-3 py-1.5 text-xs font-semibold text-white hover:bg-golfe-green-dark"
-                  >
-                    {actionLabel}
-                  </button>
-                )
-              )}
-            </div>
-          )}
+            <button
+              onClick={() => {
+                setShowReportPanel((v) => !v);
+                setReportSubmitted(false);
+              }}
+              title="Signaler un problème"
+              className="flex items-center gap-1.5 rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light"
+            >
+              <Flag size={13} /> Signaler
+            </button>
+            {order.paymentStatus === "CAPTURED" && (
+              <button
+                onClick={handleDownloadReceipt}
+                disabled={loadingReceipt}
+                title="Télécharger le ticket"
+                className="flex items-center gap-1.5 rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light disabled:opacity-50"
+              >
+                <Receipt size={13} /> {loadingReceipt ? "..." : "Ticket"}
+              </button>
+            )}
+          </div>
         </div>
+
+        {!isTerminal && !showPrepPicker && (
+          <div className="flex flex-wrap gap-2">
+            {canCancel && (
+              <button
+                onClick={() => onCancel(order.id)}
+                className="rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light"
+              >
+                Annuler
+              </button>
+            )}
+
+            {needsMarkReadyOnly ? (
+              <button
+                onClick={() => onMarkReady(order.id)}
+                className="flex-1 rounded-sm bg-golfe-green px-3 py-2 text-xs font-semibold text-white hover:bg-golfe-green-dark"
+              >
+                ✅ Marquer prête
+              </button>
+            ) : order.status === OrderStatus.CONFIRMED ? (
+              <button
+                onClick={() => setShowPrepPicker(true)}
+                className="flex-1 rounded-sm bg-golfe-green px-3 py-2 text-xs font-semibold text-white hover:bg-golfe-green-dark"
+              >
+                Démarrer la préparation
+              </button>
+            ) : (
+              nextStatus &&
+              actionLabel && (
+                <button
+                  onClick={() => onAdvance(order.id, nextStatus)}
+                  className="flex-1 rounded-sm bg-golfe-green px-3 py-2 text-xs font-semibold text-white hover:bg-golfe-green-dark"
+                >
+                  {actionLabel}
+                </button>
+              )
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

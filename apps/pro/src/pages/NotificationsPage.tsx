@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Bell, Play, Printer, Upload, X } from "lucide-react";
+import { Bell, BellRing, Play, Printer, Upload, X } from "lucide-react";
 import {
   NOTIFICATION_SOUNDS,
   getSoundById,
@@ -11,6 +11,7 @@ import {
 import { useNotificationSettingsStore } from "@/store/useNotificationSettingsStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { uploadNotificationSound } from "@/services/uploadsApi";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 const REPEAT_OPTIONS = [
   { value: 1, label: "Court (x1)" },
@@ -69,6 +70,37 @@ export function NotificationsPage() {
   const [uploadingSound, setUploadingSound] = useState(false);
   const [soundUploadError, setSoundUploadError] = useState<string | null>(null);
 
+  // Notifications même appli fermée (ajout du 22/09/2026, demande de Krys)
+  // -- voir hooks/usePushNotifications.ts. Distinct du réglage "Notifications
+  // sonores" ci-dessous : celui-ci ne joue que quand l'appli est déjà
+  // ouverte, alors que le push marche appli complètement fermée.
+  const pushNotifications = usePushNotifications();
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+
+  async function handleTogglePush(next: boolean) {
+    if (pushLoading) return;
+    if (next && pushNotifications.state === "unsupported") return;
+    setPushError(null);
+    setPushLoading(true);
+    try {
+      if (next) {
+        const ok = await pushNotifications.enable();
+        if (!ok) {
+          setPushError(
+            pushNotifications.state === "denied"
+              ? "Notifications bloquées pour ce navigateur — vérifiez les réglages de notifications de votre téléphone/navigateur pour doyougeckoo.fr."
+              : "Impossible d'activer les notifications sur cet appareil pour le moment."
+          );
+        }
+      } else {
+        await pushNotifications.disable();
+      }
+    } finally {
+      setPushLoading(false);
+    }
+  }
+
   /**
    * Upload d'un son personnalisé (19/09/2026, demande de Krys) : mesure
    * d'abord la durée en local (probeAudioDuration, avant tout upload réseau)
@@ -123,9 +155,27 @@ export function NotificationsPage() {
 
       <div className="mb-4">
         <ToggleRow
+          icon={<BellRing size={18} className="text-nuit" />}
+          title="Notifications même appli fermée"
+          description={
+            pushNotifications.state === "unsupported"
+              ? "Non disponible sur cet appareil/navigateur"
+              : pushNotifications.state === "denied"
+              ? "Bloquées pour ce navigateur — à réactiver dans ses réglages de notifications"
+              : "Être alerté(e) d'une nouvelle commande même quand l'appli n'est pas ouverte"
+          }
+          checked={pushNotifications.state === "granted"}
+          onChange={handleTogglePush}
+        />
+        {pushLoading && <p className="mt-1.5 text-xs text-gris">Mise à jour...</p>}
+        {pushError && <p className="mt-1.5 text-xs text-red-500">{pushError}</p>}
+      </div>
+
+      <div className="mb-4">
+        <ToggleRow
           icon={<Bell size={18} className="text-nuit" />}
           title="Notifications sonores"
-          description="Jouer un son quand une nouvelle commande arrive"
+          description="Jouer un son quand une nouvelle commande arrive (appli déjà ouverte)"
           checked={enabled}
           onChange={setEnabled}
         />
