@@ -111,7 +111,14 @@ export function OrderDetailModal({ order, onClose }: OrderDetailModalProps) {
   // réel ne s'est encore produit (même garde-fou que côté serveur, voir
   // mark-test/route.ts) -- une fois payée/avancée, plus question de
   // basculer son statut de test.
-  const canToggleTest = localOrder.status === OrderStatus.PENDING && localOrder.paymentStatus === PaymentStatus.PENDING;
+  //
+  // CORRECTIF du 22/09/2026 : n'exige plus paymentStatus === PENDING au
+  // sens strict (Stripe fait passer une vraie commande de PENDING à
+  // AUTHORIZED en quelques secondes, bien avant que Krys n'ait le temps
+  // d'ouvrir la commande -- la case ne s'affichait donc quasiment jamais en
+  // pratique). Seul paymentStatus === CAPTURED (argent réellement encaissé)
+  // doit bloquer, voir mark-test/route.ts pour le raisonnement complet.
+  const canToggleTest = localOrder.status === OrderStatus.PENDING && localOrder.paymentStatus !== PaymentStatus.CAPTURED;
   const nextTestStatus = TEST_FLOW[TEST_FLOW.indexOf(localOrder.status) + 1];
 
   return (
