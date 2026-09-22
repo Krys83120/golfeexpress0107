@@ -121,7 +121,17 @@ export function getSoundById(id: string): NotificationSound {
 }
 
 /** Silence entre deux répétitions successives du motif, en secondes. */
-const GAP_BETWEEN_REPEATS = 0.35;
+export const GAP_BETWEEN_REPEATS = 0.35;
+
+/**
+ * Silence entre l'alerte complète de DEUX commandes différentes qui arrivent
+ * en même temps (voir playAlertForOrders dans useNotificationSettingsStore.ts,
+ * ajouté le 22/09/2026 -- demande de Krys : "si plusieurs commandes, sonner
+ * autant de fois de nouvelles commandes qui sont affichées"). Volontairement
+ * un peu plus long que GAP_BETWEEN_REPEATS pour bien distinguer "encore une
+ * répétition du même motif" de "c'est une AUTRE commande qui vient d'arriver".
+ */
+export const GAP_BETWEEN_ORDER_ALERTS = 0.6;
 
 /**
  * Joue le motif sonore `repeatCount` fois d'affilée (espacées de

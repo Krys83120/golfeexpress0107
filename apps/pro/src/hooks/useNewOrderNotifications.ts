@@ -3,6 +3,7 @@ import { OrderStatus, type Order } from "@golfeexpress/types";
 import { useProOrdersStore } from "@/store/useProOrdersStore";
 import { useNotificationSettingsStore } from "@/store/useNotificationSettingsStore";
 import { printOrderLabel } from "@/services/printLabel";
+import { CONFIRMED_LATE_THRESHOLD_MINUTES } from "@/services/orderStatusFlow";
 
 /**
  * Surveille les commandes du Pro et, dès qu'une NOUVELLE commande CONFIRMED
@@ -29,9 +30,13 @@ import { printOrderLabel } from "@/services/printLabel";
  */
 export function useNewOrderNotifications() {
   const orders = useProOrdersStore((s) => s.orders);
-  const playSelectedSound = useNotificationSettingsStore((s) => s.playSelectedSound);
+  const playAlertForOrders = useNotificationSettingsStore((s) => s.playAlertForOrders);
   const autoPrint = useNotificationSettingsStore((s) => s.autoPrint);
   const knownConfirmedIds = useRef<Set<string> | null>(null);
+  // Mémorise les commandes déjà signalées "en retard" (voir effet plus bas)
+  // pour ne les sonner qu'UNE fois au passage du seuil, pas à chaque cycle
+  // de rafraîchissement (15s, voir App.tsx) tant qu'elles restent CONFIRMED.
+  const alertedLateIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const confirmedOrders = orders.filter((o) => o.status === OrderStatus.CONFIRMED);
@@ -48,7 +53,10 @@ export function useNewOrderNotifications() {
 
     const newOrders: Order[] = confirmedOrders.filter((o) => !knownConfirmedIds.current!.has(o.id));
     if (newOrders.length > 0) {
-      playSelectedSound();
+      // Une sonnerie par commande affichée (22/09/2026, demande de Krys),
+      // pas une seule sonnerie même si plusieurs commandes arrivent dans le
+      // même cycle de rafraîchissement -- voir playAlertForOrders.
+      playAlertForOrders(newOrders.length);
       if (autoPrint) {
         // Un léger délai entre chaque impression évite que plusieurs
         // fenêtres d'impression s'ouvrent exactement en même temps si
@@ -60,5 +68,37 @@ export function useNewOrderNotifications() {
     }
 
     knownConfirmedIds.current = currentConfirmedIds;
-  }, [orders, playSelectedSound, autoPrint]);
+  }, [orders, playAlertForOrders, autoPrint]);
+
+  // Re-sonne pour toute commande CONFIRMED depuis plus de
+  // CONFIRMED_LATE_THRESHOLD_MINUTES (10 min par défaut) sans être passée en
+  // préparation -- ajouté le 22/09/2026, demande de Krys : "si au bout de
+  // 10min les commandes ne sont tjrs pas passée en preparation ressonner".
+  // Effet séparé de celui ci-dessus (déclenché par une NOUVELLE commande) :
+  // celui-ci se redéclenche à chaque cycle de rafraîchissement des commandes
+  // (15s) et vérifie l'ÂGE de celles déjà connues.
+  useEffect(() => {
+    const now = Date.now();
+    const stillConfirmedIds = new Set<string>();
+
+    const newlyLateOrders = orders.filter((o) => {
+      if (o.status !== OrderStatus.CONFIRMED) return false;
+      stillConfirmedIds.add(o.id);
+      const ageMinutes = (now - new Date(o.placedAt).getTime()) / 60_000;
+      return ageMinutes >= CONFIRMED_LATE_THRESHOLD_MINUTES && !alertedLateIds.current.has(o.id);
+    });
+
+    if (newlyLateOrders.length > 0) {
+      newlyLateOrders.forEach((o) => alertedLateIds.current.add(o.id));
+      playAlertForOrders(newlyLateOrders.length);
+    }
+
+    // Nettoyage : une commande qui n'est plus CONFIRMED (préparation
+    // démarrée, annulée...) est retirée de la mémoire -- si elle redevenait
+    // CONFIRMED plus tard (cas normalement impossible), elle pourrait de
+    // nouveau déclencher l'alerte de retard le moment venu.
+    for (const id of alertedLateIds.current) {
+      if (!stillConfirmedIds.has(id)) alertedLateIds.current.delete(id);
+    }
+  }, [orders, playAlertForOrders]);
 }

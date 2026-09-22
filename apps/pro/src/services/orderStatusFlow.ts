@@ -33,3 +33,14 @@ export const NEXT_ACTION_LABELS: Partial<Record<OrderStatus, string>> = {
   [OrderStatus.CONFIRMED]: "Démarrer la préparation",
   [OrderStatus.PREPARING]: "Marquer comme prête",
 };
+
+/**
+ * Délai (en minutes depuis order.placedAt) au-delà duquel une commande
+ * encore CONFIRMED (donc pas encore passée en préparation) est considérée
+ * en retard potentiel -- ajouté le 22/09/2026, demande de Krys : "si au bout
+ * de 10min les commandes ne sont tjrs pas passée en preparation ressonner,
+ * donc ajouter un countdown". Utilisé à la fois pour l'affichage du compte à
+ * rebours/retard sur ProOrderCard et pour redéclencher l'alerte sonore (voir
+ * useNewOrderNotifications.ts).
+ */
+export const CONFIRMED_LATE_THRESHOLD_MINUTES = 10;

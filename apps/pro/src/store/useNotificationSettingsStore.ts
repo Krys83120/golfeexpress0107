@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { NOTIFICATION_SOUNDS, getSoundById, playSoundRepeated, createCustomSound } from "@/services/notificationSounds";
+import {
+  NOTIFICATION_SOUNDS,
+  getSoundById,
+  playSoundRepeated,
+  createCustomSound,
+  GAP_BETWEEN_REPEATS,
+  GAP_BETWEEN_ORDER_ALERTS,
+} from "@/services/notificationSounds";
 
 interface NotificationSettingsState {
   /** Id du son choisi (voir notificationSounds.ts), ou "custom" pour le son uploadé ci-dessous. Stocké par appareil, pas par compte Pro : chaque tablette peut avoir son propre son. */
@@ -29,6 +36,7 @@ interface NotificationSettingsState {
   setCustomSound: (url: string, label: string, durationSeconds: number) => void;
   clearCustomSound: () => void;
   playSelectedSound: () => void;
+  playAlertForOrders: (orderCount: number) => void;
 }
 
 export const useNotificationSettingsStore = create<NotificationSettingsState>()(
@@ -81,6 +89,34 @@ export const useNotificationSettingsStore = create<NotificationSettingsState>()(
           return;
         }
         playSoundRepeated(getSoundById(state.soundId), state.repeatCount);
+      },
+
+      /**
+       * Joue l'alerte sonore complète (le son choisi, répété `repeatCount`
+       * fois -- réglage utilisateur) UNE FOIS PAR commande dans
+       * `orderCount`, enchaînées à la suite plutôt que superposées. Ajouté
+       * le 22/09/2026, demande de Krys : "si plusieurs commande, sonner
+       * autant de fois de nouvelle commande qui sont affichées" -- avant ce
+       * correctif, playSelectedSound() n'était appelée qu'UNE fois par cycle
+       * de rafraîchissement (voir useNewOrderNotifications.ts), donc 3
+       * commandes arrivées ensemble ne sonnaient pas plus fort qu'une seule.
+       * Chaque répétition est planifiée à l'avance via setTimeout (comme
+       * playSoundRepeated) plutôt qu'enchaînée à la fin de la précédente,
+       * pour un timing fiable même onglet en arrière-plan. Réutilisée aussi
+       * pour l'alerte "commande en retard" (voir CONFIRMED_LATE_THRESHOLD_MINUTES
+       * dans orderStatusFlow.ts et useNewOrderNotifications.ts).
+       */
+      playAlertForOrders: (orderCount) => {
+        const state = get();
+        if (!state.enabled) return;
+        const sound =
+          state.soundId === "custom" && state.customSoundUrl
+            ? createCustomSound(state.customSoundUrl, state.customSoundLabel ?? "Son personnalisé", state.customSoundDuration)
+            : getSoundById(state.soundId);
+        const oneOrderDuration = (sound.durationSeconds + GAP_BETWEEN_REPEATS) * state.repeatCount + GAP_BETWEEN_ORDER_ALERTS;
+        for (let i = 0; i < Math.max(1, orderCount); i++) {
+          setTimeout(() => playSoundRepeated(sound, state.repeatCount), i * oneOrderDuration * 1000);
+        }
       },
     }),
     { name: "golfeexpress-pro-notification-settings" }

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Phone, MapPin, Clock, Printer, Receipt, Flag } from "lucide-react";
 import { OrderStatus, OrderReportCategory, type Order } from "@golfeexpress/types";
-import { getNextStatus, NEXT_ACTION_LABELS } from "@/services/orderStatusFlow";
+import { getNextStatus, NEXT_ACTION_LABELS, CONFIRMED_LATE_THRESHOLD_MINUTES } from "@/services/orderStatusFlow";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { PaymentStatusBadge } from "@/components/PaymentStatusBadge";
 import { printOrderLabel } from "@/services/printLabel";
@@ -37,6 +37,25 @@ function formatEstimatedReady(preparingStartedAt: string, estimatedPrepMinutes: 
   const remainingMin = Math.round((readyAt - Date.now()) / 60_000);
   if (remainingMin <= 0) return "devrait être prête";
   return `prête dans ~${remainingMin} min`;
+}
+
+/**
+ * Compte à rebours avant qu'une commande CONFIRMED (pas encore passée en
+ * préparation) soit considérée en retard potentiel -- ajouté le 22/09/2026,
+ * demande de Krys. Bascule automatiquement en message "en retard" une fois
+ * CONFIRMED_LATE_THRESHOLD_MINUTES dépassé (voir orderStatusFlow.ts) ; c'est
+ * aussi à ce moment-là que useNewOrderNotifications.ts redéclenche l'alerte
+ * sonore -- ce badge et cette sonnerie utilisent exactement le même seuil.
+ * Se met à jour naturellement au rythme du rafraîchissement des commandes
+ * (15s, voir App.tsx) sans minuteur dédié dans ce composant.
+ */
+function formatConfirmedCountdown(placedAt: string): { label: string; late: boolean } {
+  const elapsedMinutes = (Date.now() - new Date(placedAt).getTime()) / 60_000;
+  const remainingMinutes = CONFIRMED_LATE_THRESHOLD_MINUTES - elapsedMinutes;
+  if (remainingMinutes > 0) {
+    return { label: `🕐 À démarrer sous ${Math.ceil(remainingMinutes)} min`, late: false };
+  }
+  return { label: `⚠️ En retard de ${Math.floor(-remainingMinutes)} min — à démarrer !`, late: true };
 }
 
 export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrderCardProps) {
@@ -164,6 +183,15 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
           <span>{formatElapsed(order.placedAt)}</span>
         </div>
 
+        {order.status === OrderStatus.CONFIRMED &&
+          (() => {
+            const countdown = formatConfirmedCountdown(order.placedAt);
+            return (
+              <p className={"font-semibold " + (countdown.late ? "animate-pulse text-red-600" : "text-corail")}>
+                {countdown.label}
+              </p>
+            );
+          })()}
         {isPreparingWithoutRiderYet && order.preparingStartedAt && order.estimatedPrepMinutes && (
           <p className="font-medium text-corail">
             ⏱️ {formatEstimatedReady(order.preparingStartedAt, order.estimatedPrepMinutes)} · recherche de livreur en cours

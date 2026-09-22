@@ -149,12 +149,23 @@ export function OrdersPage() {
   // Commandes groupées par colonne -- calculé une seule fois et réutilisé à
   // la fois par le kanban PC et par les vignettes mobile/tablette, pour ne
   // jamais risquer un écart entre les deux vues.
+  //
+  // Triées de la PLUS ANCIENNE à la plus récente (22/09/2026, demande de
+  // Krys : "classer les commande de la plus ancienne (donc en retard
+  // potentiel) à la plus recente") -- contrairement à `orders` qui arrive du
+  // serveur trié du plus récent au plus ancien (voir GET /api/orders, utilisé
+  // par ex. par availableDays plus haut). Ici on veut l'inverse : la commande
+  // qui attend depuis le plus longtemps -- donc la plus susceptible d'être en
+  // retard, voir aussi le countdown dans ProOrderCard.tsx -- doit apparaître
+  // en premier dans chaque colonne, pour être traitée en priorité.
   const ordersByColumn = useMemo(() => {
     const map = new Map<string, Order[]>();
     for (const column of COLUMNS) {
       map.set(
         column.title,
-        filteredOrders.filter((o) => column.statuses.includes(o.status))
+        filteredOrders
+          .filter((o) => column.statuses.includes(o.status))
+          .sort((a, b) => new Date(a.placedAt).getTime() - new Date(b.placedAt).getTime())
       );
     }
     return map;
