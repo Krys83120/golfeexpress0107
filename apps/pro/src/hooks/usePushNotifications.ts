@@ -64,7 +64,16 @@ export function usePushNotifications() {
       const registration = await navigator.serviceWorker.register("/service-worker.js");
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY as string),
+        // Cast nécessaire -- avec les typings DOM récents (TS 5.9+),
+        // Uint8Array est générique (Uint8Array<ArrayBufferLike>) alors que
+        // PushSubscriptionOptionsInit.applicationServerKey exige
+        // spécifiquement un Uint8Array<ArrayBuffer> : purement une
+        // pédanterie de typage (notre Uint8Array est bien adossé à un vrai
+        // ArrayBuffer, jamais un SharedArrayBuffer), sans impact à
+        // l'exécution. Correctif du 22/09/2026 (a fait échouer le build
+        // Vercel : "Type 'Uint8Array<ArrayBufferLike>' is not assignable to
+        // type 'string | BufferSource | null | undefined'").
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY as string) as BufferSource,
       });
       const json = subscription.toJSON();
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false;
