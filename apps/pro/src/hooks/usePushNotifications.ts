@@ -92,7 +92,19 @@ export function usePushNotifications() {
     if (permission !== "granted") return { ok: false };
 
     try {
-      const registration = await navigator.serviceWorker.register("/service-worker.js");
+      await navigator.serviceWorker.register("/service-worker.js");
+      // CORRECTIF du 22/09/2026 (erreur observée chez Krys : "Failed to
+      // execute 'subscribe' on 'PushManager': Subscription failed - no
+      // active Service Worker") : register() se résout dès qu'un
+      // enregistrement démarre, PAS une fois le service worker réellement
+      // actif -- lors d'une toute première activation sur un appareil (SW
+      // encore en train de s'installer), pushManager.subscribe() peut donc
+      // être appelé trop tôt et échouer. `navigator.serviceWorker.ready` est
+      // le mécanisme standard pour attendre qu'un service worker actif
+      // existe réellement avant de s'abonner (se résout immédiatement si
+      // c'est déjà le cas, ex: réactivations suivantes -- aucun ralentissement
+      // perceptible dans ce cas).
+      const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         // Cast nécessaire -- avec les typings DOM récents (TS 5.9+),
