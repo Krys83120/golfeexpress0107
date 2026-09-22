@@ -785,7 +785,20 @@ model Order {
   
   status          OrderStatus @default(PENDING)
   paymentStatus   PaymentStatus @default(PENDING) @map("payment_status")
-  
+
+  /// Commande de test créée/marquée depuis l'Admin (demande explicite de
+  /// Krys, 22/09/2026) -- permet de faire avancer manuellement une commande
+  /// à travers tout le cycle de statuts (payée -> préparation -> prête ->
+  /// livraison -> terminée) SANS jamais toucher au circuit réel : voir
+  /// apps/api/src/app/api/admin/orders/[orderId]/{mark-test,test-transition}/
+  /// route.ts, qui n'appellent jamais Stripe, n'envoient aucun email et ne
+  /// créditent aucun gain Pro/Rider ni point de fidélité pour ces commandes.
+  /// Ne peut être activé QUE tant que la commande est encore PENDING/impayée
+  /// (voir mark-test/route.ts) -- impossible de "transformer" une vraie
+  /// commande déjà engagée. Exclu des recettes/CA (admin/stats,
+  /// admin/finances) pour ne jamais fausser les chiffres réels.
+  isTest          Boolean     @default(false) @map("is_test")
+
   subtotal        Decimal     @db.Decimal(10,2)
   deliveryFee     Decimal     @db.Decimal(6,2) @map("delivery_fee")
   serviceFee      Decimal     @db.Decimal(6,2) @map("service_fee")

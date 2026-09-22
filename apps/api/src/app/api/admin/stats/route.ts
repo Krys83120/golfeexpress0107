@@ -23,7 +23,10 @@ async function getHandler(req: NextRequest) {
 
   const [recentOrders, activeProCount, activeRiderCount] = await Promise.all([
     prisma.order.findMany({
-      where: { placedAt: { gte: sevenDaysAgo } },
+      // isTest: false -- exclut les commandes de test créées depuis Admin
+      // (voir Order.isTest dans prisma/schema.prisma) des statistiques
+      // plateforme, pour ne jamais fausser le CA/revenu affiché.
+      where: { placedAt: { gte: sevenDaysAgo }, isTest: false },
       select: {
         placedAt: true,
         status: true,

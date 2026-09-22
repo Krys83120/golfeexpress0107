@@ -20,7 +20,8 @@ async function getHandler(req: NextRequest) {
   since.setDate(since.getDate() - 30);
 
   const orders = await prisma.order.findMany({
-    where: { status: OrderStatus.DELIVERED, deliveredAt: { gte: since } },
+    // isTest: false -- même exclusion que /api/admin/stats, voir ce fichier.
+    where: { status: OrderStatus.DELIVERED, deliveredAt: { gte: since }, isTest: false },
     select: {
       subtotal: true,
       proEarnings: true,

@@ -8,6 +8,14 @@ interface AdminOrdersState {
   error: string | null;
 
   loadOrders: () => Promise<void>;
+  /**
+   * Remplace une commande précise dans `orders` par sa version à jour --
+   * utilisé après une action Admin (mark-test / test-transition, voir
+   * OrderDetailModal.tsx) pour refléter le changement instantanément sans
+   * recharger toute la liste (évite un flash/rechargement complet du
+   * Kanban à chaque clic sur un bouton de test).
+   */
+  updateOrderLocally: (order: Order) => void;
 }
 
 export const useAdminOrdersStore = create<AdminOrdersState>((set) => ({
@@ -23,5 +31,11 @@ export const useAdminOrdersStore = create<AdminOrdersState>((set) => ({
     } catch (err) {
       set({ status: "error", error: err instanceof Error ? err.message : "Impossible de charger les commandes." });
     }
+  },
+
+  updateOrderLocally: (order) => {
+    set((state) => ({
+      orders: state.orders.map((o) => (o.id === order.id ? order : o)),
+    }));
   },
 }));

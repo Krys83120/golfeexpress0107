@@ -38,6 +38,24 @@ Step "Deploiement Client web (apps/client)"
 Set-Location "$RepoRoot\apps\client"
 npx expo export -p web
 Assert-LastExitCode "expo export (client)"
+
+# Le bundler Metro d'Expo (SDK 54, sans expo-router) ne genere PAS de manifest
+# PWA lui-meme -- app.json/web.favicon ne sert qu'a produire favicon.ico (une
+# icone minuscule). Sans <link rel="manifest">, Chrome/Android n'a que ce
+# favicon.ico pour l'icone "Ajouter a l'ecran d'accueil", d'ou l'icone floue.
+# public/manifest.json + public/icon-*.png (copies telles quelles dans dist/
+# par `expo export -p web`) fournissent les vraies icones ; on injecte ici le
+# lien vers ce manifest (et l'apple-touch-icon) dans dist/index.html, qu'Expo
+# genere lui-meme sans tenir compte de web/index.html pour ce bundler.
+Step "Injection du manifest PWA dans dist/index.html (client)"
+$indexPath = "dist\index.html"
+$html = Get-Content $indexPath -Raw
+$pwaTags = '<link rel="manifest" href="/manifest.json"><link rel="apple-touch-icon" href="/icon-192.png">'
+if ($html -notmatch [regex]::Escape($pwaTags)) {
+    $html = $html -replace "</head>", "$pwaTags</head>"
+    Set-Content -Path $indexPath -Value $html -NoNewline -Encoding utf8
+}
+
 Copy-Item -Recurse ".vercel" "dist\.vercel" -Force
 Set-Location "$RepoRoot\apps\client\dist"
 vercel --prod

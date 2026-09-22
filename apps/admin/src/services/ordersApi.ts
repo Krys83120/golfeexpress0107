@@ -21,3 +21,34 @@ export async function fetchAllOrders(statusFilter?: OrderStatus[]): Promise<Orde
   const data = await apiFetch<{ orders: Order[] }>(`/api/orders${query}`);
   return data.orders;
 }
+
+/**
+ * PATCH /api/admin/orders/[orderId]/mark-test — bascule Order.isTest.
+ *
+ * N'est acceptée par le serveur que tant que la commande est encore
+ * PENDING/impayée (voir la route pour le détail) — permet de désigner une
+ * commande comme "commande de test" avant de la faire avancer manuellement
+ * via testTransitionOrder, sans jamais toucher au circuit réel (Stripe,
+ * emails, gains Pro/Rider, points fidélité).
+ */
+export async function markOrderAsTest(orderId: string, isTest: boolean): Promise<Order> {
+  const data = await apiFetch<{ order: Order }>(`/api/admin/orders/${orderId}/mark-test`, {
+    method: "PATCH",
+    body: { isTest },
+  });
+  return data.order;
+}
+
+/**
+ * PATCH /api/admin/orders/[orderId]/test-transition — fait avancer d'UNE
+ * étape une commande de test (voir markOrderAsTest ci-dessus). Le serveur
+ * refuse toute étape qui n'est pas l'étape suivante immédiate du cycle
+ * simplifié de test, et refuse toute commande dont isTest n'est pas true.
+ */
+export async function testTransitionOrder(orderId: string, status: OrderStatus): Promise<Order> {
+  const data = await apiFetch<{ order: Order }>(`/api/admin/orders/${orderId}/test-transition`, {
+    method: "PATCH",
+    body: { status },
+  });
+  return data.order;
+}

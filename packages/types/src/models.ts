@@ -326,6 +326,8 @@ export interface Order {
 
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  /** Commande de test (Admin) -- voir prisma/schema.prisma, model Order. */
+  isTest: boolean;
 
   subtotal: number;
   deliveryFee: number;

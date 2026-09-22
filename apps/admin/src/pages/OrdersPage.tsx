@@ -84,7 +84,15 @@ function AdminOrderCard({ order, onClick, dimmed }: { order: Order; onClick: () 
       style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}
     >
       <div className="mb-1 flex items-start justify-between gap-2">
-        <span className="text-sm font-semibold text-nuit">{order.orderNumber}</span>
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-nuit">
+          {order.orderNumber}
+          {/* Commande de test (Admin), voir OrderDetailModal.tsx -- jamais comptée dans le CA. */}
+          {order.isTest && (
+            <span className="rounded-full bg-nuit px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+              Test
+            </span>
+          )}
+        </span>
         <div className="flex flex-col items-end gap-1">
           <span
             className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
