@@ -115,15 +115,17 @@ export function NotificationsPage() {
     if (pushLoading) return;
     if (next && pushNotifications.state === "unsupported") return;
     setPushError(null);
+    setTestResult(null);
     setPushLoading(true);
     try {
       if (next) {
-        const ok = await pushNotifications.enable();
+        const { ok, error } = await pushNotifications.enable();
         if (!ok) {
           setPushError(
-            pushNotifications.state === "denied"
-              ? "Notifications bloquées pour ce navigateur — vérifiez les réglages de notifications de votre téléphone/navigateur pour doyougeckoo.fr."
-              : "Impossible d'activer les notifications sur cet appareil pour le moment."
+            error ??
+              (pushNotifications.state === "denied"
+                ? "Notifications bloquées pour ce navigateur — vérifiez les réglages de notifications de votre téléphone/navigateur pour doyougeckoo.fr."
+                : "Impossible d'activer les notifications sur cet appareil pour le moment.")
           );
         }
       } else {
@@ -197,13 +199,13 @@ export function NotificationsPage() {
               ? "Bloquées pour ce navigateur — à réactiver dans ses réglages de notifications"
               : "Être alerté(e) d'une nouvelle commande même quand l'appli n'est pas ouverte"
           }
-          checked={pushNotifications.state === "granted"}
+          checked={pushNotifications.isSubscribed}
           onChange={handleTogglePush}
         />
         {pushLoading && <p className="mt-1.5 text-xs text-gris">Mise à jour...</p>}
         {pushError && <p className="mt-1.5 text-xs text-red-500">{pushError}</p>}
 
-        {pushNotifications.state === "granted" && (
+        {pushNotifications.isSubscribed && (
           <div className="mt-2">
             <button
               type="button"

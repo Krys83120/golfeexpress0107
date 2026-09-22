@@ -38,8 +38,30 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export type PushSupportState = "unsupported" | "checking" | "granted" | "denied" | "default";
 
+export interface EnablePushResult {
+  ok: boolean;
+  /** Message d'erreur précis (pour affichage direct à Krys) -- absent si `ok` est true ou si l'échec est juste "permission refusée" (déjà couvert par `state`). */
+  error?: string;
+}
+
+/**
+ * CORRECTIF du 22/09/2026 (signalé par Krys : toggle resté bloqué "activé"
+ * sans jamais pouvoir le désactiver, alors qu'aucun abonnement n'était
+ * enregistré côté serveur) : `state` ci-dessous reflète UNIQUEMENT la
+ * permission navigateur (Notification.permission), qui est un cliquet --
+ * une fois "granted", elle le reste pour toujours (impossible à repasser à
+ * "default" depuis le JS, seulement depuis les réglages système). Le
+ * toggle affiché dans NotificationsPage.tsx doit refléter si un ABONNEMENT
+ * est réellement actif MAINTENANT, pas si la permission a un jour été
+ * accordée -- d'où `isSubscribed`, vérifié via pushManager.getSubscription()
+ * (l'état réel du navigateur) plutôt que déduit de la permission. Sans ça,
+ * un premier essai raté (ex: l'enregistrement serveur avait échoué) laissait
+ * le toggle affiché "activé" pour toujours, empêchant toute nouvelle
+ * tentative.
+ */
 export function usePushNotifications() {
   const [state, setState] = useState<PushSupportState>("checking");
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   const isSupported =
     typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && !!VAPID_PUBLIC_KEY;
@@ -50,15 +72,24 @@ export function usePushNotifications() {
       return;
     }
     setState(Notification.permission === "granted" ? "granted" : Notification.permission === "denied" ? "denied" : "default");
+
+    // Vérifie s'il existe VRAIMENT un abonnement actif sur cet appareil (ex:
+    // au rechargement de la page) -- voir commentaire au-dessus de la
+    // fonction : ne jamais se fier à Notification.permission seul pour ça.
+    navigator.serviceWorker
+      .getRegistration("/service-worker.js")
+      .then((registration) => registration?.pushManager.getSubscription() ?? null)
+      .then((subscription) => setIsSubscribed(!!subscription))
+      .catch(() => setIsSubscribed(false));
   }, [isSupported]);
 
   /** Demande la permission navigateur + crée/enregistre l'abonnement côté serveur. */
-  const enable = useCallback(async (): Promise<boolean> => {
-    if (!isSupported) return false;
+  const enable = useCallback(async (): Promise<EnablePushResult> => {
+    if (!isSupported) return { ok: false };
 
     const permission = await Notification.requestPermission();
     setState(permission === "granted" ? "granted" : permission === "denied" ? "denied" : "default");
-    if (permission !== "granted") return false;
+    if (permission !== "granted") return { ok: false };
 
     try {
       const registration = await navigator.serviceWorker.register("/service-worker.js");
@@ -76,12 +107,32 @@ export function usePushNotifications() {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY as string) as BufferSource,
       });
       const json = subscription.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false;
-      await savePushSubscription({ endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } });
-      return true;
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+        setIsSubscribed(false);
+        return { ok: false, error: "Abonnement navigateur incomplet (endpoint/clés manquants)." };
+      }
+      try {
+        await savePushSubscription({ endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } });
+      } catch (saveErr) {
+        // L'abonnement navigateur a bien été créé mais l'enregistrement
+        // côté serveur a échoué -- cas exact rencontré par Krys (POST
+        // /api/pros/push-subscription en erreur). On désabonne pour ne pas
+        // laisser un abonnement fantôme (jamais su du serveur) traîner sur
+        // l'appareil, ce qui ferait échouer toute nouvelle tentative future
+        // avec "InvalidStateError: subscription already exists".
+        await subscription.unsubscribe().catch(() => {});
+        setIsSubscribed(false);
+        return {
+          ok: false,
+          error: saveErr instanceof Error ? `Échec d'enregistrement côté serveur : ${saveErr.message}` : "Échec d'enregistrement côté serveur.",
+        };
+      }
+      setIsSubscribed(true);
+      return { ok: true };
     } catch (err) {
       console.error("[usePushNotifications] Échec activation:", err);
-      return false;
+      setIsSubscribed(false);
+      return { ok: false, error: err instanceof Error ? err.message : "Erreur inconnue lors de l'activation." };
     }
   }, [isSupported]);
 
@@ -98,8 +149,14 @@ export function usePushNotifications() {
       }
     } catch (err) {
       console.error("[usePushNotifications] Échec désactivation:", err);
+    } finally {
+      // Toujours repasser le toggle à "désactivé" à l'écran, même s'il n'y
+      // avait en réalité rien à désabonner (ex: un précédent essai raté
+      // n'avait jamais créé de vrai abonnement) -- voir le commentaire sur
+      // isSubscribed plus haut.
+      setIsSubscribed(false);
     }
   }, [isSupported]);
 
-  return { state, isSupported, enable, disable };
+  return { state, isSupported, isSubscribed, enable, disable };
 }
