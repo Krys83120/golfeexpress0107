@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireProOrEmployee, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
+import { sendPushToPro, isVapidConfigured } from "@/lib/webPush";
 
 /**
  * POST/DELETE /api/pros/push-subscription
@@ -65,5 +66,38 @@ async function deleteHandler(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+/**
+ * PATCH /api/pros/push-subscription -- envoie une notification push de TEST
+ * à tous les abonnements actifs de la boutique (ajout du 22/09/2026, suite
+ * au signalement de Krys : notification activée mais rien reçu appli
+ * fermée). But : distinguer en un clic, depuis le bouton "Tester" de
+ * NotificationsPage.tsx, si le problème vient (a) d'un abonnement jamais
+ * enregistré côté serveur (subscriptionCount à 0 -- le toggle "réussit" côté
+ * téléphone mais l'appel serveur a échoué silencieusement), (b) d'une
+ * configuration VAPID serveur manquante (vapidConfigured à false -- ne
+ * devrait jamais arriver vu que les livreurs utilisent déjà la même config,
+ * mais sert de garde-fou), ou (c) d'un problème de livraison réseau/OS/
+ * permissions côté téléphone une fois qu'on sait que (a) et (b) sont OK.
+ * Ne fait volontairement PAS planter si aucun abonnement/VAPID absent --
+ * renvoie juste l'état, à charge du frontend d'afficher le bon message.
+ */
+async function patchHandler(req: NextRequest) {
+  const { proId } = await requireProOrEmployee(req);
+
+  const subscriptionCount = await prisma.proPushSubscription.count({ where: { proId } });
+  const vapidConfigured = isVapidConfigured();
+
+  if (subscriptionCount > 0 && vapidConfigured) {
+    await sendPushToPro(proId, {
+      title: "🔔 Test de notification",
+      body: "Si tu vois ceci (et que tu l'entends), les notifications push fonctionnent correctement !",
+      url: "/commandes",
+    });
+  }
+
+  return NextResponse.json({ subscriptionCount, vapidConfigured });
+}
+
 export const POST = withErrorHandling(postHandler);
 export const DELETE = withErrorHandling(deleteHandler);
+export const PATCH = withErrorHandling(patchHandler);
