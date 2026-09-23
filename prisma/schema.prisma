@@ -915,6 +915,25 @@ model Order {
   reviewRecord    Review?
   productReviews  ProductReview[]
   reports         OrderReport[]
+
+  // Ajoutés le 23/09/2026 (ralentissements constatés en test réel
+  // client+pro+livreur simultané) -- Order est la table la plus interrogée
+  // de toute l'appli, et jusqu'ici AUCUN index n'existait dessus en dehors
+  // de id/orderNumber : chaque requête `WHERE proId = ...` /
+  // `WHERE riderId = ...` / `WHERE clientId = ...` (voir orders/route.ts,
+  // filtrée par rôle -- Pro pollé toutes les 15s, Livreur toutes les
+  // 10-20s) forçait un scan complet de la table. Les 3 index ci-dessous
+  // couvrent les 3 rôles (Pro/Employee, Client, Rider) combinés avec le tri
+  // `orderBy: placedAt desc` déjà utilisé par cette même route -- un index
+  // composite (colonne de filtre + placedAt) sert directement le filtre ET
+  // le tri en une seule passe, sans étape de tri séparée.
+  @@index([proId, placedAt])
+  @@index([clientId, placedAt])
+  @@index([riderId, placedAt])
+  // Couvre spécifiquement GET /api/riders/me/available-orders (riderId
+  // IS NULL, status IN (READY, PREPARING), orderBy placedAt asc) --
+  // interrogée par CHAQUE livreur en ligne toutes les 10 secondes.
+  @@index([riderId, status, placedAt])
 }
 
 model OrderItem {
