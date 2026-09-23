@@ -109,6 +109,22 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
     throw new ApiError(403, "Votre rôle ne permet pas cette transition.");
   }
 
+  // Garde-fou ajouté le 23/09/2026 (commande restée bloquée en
+  // RIDER_ASSIGNED sans jamais être marquée prête) : un livreur peut être
+  // assigné AVANT que la commande soit physiquement prête (recherche
+  // anticipée, voir riderSearchWindow.ts), mais il ne doit jamais pouvoir la
+  // "récupérer" tant que le Pro n'a pas confirmé qu'elle est prête —
+  // readyAt est posé soit par la transition PREPARING -> READY classique,
+  // soit par mark-ready/route.ts quand un livreur est déjà assigné. Les deux
+  // conditions (livreur assigné ET commande prête) sont donc désormais
+  // obligatoires pour avancer à PICKED_UP, comme demandé.
+  if (nextStatus === OrderStatus.PICKED_UP && !order.readyAt) {
+    throw new ApiError(
+      400,
+      "Cette commande n'est pas encore marquée prête par le commerçant — impossible de la récupérer pour l'instant."
+    );
+  }
+
   const timestampField: Partial<Record<OrderStatus, string>> = {
     [OrderStatus.CONFIRMED]: "acceptedAt",
     [OrderStatus.READY]: "readyAt",

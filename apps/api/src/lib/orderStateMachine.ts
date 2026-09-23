@@ -70,3 +70,20 @@ export function isTransitionAllowedForRole(next: OrderStatus, role: UserRole): b
   if (!owners) return false;
   return owners.includes(role);
 }
+
+/**
+ * Annulation forcée réservée à l'Admin (ajout du 23/09/2026, suite à une
+ * commande restée bloquée en RIDER_ASSIGNED sans jamais être marquée
+ * prête). CANCELLABLE_FROM ci-dessus exclut volontairement
+ * RIDER_ASSIGNED/PICKED_UP/IN_DELIVERY pour canTransition -- ce serait trop
+ * dangereux d'ouvrir l'annulation "classique" (accessible à
+ * Client/Pro/Rider) une fois un livreur déjà en route. Cette fonction
+ * distincte n'est utilisée QUE par la route
+ * admin/orders/[orderId]/force-cancel (réservée ADMIN/SUPER_ADMIN au niveau
+ * de la route elle-même, voir requireAuth) -- jamais par la route générale
+ * orders/[orderId]/status, qui continue d'utiliser canTransition/
+ * CANCELLABLE_FROM sans changement pour tous les autres rôles.
+ */
+export function canAdminForceCancel(current: OrderStatus): boolean {
+  return current !== OrderStatus.CANCELLED && current !== OrderStatus.DELIVERED && current !== OrderStatus.REFUNDED;
+}

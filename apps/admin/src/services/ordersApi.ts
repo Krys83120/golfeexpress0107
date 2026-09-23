@@ -52,3 +52,19 @@ export async function testTransitionOrder(orderId: string, status: OrderStatus):
   });
   return data.order;
 }
+
+/**
+ * PATCH /api/admin/orders/[orderId]/force-cancel — annule une commande
+ * QUOI QU'IL ARRIVE (23/09/2026, suite à une commande restée bloquée en
+ * "Livreur assigné" faute d'avoir été marquée prête à temps). Contrairement
+ * à une annulation classique, fonctionne même une fois un livreur assigné/
+ * en route — réservé Admin, voir la route pour le détail des garde-fous.
+ * N'entraîne aucun remboursement Stripe automatique.
+ */
+export async function forceCancelOrder(orderId: string, reason?: string): Promise<Order> {
+  const data = await apiFetch<{ order: Order }>(`/api/admin/orders/${orderId}/force-cancel`, {
+    method: "PATCH",
+    body: { reason },
+  });
+  return data.order;
+}

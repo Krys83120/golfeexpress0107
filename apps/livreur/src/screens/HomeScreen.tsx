@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { OnlineToggleHeader } from "@/components/OnlineToggleHeader";
 import { EarningsCard } from "@/components/EarningsCard";
@@ -16,6 +16,8 @@ export function HomeScreen() {
   const loadAvailableOrders = useRiderSessionStore((s) => s.loadAvailableOrders);
   const loadActiveDelivery = useRiderSessionStore((s) => s.loadActiveDelivery);
   const handleAcceptOrder = useRiderSessionStore((s) => s.handleAcceptOrder);
+  const cancelledDeliveryNotice = useRiderSessionStore((s) => s.cancelledDeliveryNotice);
+  const dismissCancelledDeliveryNotice = useRiderSessionStore((s) => s.dismissCancelledDeliveryNotice);
 
   const riderStatus = useAuthStore((s) => s.profile?.status);
 
@@ -30,6 +32,24 @@ export function HomeScreen() {
     const interval = setInterval(loadAvailableOrders, 10000);
     return () => clearInterval(interval);
   }, [isOnline, activeDelivery]);
+
+  // Tant qu'une livraison est en cours, on revérifie régulièrement son
+  // statut côté serveur -- seul moyen pour ce livreur de savoir qu'elle a
+  // été annulée entre-temps (ex: annulation forcée par un Admin), puisque
+  // l'app ne s'abonne pas au temps réel Supabase sur la table Order (voir
+  // useRiderSessionStore.ts, loadActiveDelivery).
+  useEffect(() => {
+    if (!activeDelivery) return;
+    const interval = setInterval(loadActiveDelivery, 20000);
+    return () => clearInterval(interval);
+  }, [Boolean(activeDelivery)]);
+
+  useEffect(() => {
+    if (!cancelledDeliveryNotice) return;
+    Alert.alert("Commande annulée", cancelledDeliveryNotice, [
+      { text: "OK", onPress: dismissCancelledDeliveryNotice },
+    ]);
+  }, [cancelledDeliveryNotice]);
 
   async function handleAccept(orderId: string) {
     try {

@@ -8,13 +8,21 @@
  * calculée dynamiquement à partir de la distance/position de chaque
  * livreur candidat (ce qui nécessiterait un vrai moteur de matching avec
  * calcul d'ETA par livreur — hors scope pour cette première version).
- * 7 minutes correspond à un temps de trajet livreur → commerçant courant
- * sur la zone du Golfe de Saint-Tropez.
+ *
+ * Réduit de 7 à 3 minutes le 23/09/2026 (demande de Krys, suite à une
+ * commande restée bloquée en RIDER_ASSIGNED sans jamais être marquée prête
+ * par le Pro) : plus la fenêtre est large, plus une commande peut rester
+ * assignée longtemps à un livreur avant que le Pro n'ait réellement fini —
+ * 3 minutes reste utile pour que le livreur arrive à temps sans trop
+ * anticiper. Voir aussi orders/[orderId]/status/route.ts, qui bloque
+ * désormais la transition PICKED_UP tant que readyAt n'est pas posé, pour
+ * qu'un livreur assigné trop tôt ne puisse plus jamais récupérer une
+ * commande pas encore physiquement prête.
  *
  * TODO: remplacer par un calcul par livreur (distance réelle / vitesse
  * moyenne selon vehicleType) une fois le matching plus fin nécessaire.
  */
-export const RIDER_SEARCH_BUFFER_MINUTES = 7;
+export const RIDER_SEARCH_BUFFER_MINUTES = 3;
 
 /**
  * Calcule si une commande en préparation doit déjà être visible aux

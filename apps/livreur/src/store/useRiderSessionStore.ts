@@ -22,6 +22,15 @@ interface RiderSessionState {
   availableOrders: Order[];
   availableOrdersStatus: "idle" | "loading" | "loaded" | "error";
 
+  // Message affiché (via Alert, voir HomeScreen.tsx) quand une livraison en
+  // cours disparaît suite à un rafraîchissement (loadActiveDelivery) plutôt
+  // qu'une action du livreur lui-même (advanceDeliveryStep) -- typiquement
+  // une annulation forcée par un Admin (voir force-cancel côté API) pendant
+  // que le livreur est déjà en route. Sans ça, le livreur restait bloqué
+  // sur un écran "livraison en cours" qui ne correspond plus à rien.
+  cancelledDeliveryNotice: string | null;
+  dismissCancelledDeliveryNotice: () => void;
+
   loadAvailableOrders: () => Promise<void>;
   loadActiveDelivery: () => Promise<void>;
   handleAcceptOrder: (orderId: string) => Promise<void>;
@@ -58,6 +67,9 @@ export const useRiderSessionStore = create<RiderSessionState>((set, get) => ({
   activeDelivery: null,
   availableOrders: [],
   availableOrdersStatus: "idle",
+  cancelledDeliveryNotice: null,
+
+  dismissCancelledDeliveryNotice: () => set({ cancelledDeliveryNotice: null }),
 
   loadAvailableOrders: async () => {
     set({ availableOrdersStatus: "loading" });
@@ -77,7 +89,24 @@ export const useRiderSessionStore = create<RiderSessionState>((set, get) => ({
         OrderStatus.PICKED_UP,
         OrderStatus.IN_DELIVERY,
       ]);
-      set({ activeDelivery: orders[0] ?? null });
+      const next = orders[0] ?? null;
+      set((state) => {
+        // `state.activeDelivery` n'est déjà plus renseigné ici quand la
+        // livraison s'est terminée normalement (advanceDeliveryStep la vide
+        // directement dès le passage DELIVERED, avant même ce prochain
+        // appel) -- donc si on avait encore une livraison active en mémoire
+        // et qu'elle a disparu (ou a été remplacée) suite à CE
+        // rafraîchissement, c'est forcément une disparition externe
+        // (annulation forcée par un Admin).
+        const previous = state.activeDelivery;
+        const disappearedExternally = Boolean(previous) && previous!.id !== next?.id;
+        return {
+          activeDelivery: next,
+          cancelledDeliveryNotice: disappearedExternally
+            ? `La commande ${previous!.orderNumber} a été annulée par notre équipe.`
+            : state.cancelledDeliveryNotice,
+        };
+      });
     } catch {
       // Échec silencieux — l'écran retentera au prochain chargement manuel.
     }
