@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { sendContactMessageEmail, sendContactMessageConfirmation } from "@/lib/emails/contactEmails";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 // "Modification à faire" et "Autre" ajoutés le 23/09/2026 pour les bulles
 // des apps Client/Pro/Livreur (voir leurs ContactWidget.tsx respectifs) --
@@ -35,6 +36,10 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * accusé de réception au visiteur.
  */
 async function postHandler(req: NextRequest) {
+  // Rate limiting (23/09/2026, audit sécurité) : 5 messages / heure / IP --
+  // ce endpoint est public (pas d'auth), donc le plus exposé au spam pur.
+  await enforceRateLimit(req, { route: "contact", limit: 5, windowMs: 60 * 60 * 1000 });
+
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
     throw new ApiError(400, "Corps de requête invalide.");

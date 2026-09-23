@@ -1397,3 +1397,19 @@ model ProductReview {
   /// -- OrderItem -- mais un seul avis global par produit suffit).
   @@unique([orderId, productId])
 }
+
+/// Compteurs de rate limiting par IP (23/09/2026, suite a l'audit securite
+/// demande par Krys) -- protege les endpoints publics sensibles (login,
+/// signup, forgot-password, contact) contre le bourrinage/spam. Une ligne
+/// par cle "route:ip", remise a zero automatiquement a l'expiration de
+/// resetAt (voir lib/rateLimit.ts -- upsert atomique via SQL brut, jamais
+/// via Prisma Client classique ici, pour eviter toute race condition entre
+/// deux requetes concurrentes de la meme IP). Aucune relation avec le reste
+/// du schema : purement technique, jamais expose via l'API.
+model RateLimitHit {
+  key     String   @id
+  count   Int      @default(1)
+  resetAt DateTime @map("reset_at")
+
+  @@map("rate_limit_hits")
+}

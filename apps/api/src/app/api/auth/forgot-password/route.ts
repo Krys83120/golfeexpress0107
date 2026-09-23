@@ -6,6 +6,7 @@ import { withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/emails/authEmails";
 import { PORTAL_URLS } from "@/lib/emails/shared";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 heure
 
@@ -35,6 +36,12 @@ function portalUrlForRole(role: UserRole): string {
  * comptes = faille de sécurité classique).
  */
 async function postHandler(req: NextRequest) {
+  // Rate limiting (23/09/2026, audit sécurité) : 3 demandes / heure / IP --
+  // empêche de spammer la boîte mail de quelqu'un avec des liens de
+  // réinitialisation (email bombing), tout en laissant assez de marge pour
+  // une vraie personne qui retape mal son email une ou deux fois.
+  await enforceRateLimit(req, { route: "forgot-password", limit: 3, windowMs: 60 * 60 * 1000 });
+
   const body = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {

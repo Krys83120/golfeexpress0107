@@ -6,6 +6,7 @@ import { ApiError, withErrorHandling } from "@/middleware/auth";
 import { sendWelcomeEmail } from "@/lib/emails/authEmails";
 import { sendNewProPendingAlert, sendNewRiderPendingAlert } from "@/lib/emails/adminEmails";
 import { PORTAL_URLS } from "@/lib/emails/shared";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 function portalUrlForSignupRole(role: string): string {
   switch (role) {
@@ -31,6 +32,11 @@ function portalUrlForSignupRole(role: string): string {
  * email est activée côté Supabase (auth.users.email_confirmed_at IS NULL).
  */
 async function handler(req: NextRequest) {
+  // Rate limiting (23/09/2026, audit sécurité) : 5 inscriptions / heure / IP
+  // -- limite la création de comptes en masse depuis une même source, sans
+  // gêner une famille/un bureau partageant la même IP.
+  await enforceRateLimit(req, { route: "signup", limit: 5, windowMs: 60 * 60 * 1000 });
+
   const body = await req.json().catch(() => null);
   const parsed = signupSchema.safeParse(body);
 

@@ -23,22 +23,35 @@ const envOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .filter(Boolean);
 const allowedOrigins = [...defaultOrigins, ...envOrigins];
 
+// Resserré le 23/09/2026 (audit sécurité demandé par Krys) : ce suffixe est
+// propre au compte/équipe Vercel de Krys -- personne d'autre ne peut créer
+// un déploiement dont l'URL se termine par "-<ce-suffixe>.vercel.app",
+// Vercel garantissant l'unicité du slug d'équipe dans ses URLs. Surchargeable
+// via VERCEL_TEAM_SLUG si le compte Vercel change un jour.
+const vercelTeamSlug = process.env.VERCEL_TEAM_SLUG ?? "krys-projects-cc226fd7";
+const vercelPreviewPattern = new RegExp(`^https://[a-z0-9-]+-${vercelTeamSlug}\\.vercel\\.app$`);
+
 /**
- * Autorise aussi tout domaine *.vercel.app (projet personnel, pas d'enjeu de
- * sécurité à restreindre finement), pour que tous les déploiements Preview
- * et Production des dashboards web fonctionnent sans avoir à maintenir une
- * liste exacte de sous-domaines à chaque nouveau déploiement.
+ * Autorise les déploiements Preview/Production Vercel du VRAI compte de
+ * Krys (via vercelPreviewPattern ci-dessus), et non plus N'IMPORTE QUEL
+ * sous-domaine *.vercel.app comme avant le 23/09/2026 -- l'ancienne version
+ * acceptait par erreur des requêtes authentifiées (Bearer token) depuis
+ * l'app Vercel de n'importe qui d'autre, ce qui n'apportait aucun bénéfice
+ * réel (les déploiements de Krys ont tous ce suffixe) et élargissait
+ * inutilement la surface d'attaque en cas de token volé par ailleurs (XSS).
  *
  * Autorise aussi n'importe quel port localhost — "npx serve dist" (utilisé
  * pour tester les exports web de Client/Livreur) choisit un port différent
  * à chaque lancement dès que le port par défaut est déjà occupé (souvent le
  * cas puisque l'API tourne elle-même sur 3000), rendant une liste de ports
- * fixes impraticable en développement.
+ * fixes impraticable en développement. Sans risque réel : un navigateur
+ * n'envoie "origin: http://localhost:PORT" que si la page appelante tourne
+ * elle-même sur cette machine, impossible à falsifier depuis un site distant.
  */
 function isAllowedOrigin(origin: string): boolean {
   if (!origin) return false;
   if (allowedOrigins.includes(origin)) return true;
-  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return true;
+  if (vercelPreviewPattern.test(origin)) return true;
   if (/^https:\/\/([a-z0-9-]+\.)?doyougeckoo\.fr$/.test(origin)) return true;
   if (/^http:\/\/localhost:\d+$/.test(origin)) return true;
   return false;

@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { loginSchema } from "@/lib/validation/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiError, withErrorHandling } from "@/middleware/auth";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 /**
  * POST /api/auth/login
@@ -14,6 +15,11 @@ import { ApiError, withErrorHandling } from "@/middleware/auth";
  * `Authorization: Bearer <accessToken>` sur toutes les requêtes suivantes.
  */
 async function handler(req: NextRequest) {
+  // Rate limiting (23/09/2026, audit sécurité) : 10 tentatives / 15 min / IP
+  // -- assez généreux pour ne jamais bloquer une personne qui se trompe de
+  // mot de passe plusieurs fois, mais coupe court à un bourrinage automatisé.
+  await enforceRateLimit(req, { route: "login", limit: 10, windowMs: 15 * 60 * 1000 });
+
   const body = await req.json().catch(() => null);
   const parsed = loginSchema.safeParse(body);
 
