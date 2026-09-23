@@ -4,7 +4,7 @@ import { requireProOrEmployee, withErrorHandling, ApiError } from "@/middleware/
 import { prisma } from "@/lib/prisma";
 import { createParcelOrderSchema, deleteParcelOrderSchema } from "@/lib/validation/parcelOrders";
 import { haversineDistanceKm } from "@/lib/distance";
-import { getEffectiveDeliveryFee, getRiderPayForDistance } from "@/lib/pricingSettings";
+import { getEffectiveDeliveryFee, getRiderPayForDistance, getParcelExpressFee } from "@/lib/pricingSettings";
 
 /**
  * Colis Express -- MVP (19/09/2026), réservé à l'espace Pro pour l'instant
@@ -12,20 +12,16 @@ import { getEffectiveDeliveryFee, getRiderPayForDistance } from "@/lib/pricingSe
  * Table séparée de Order/OrderItem, voir model ParcelOrder dans
  * prisma/schema.prisma pour le raisonnement complet.
  *
- * Ce que cette route fait DÉJÀ : crée la demande, calcule le tarif (mêmes
- * règles de frais de livraison par distance que les commandes classiques,
- * voir pricingSettings.ts), et la rémunération livreur associée.
- *
- * Ce qu'elle NE fait PAS ENCORE (étapes suivantes, volontairement séparées) :
- *  - Débiter le Pro via Stripe (paymentStatus reste PENDING) -- à câbler une
- *    fois vérifié qu'un moyen de paiement par défaut existe sur
- *    Pro.stripeCustomerId.
- *  - Rendre la course visible aux livreurs ("commandes disponibles") -- ne
- *    doit se déclencher qu'une fois le paiement confirmé (status
- *    CONFIRMED), pour ne jamais envoyer un livreur chercher un colis dont le
- *    paiement pourrait échouer.
+ * Ce que cette route fait : crée la demande, calcule le tarif (mêmes règles
+ * de frais de livraison par distance que les commandes classiques, plus un
+ * forfait "service express" -- voir getParcelExpressFee, activé le
+ * 23/09/2026 suite à l'audit du même jour qui a révélé que deliveryFee seul
+ * ne couvrait jamais riderEarnings), et la rémunération livreur associée. Le
+ * débit Stripe du Pro (payment-intent/route.ts, webhooks/stripe/route.ts) et
+ * la visibilité de la course aux livreurs une fois payée
+ * (riders/me/available-parcel-orders/route.ts) sont câblés depuis longtemps
+ * -- fichiers séparés, volontairement pas ici.
  */
-const EXPRESS_FEE = 0; // Pas encore proposé côté formulaire -- voir schema.prisma, champ conservé pour plus tard.
 
 /**
  * deliveryFee/expressFee/total/riderEarnings/platformEarnings (et lat/lng
@@ -115,7 +111,10 @@ async function postHandler(req: NextRequest) {
   // désactive naturellement la livraison gratuite au-dessus d'un panier pour
   // Colis Express (comportement voulu : pas de panier à faire grossir ici).
   const deliveryFee = await getEffectiveDeliveryFee(distanceKm, 0);
-  const expressFee = EXPRESS_FEE;
+  // Forfait "service express" (23/09/2026, décision prise avec Krys suite à
+  // l'audit du même jour) -- voir getParcelExpressFee pour le raisonnement
+  // chiffré. Réglable depuis Admin > Tarification, sans redéploiement.
+  const expressFee = await getParcelExpressFee();
   const total = deliveryFee + expressFee;
   const riderEarnings = await getRiderPayForDistance(distanceKm);
   const platformEarnings = total - riderEarnings;

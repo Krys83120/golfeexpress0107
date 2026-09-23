@@ -18,6 +18,7 @@ export const PRICING_SETTINGS_KEYS = {
   deliveryFeeTiers: "pricing.delivery_fee_tiers",
   freeDeliveryThresholdEnabled: "pricing.free_delivery_threshold_enabled",
   freeDeliveryThresholdAmount: "pricing.free_delivery_threshold_amount",
+  parcelExpressFee: "pricing.parcel_express_fee",
 } as const;
 
 // Échange produit du 21/08/2026, révisé le 21/08/2026 : la rémunération
@@ -188,6 +189,32 @@ export async function getRiderPayForDistance(distanceKm: number): Promise<number
     readNumberSetting(PRICING_SETTINGS_KEYS.riderPayMinimum, DEFAULT_RIDER_PAY_MINIMUM),
   ]);
   return Math.max(minimum, base + perKm * distanceKm);
+}
+
+/**
+ * Forfait "service express" Colis Express (23/09/2026 -- suite à l'audit du
+ * même jour : deliveryFee seul ne couvrait jamais riderEarnings, laissant
+ * platformEarnings structurellement négatif sur CHAQUE demande, voir
+ * l'échange avec Krys). Vient s'ajouter tel quel à deliveryFee dans
+ * parcel-orders/route.ts (total = deliveryFee + expressFee).
+ *
+ * 7 € choisis avec Krys pour garantir un total minimum de 10,90 € (3,90 € de
+ * base + 7 €) : marge positive jusqu'à ~8,8 km même avec le tarif de
+ * livraison fixe (sans paliers par distance activés), et jusqu'à ~15 km si
+ * les paliers par distance le sont (voir isDeliveryFeeByDistanceEnabled --
+ * recommandé pour sécuriser encore mieux les Colis Express sur les plus
+ * longs trajets). Au-delà de ce que couvrent les paliers, riderEarnings
+ * continue de grandir avec la distance (riderPayPerKm) alors que
+ * deliveryFee plafonne (voir DEFAULT_DELIVERY_FEE_TIERS) -- décision
+ * assumée avec Krys : Colis Express reste positionné comme un service
+ * rapide et d'appoint, pas garanti rentable sur les très longs trajets.
+ * Réglable depuis Admin > Tarification comme le reste de cette page, sans
+ * redéploiement.
+ */
+export const DEFAULT_PARCEL_EXPRESS_FEE = 7;
+
+export async function getParcelExpressFee(): Promise<number> {
+  return readNumberSetting(PRICING_SETTINGS_KEYS.parcelExpressFee, DEFAULT_PARCEL_EXPRESS_FEE);
 }
 
 export interface MinOrderTier {

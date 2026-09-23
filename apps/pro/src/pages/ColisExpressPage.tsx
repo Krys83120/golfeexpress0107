@@ -668,7 +668,8 @@ export function ColisExpressPage() {
             {submitting ? "Envoi..." : "Demander l'enlèvement"}
           </button>
           <p className="mt-2 text-center text-[11px] text-gris">
-            Vous pourrez ajouter une photo du colis juste après cette étape.
+            Le tarif inclut un forfait de service express, en plus du tarif de livraison selon la distance. Vous
+            pourrez ajouter une photo du colis juste après cette étape.
           </p>
         </form>
 
