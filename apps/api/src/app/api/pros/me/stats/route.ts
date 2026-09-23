@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { UserRole, OrderStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveStatsPeriod, STATS_PERIODS, type StatsPeriod } from "@/lib/statsPeriods";
+import { resolveStatsPeriod, formatStatsDateRange, STATS_PERIODS, type StatsPeriod } from "@/lib/statsPeriods";
 
 /**
  * GET /api/pros/me/stats?period=today|week|month|year|all
@@ -43,11 +43,17 @@ async function getHandler(req: NextRequest) {
       status: OrderStatus.DELIVERED,
       ...(since ? { deliveredAt: { gte: since } } : {}),
     },
-    select: { id: true, subtotal: true },
+    select: { id: true, subtotal: true, deliveredAt: true },
   });
 
   const orderIds = orders.map((o) => o.id);
   const revenueTotal = orders.reduce((sum, o) => sum + Number(o.subtotal), 0);
+
+  // Plage de dates RÉELLEMENT couverte par les commandes trouvées (et non
+  // les bornes théoriques `since`/maintenant) -- voir formatStatsDateRange.
+  const deliveredDates = orders.map((o) => o.deliveredAt).filter((d): d is Date => d !== null);
+  const rangeStart = deliveredDates.length ? new Date(Math.min(...deliveredDates.map((d) => d.getTime()))) : null;
+  const rangeEnd = deliveredDates.length ? new Date(Math.max(...deliveredDates.map((d) => d.getTime()))) : null;
 
   const items = orderIds.length
     ? await prisma.orderItem.findMany({
@@ -85,6 +91,7 @@ async function getHandler(req: NextRequest) {
   return NextResponse.json({
     period,
     rangeLabel,
+    dateRangeLabel: formatStatsDateRange(rangeStart, rangeEnd),
     summary: {
       orderCount: orders.length,
       revenueTotal: Math.round(revenueTotal * 100) / 100,

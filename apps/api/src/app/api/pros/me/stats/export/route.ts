@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { UserRole, OrderStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveStatsPeriod, STATS_PERIODS, type StatsPeriod } from "@/lib/statsPeriods";
+import { resolveStatsPeriod, formatStatsDateRange, formatStatsDate, STATS_PERIODS, type StatsPeriod } from "@/lib/statsPeriods";
 
 /**
  * GET /api/pros/me/stats/export?period=today|week|month|year|all
@@ -37,9 +37,17 @@ async function getHandler(req: NextRequest) {
       status: OrderStatus.DELIVERED,
       ...(since ? { deliveredAt: { gte: since } } : {}),
     },
-    select: { id: true },
+    select: { id: true, deliveredAt: true },
   });
   const orderIds = orders.map((o) => o.id);
+  const deliveredAtById = new Map(orders.map((o) => [o.id, o.deliveredAt]));
+
+  // Plage de dates réellement couverte -- voir le commentaire équivalent
+  // dans /api/pros/me/stats/route.ts (même raisonnement, même fonction).
+  const deliveredDates = orders.map((o) => o.deliveredAt).filter((d): d is Date => d !== null);
+  const rangeStart = deliveredDates.length ? new Date(Math.min(...deliveredDates.map((d) => d.getTime()))) : null;
+  const rangeEnd = deliveredDates.length ? new Date(Math.max(...deliveredDates.map((d) => d.getTime()))) : null;
+  const dateRangeLabel = formatStatsDateRange(rangeStart, rangeEnd);
 
   const items = orderIds.length
     ? await prisma.orderItem.findMany({
@@ -48,18 +56,26 @@ async function getHandler(req: NextRequest) {
       })
     : [];
 
-  const byProduct = new Map<string, { quantitySold: number; revenue: number; orderIds: Set<string> }>();
+  const byProduct = new Map<
+    string,
+    { quantitySold: number; revenue: number; orderIds: Set<string>; firstSaleAt: Date | null; lastSaleAt: Date | null }
+  >();
   for (const item of items) {
+    const saleDate = deliveredAtById.get(item.orderId) ?? null;
     const existing = byProduct.get(item.productName);
     if (existing) {
       existing.quantitySold += item.quantity;
       existing.revenue += Number(item.totalPrice);
       existing.orderIds.add(item.orderId);
+      if (saleDate && (!existing.firstSaleAt || saleDate < existing.firstSaleAt)) existing.firstSaleAt = saleDate;
+      if (saleDate && (!existing.lastSaleAt || saleDate > existing.lastSaleAt)) existing.lastSaleAt = saleDate;
     } else {
       byProduct.set(item.productName, {
         quantitySold: item.quantity,
         revenue: Number(item.totalPrice),
         orderIds: new Set([item.orderId]),
+        firstSaleAt: saleDate,
+        lastSaleAt: saleDate,
       });
     }
   }
@@ -70,6 +86,8 @@ async function getHandler(req: NextRequest) {
       quantitySold: p.quantitySold,
       orderCount: p.orderIds.size,
       revenue: Math.round(p.revenue * 100) / 100,
+      firstSaleAt: p.firstSaleAt ? formatStatsDate(p.firstSaleAt) : "-",
+      lastSaleAt: p.lastSaleAt ? formatStatsDate(p.lastSaleAt) : "-",
     }))
     .sort((a, b) => b.quantitySold - a.quantitySold);
 
@@ -80,12 +98,14 @@ async function getHandler(req: NextRequest) {
     return /[",;\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
   }
 
-  const header = ["Produit", "Quantité vendue", "Nombre de commandes", "Chiffre d'affaires (€)"];
+  const header = ["Produit", "Quantité vendue", "Nombre de commandes", "Chiffre d'affaires (€)", "Première vente", "Dernière vente"];
   const lines = [
-    `Statistiques Do You Geckoo - ${pro.businessName} - ${rangeLabel}`,
+    `Statistiques Do You Geckoo - ${pro.businessName} - ${rangeLabel}${dateRangeLabel ? ` (${dateRangeLabel})` : ""}`,
     "",
     header.join(";"),
-    ...rows.map((r) => [csvField(r.productName), r.quantitySold, r.orderCount, r.revenue.toFixed(2)].join(";")),
+    ...rows.map((r) =>
+      [csvField(r.productName), r.quantitySold, r.orderCount, r.revenue.toFixed(2), r.firstSaleAt, r.lastSaleAt].join(";"),
+    ),
   ];
 
   // Séparateur ";" (et non ",") + BOM UTF-8 en tête -- Excel version FR
