@@ -111,10 +111,11 @@ async function postHandler(req: NextRequest) {
   // désactive naturellement la livraison gratuite au-dessus d'un panier pour
   // Colis Express (comportement voulu : pas de panier à faire grossir ici).
   const deliveryFee = await getEffectiveDeliveryFee(distanceKm, 0);
-  // Forfait "service express" (23/09/2026, décision prise avec Krys suite à
-  // l'audit du même jour) -- voir getParcelExpressFee pour le raisonnement
-  // chiffré. Réglable depuis Admin > Tarification, sans redéploiement.
-  const expressFee = await getParcelExpressFee();
+  // Forfait "service express" + majoration kilométrique au-delà d'un certain
+  // seuil (23/09/2026, décision prise avec Krys suite à l'audit du même
+  // jour) -- voir getParcelExpressFee pour le raisonnement chiffré complet.
+  // Réglable depuis Admin > Tarification, sans redéploiement.
+  const expressFee = await getParcelExpressFee(distanceKm);
   const total = deliveryFee + expressFee;
   const riderEarnings = await getRiderPayForDistance(distanceKm);
   const platformEarnings = total - riderEarnings;

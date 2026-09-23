@@ -19,6 +19,8 @@ export const PRICING_SETTINGS_KEYS = {
   freeDeliveryThresholdEnabled: "pricing.free_delivery_threshold_enabled",
   freeDeliveryThresholdAmount: "pricing.free_delivery_threshold_amount",
   parcelExpressFee: "pricing.parcel_express_fee",
+  parcelExpressExtraKmThreshold: "pricing.parcel_express_extra_km_threshold",
+  parcelExpressExtraFeePerKm: "pricing.parcel_express_extra_fee_per_km",
 } as const;
 
 // Échange produit du 21/08/2026, révisé le 21/08/2026 : la rémunération
@@ -199,22 +201,47 @@ export async function getRiderPayForDistance(distanceKm: number): Promise<number
  * parcel-orders/route.ts (total = deliveryFee + expressFee).
  *
  * 7 € choisis avec Krys pour garantir un total minimum de 10,90 € (3,90 € de
- * base + 7 €) : marge positive jusqu'à ~8,8 km même avec le tarif de
- * livraison fixe (sans paliers par distance activés), et jusqu'à ~15 km si
- * les paliers par distance le sont (voir isDeliveryFeeByDistanceEnabled --
- * recommandé pour sécuriser encore mieux les Colis Express sur les plus
- * longs trajets). Au-delà de ce que couvrent les paliers, riderEarnings
- * continue de grandir avec la distance (riderPayPerKm) alors que
- * deliveryFee plafonne (voir DEFAULT_DELIVERY_FEE_TIERS) -- décision
- * assumée avec Krys : Colis Express reste positionné comme un service
- * rapide et d'appoint, pas garanti rentable sur les très longs trajets.
- * Réglable depuis Admin > Tarification comme le reste de cette page, sans
- * redéploiement.
+ * base + 7 €).
  */
 export const DEFAULT_PARCEL_EXPRESS_FEE = 7;
 
-export async function getParcelExpressFee(): Promise<number> {
-  return readNumberSetting(PRICING_SETTINGS_KEYS.parcelExpressFee, DEFAULT_PARCEL_EXPRESS_FEE);
+/**
+ * Majoration kilométrique Colis Express (23/09/2026, suite au constat
+ * ci-dessus) : le forfait fixe seul suffit jusqu'à un certain point, mais
+ * au-delà riderEarnings continue de grandir avec la distance (riderPayPerKm,
+ * 0,95 €/km par défaut) alors que deliveryFee plafonne (voir
+ * DEFAULT_DELIVERY_FEE_TIERS) -- la marge finissait par redevenir négative
+ * sur les longs trajets. Réglage volontairement séparé du forfait fixe :
+ * DEFAULT_PARCEL_EXPRESS_EXTRA_KM_THRESHOLD (8 km) = distance à partir de
+ * laquelle la majoration s'applique (choisie pour rester couverte par le
+ * forfait fixe + le tarif de livraison en-deçà, voir le calcul chiffré
+ * échangé avec Krys) ; DEFAULT_PARCEL_EXPRESS_EXTRA_FEE_PER_KM (1 €/km,
+ * légèrement au-dessus de riderPayPerKm) = tarif appliqué à chaque km
+ * au-delà de ce seuil. Résultat : la marge reste positive et croît
+ * légèrement avec la distance au lieu de s'éroder, quels que soient
+ * deliveryFee/riderPayPerKm par ailleurs (paliers activés ou non). Les deux
+ * réglages sont indépendants du forfait fixe et modifiables depuis
+ * Admin > Tarification, sans redéploiement.
+ */
+export const DEFAULT_PARCEL_EXPRESS_EXTRA_KM_THRESHOLD = 8;
+export const DEFAULT_PARCEL_EXPRESS_EXTRA_FEE_PER_KM = 1;
+
+/**
+ * Forfait "service express" TOTAL pour une distance donnée -- forfait fixe
+ * (getParcelExpressFee ci-dessus) + majoration kilométrique au-delà du seuil
+ * configuré (voir juste au-dessus). À utiliser à la place d'un simple
+ * montant fixe partout où la distance est déjà connue (POST
+ * /api/parcel-orders, seul appelant pour l'instant) -- même convention que
+ * getEffectiveDeliveryFee(distanceKm, subtotal) ci-dessus.
+ */
+export async function getParcelExpressFee(distanceKm: number): Promise<number> {
+  const [baseFee, extraKmThreshold, extraFeePerKm] = await Promise.all([
+    readNumberSetting(PRICING_SETTINGS_KEYS.parcelExpressFee, DEFAULT_PARCEL_EXPRESS_FEE),
+    readNumberSetting(PRICING_SETTINGS_KEYS.parcelExpressExtraKmThreshold, DEFAULT_PARCEL_EXPRESS_EXTRA_KM_THRESHOLD),
+    readNumberSetting(PRICING_SETTINGS_KEYS.parcelExpressExtraFeePerKm, DEFAULT_PARCEL_EXPRESS_EXTRA_FEE_PER_KM),
+  ]);
+  const extraKm = Math.max(0, distanceKm - extraKmThreshold);
+  return baseFee + extraKm * extraFeePerKm;
 }
 
 export interface MinOrderTier {
