@@ -63,7 +63,24 @@ async function postHandler(req: NextRequest) {
 
   const { proId, fromAddressId, toAddressId, items, clientNote } = parsed.data;
 
-  const pro = await prisma.pro.findUnique({ where: { id: proId }, include: { openingHours: true } });
+  // Perf (23/09/2026) : le commerçant ET les 4 interrupteurs de
+  // capacité/tarification utilisés plus bas sont des lectures totalement
+  // indépendantes les unes des autres (aucune ne dépend du résultat d'une
+  // autre) -- on les lance donc toutes en parallèle plutôt qu'en série.
+  // Avant ce changement, chaque commande enchaînait ~4 allers-retours base
+  // de données consécutifs rien que pour ces interrupteurs (désactivés par
+  // défaut chez la plupart des commerçants), ce qui s'ajoutait à la
+  // latence globale de création de commande. Comportement strictement
+  // identique : on vérifie exactement les mêmes booléens, juste plus tôt et
+  // en même temps qu'on récupère le commerçant.
+  const [pro, openingHoursMandatory, cityGatingEnabled, riderCheckEnabled, minOrderByDistanceEnabled] =
+    await Promise.all([
+      prisma.pro.findUnique({ where: { id: proId }, include: { openingHours: true } }),
+      isOpeningHoursMandatoryEnabled(),
+      isCityGatingEnabled(),
+      isRiderCheckEnabled(),
+      isMinOrderByDistanceEnabled(),
+    ]);
   if (!pro || pro.status !== "ACTIVE") {
     throw new ApiError(404, "Ce commerçant n'est pas disponible actuellement.");
   }
@@ -74,7 +91,7 @@ async function postHandler(req: NextRequest) {
   // ci-dessous — distinct du message "commerçant fermé" pour que le client
   // comprenne qu'il s'agit d'un commerçant pas encore complètement
   // configuré, et non simplement fermé à cette heure. Désactivé par défaut.
-  if ((await isOpeningHoursMandatoryEnabled()) && pro.openingHours.length === 0) {
+  if (openingHoursMandatory && pro.openingHours.length === 0) {
     throw new ApiError(
       400,
       "Ce commerçant n'a pas encore renseigné ses horaires d'ouverture — commande impossible pour le moment."
@@ -134,7 +151,7 @@ async function postHandler(req: NextRequest) {
   // si son réglage GlobalSetting correspondant est activé depuis
   // Admin > Zones & Capacité. Tant que rien n'est activé, ce bloc entier ne
   // change rien au comportement existant (aucune commande refusée).
-  if (await isCityGatingEnabled()) {
+  if (cityGatingEnabled) {
     // Ouverture progressive commune par commune : une commande n'est
     // acceptée que si la ville de l'adresse de livraison correspond à une
     // ServiceCity marquée active. Comparaison normalisée (accents/casse)
@@ -149,7 +166,7 @@ async function postHandler(req: NextRequest) {
     }
   }
 
-  if (await isRiderCheckEnabled()) {
+  if (riderCheckEnabled) {
     // Garde-fou volontairement simple pour ce premier palier : capacité
     // globale (tous livreurs en ligne ET sans course active en cours,
     // toutes communes confondues), pas encore un calcul par zone avec ETA
@@ -424,7 +441,7 @@ async function postHandler(req: NextRequest) {
   // voir pricingSettings.ts). Désactivé par défaut : ce bloc ne change rien
   // tant que l'admin n'a pas activé "Panier minimum selon la distance"
   // depuis Admin > Tarification.
-  if (await isMinOrderByDistanceEnabled()) {
+  if (minOrderByDistanceEnabled) {
     const tiers = await getMinOrderTiers();
     const requiredMinOrder = computeRequiredMinOrder(distanceKm, tiers);
     if (subtotal < requiredMinOrder) {

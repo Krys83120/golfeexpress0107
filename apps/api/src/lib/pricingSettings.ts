@@ -110,8 +110,12 @@ export function computeDeliveryFeeForDistance(distanceKm: number, tiers: Deliver
  * distance n'est pas activé.
  */
 export async function getDeliveryFeeForDistance(distanceKm: number): Promise<number> {
-  const flatFee = await getDeliveryFee();
-  if (!(await isDeliveryFeeByDistanceEnabled())) return flatFee;
+  // Perf (23/09/2026) : ces deux lectures sont indépendantes l'une de
+  // l'autre (aucune ne dépend du résultat de l'autre) -- lancées en
+  // parallèle plutôt qu'en série pour économiser un aller-retour base de
+  // données à chaque commande. Résultat strictement identique.
+  const [flatFee, byDistanceEnabled] = await Promise.all([getDeliveryFee(), isDeliveryFeeByDistanceEnabled()]);
+  if (!byDistanceEnabled) return flatFee;
   const tiers = await getDeliveryFeeTiers();
   return computeDeliveryFeeForDistance(distanceKm, tiers);
 }
@@ -157,8 +161,15 @@ export async function getFreeDeliveryThresholdAmount(): Promise<number> {
  * panier" est activé et que ce panier atteint le seuil configuré.
  */
 export async function getEffectiveDeliveryFee(distanceKm: number, subtotal: number): Promise<number> {
-  const baseFee = await getDeliveryFeeForDistance(distanceKm);
-  if (!(await isFreeDeliveryThresholdEnabled())) return baseFee;
+  // Perf (23/09/2026) : même principe -- getDeliveryFeeForDistance() (qui
+  // fait déjà ses propres lectures en parallèle, voir ci-dessus) et
+  // isFreeDeliveryThresholdEnabled() ne dépendent pas l'une de l'autre, donc
+  // lancées ensemble plutôt qu'en série.
+  const [baseFee, freeThresholdEnabled] = await Promise.all([
+    getDeliveryFeeForDistance(distanceKm),
+    isFreeDeliveryThresholdEnabled(),
+  ]);
+  if (!freeThresholdEnabled) return baseFee;
   const threshold = await getFreeDeliveryThresholdAmount();
   return subtotal >= threshold ? 0 : baseFee;
 }
