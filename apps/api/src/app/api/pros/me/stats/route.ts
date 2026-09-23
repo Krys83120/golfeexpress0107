@@ -2,15 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { UserRole, OrderStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveStatsPeriod, formatStatsDateRange, STATS_PERIODS, type StatsPeriod } from "@/lib/statsPeriods";
+import { resolveStatsRange, formatStatsDateRange, STATS_PERIODS, type StatsPeriod } from "@/lib/statsPeriods";
 
 /**
- * GET /api/pros/me/stats?period=today|week|month|year|all
+ * GET /api/pros/me/stats?period=today|week|month|year|all|custom&from=YYYY-MM-DD&to=YYYY-MM-DD
  *
  * Statistiques de vente (23/09/2026, demande explicite de Krys) -- total
  * vendu par produit + classement des meilleures ventes, calculés depuis les
  * VRAIES commandes livrées (status DELIVERED, même logique que
  * /api/pros/me/finances), sur la période demandée.
+ *
+ * `from`/`to` (23/09/2026, retour de Krys : "que l'on puisse exporter avec
+ * une plage de date") ne sont utilisés que pour period=custom -- voir
+ * resolveStatsRange côté statsPeriods.ts pour le détail des bornes calculées.
+ * Ignorés silencieusement pour les autres périodes.
  *
  * Contrairement au Dashboard existant (dashboardAggregations.ts côté
  * client), qui n'agrège que les commandes déjà en mémoire dans le store
@@ -32,16 +37,18 @@ async function getHandler(req: NextRequest) {
 
   const periodParam = req.nextUrl.searchParams.get("period") ?? "week";
   if (!STATS_PERIODS.includes(periodParam as StatsPeriod)) {
-    throw new ApiError(400, "Période invalide (today, week, month, year ou all).");
+    throw new ApiError(400, "Période invalide (today, week, month, year, all ou custom).");
   }
   const period = periodParam as StatsPeriod;
-  const { since, rangeLabel } = resolveStatsPeriod(period);
+  const fromParam = req.nextUrl.searchParams.get("from");
+  const toParam = req.nextUrl.searchParams.get("to");
+  const { since, until, rangeLabel } = resolveStatsRange(period, fromParam, toParam);
 
   const orders = await prisma.order.findMany({
     where: {
       proId: pro.id,
       status: OrderStatus.DELIVERED,
-      ...(since ? { deliveredAt: { gte: since } } : {}),
+      ...(since ? { deliveredAt: { gte: since, ...(until ? { lte: until } : {}) } } : {}),
     },
     select: { id: true, subtotal: true, deliveredAt: true },
   });
@@ -50,7 +57,9 @@ async function getHandler(req: NextRequest) {
   const revenueTotal = orders.reduce((sum, o) => sum + Number(o.subtotal), 0);
 
   // Plage de dates RÉELLEMENT couverte par les commandes trouvées (et non
-  // les bornes théoriques `since`/maintenant) -- voir formatStatsDateRange.
+  // les bornes théoriques since/until) -- voir formatStatsDateRange. Reste
+  // utile même en "custom" : montre les ventes réelles à l'intérieur de la
+  // plage choisie, qui peut être plus étroite que la plage demandée.
   const deliveredDates = orders.map((o) => o.deliveredAt).filter((d): d is Date => d !== null);
   const rangeStart = deliveredDates.length ? new Date(Math.min(...deliveredDates.map((d) => d.getTime()))) : null;
   const rangeEnd = deliveredDates.length ? new Date(Math.max(...deliveredDates.map((d) => d.getTime()))) : null;

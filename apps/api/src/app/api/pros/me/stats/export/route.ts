@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { UserRole, OrderStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveStatsPeriod, formatStatsDateRange, formatStatsDate, STATS_PERIODS, type StatsPeriod } from "@/lib/statsPeriods";
+import { resolveStatsRange, formatStatsDateRange, formatStatsDate, STATS_PERIODS, type StatsPeriod } from "@/lib/statsPeriods";
 
 /**
- * GET /api/pros/me/stats/export?period=today|week|month|year|all
+ * GET /api/pros/me/stats/export?period=today|week|month|year|all|custom&from=YYYY-MM-DD&to=YYYY-MM-DD
  *
  * Export CSV (23/09/2026, demande explicite de Krys) -- une ligne par
  * produit vendu sur commande livrée, sur la période choisie : quantité,
@@ -14,6 +14,11 @@ import { resolveStatsPeriod, formatStatsDateRange, formatStatsDate, STATS_PERIOD
  * Pour un justificatif comptable par commande individuelle, le Rapport Z
  * existant (Finances) reste la référence -- ce fichier-ci est un bilan
  * agrégé par produit, pas un relevé ligne par ligne des commandes.
+ *
+ * `from`/`to` (23/09/2026, retour de Krys : "que l'on puisse exporter avec
+ * une plage de date") ne sont utilisés que pour period=custom -- voir
+ * resolveStatsRange côté statsPeriods.ts pour le détail des bornes calculées,
+ * même logique que /api/pros/me/stats.
  *
  * Réservé au patron, comme /api/pros/me/stats (voir ce fichier pour le
  * détail du raisonnement sur requireAuth vs requireProOrEmployee).
@@ -26,16 +31,18 @@ async function getHandler(req: NextRequest) {
 
   const periodParam = req.nextUrl.searchParams.get("period") ?? "week";
   if (!STATS_PERIODS.includes(periodParam as StatsPeriod)) {
-    throw new ApiError(400, "Période invalide (today, week, month, year ou all).");
+    throw new ApiError(400, "Période invalide (today, week, month, year, all ou custom).");
   }
   const period = periodParam as StatsPeriod;
-  const { since, rangeLabel } = resolveStatsPeriod(period);
+  const fromParam = req.nextUrl.searchParams.get("from");
+  const toParam = req.nextUrl.searchParams.get("to");
+  const { since, until, rangeLabel } = resolveStatsRange(period, fromParam, toParam);
 
   const orders = await prisma.order.findMany({
     where: {
       proId: pro.id,
       status: OrderStatus.DELIVERED,
-      ...(since ? { deliveredAt: { gte: since } } : {}),
+      ...(since ? { deliveredAt: { gte: since, ...(until ? { lte: until } : {}) } } : {}),
     },
     select: { id: true, deliveredAt: true },
   });
@@ -113,10 +120,15 @@ async function getHandler(req: NextRequest) {
   // sinon les colonnes ne se séparent pas et les accents s'affichent mal.
   const csv = "﻿" + lines.join("\n");
 
+  // Nom de fichier : plage réelle "du-au" pour une période personnalisée
+  // (23/09/2026), sinon le nom de période + date du jour comme avant.
+  const filenameSuffix =
+    period === "custom" && fromParam && toParam ? `du-${fromParam}-au-${toParam}` : `${period}-${new Date().toISOString().slice(0, 10)}`;
+
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="statistiques-${period}-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Disposition": `attachment; filename="statistiques-${filenameSuffix}.csv"`,
     },
   });
 }
