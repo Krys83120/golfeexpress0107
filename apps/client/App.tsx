@@ -15,6 +15,7 @@ import {
 import { SplashLoader } from "@/components/SplashLoader";
 import { CookieConsent } from "@/components/CookieConsent";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
+import { ContactWidget } from "@/components/ContactWidget";
 import { AuthGate } from "@/components/AuthGate";
 import { ResetPasswordScreen } from "@/screens/ResetPasswordScreen";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -368,6 +369,12 @@ function MainApp() {
           }}
         />
       </Modal>
+
+      {/* Bulle "Nous contacter" (23/09/2026) -- seulement pour un compte
+          connecté (Nom/Email pré-remplis depuis le profil) ; un invité ne
+          la voit pas, cohérent avec le reste des fonctionnalités qui
+          nécessitent un compte (Commandes/Fidélité/Profil). */}
+      {authStatus === "authenticated" && <ContactWidget />}
     </View>
   );
 }

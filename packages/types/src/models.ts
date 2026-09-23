@@ -434,6 +434,8 @@ export interface ContactMessage {
   name: string;
   email: string;
   type: string;
+  /** "www" (site vitrine) | "client" | "pro" | "livreur" -- voir ContactMessage côté prisma/schema.prisma. */
+  source: string;
   subject: string;
   message: string;
   status: OrderReportStatus;

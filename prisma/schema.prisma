@@ -1165,6 +1165,15 @@ model ContactMessage {
   /// définis côté API (voir CONTACT_TYPES dans contact/route.ts), pour
   /// pouvoir ajuster ce libellé sans migration.
   type        String
+  /// Application d'origine du message (23/09/2026, demande explicite de
+  /// Krys : bulle "Nous contacter" ajoutée aux apps Client/Pro/Livreur, sur
+  /// le modèle de celle du site vitrine) -- "www" = widget historique du
+  /// site vitrine (ContactWidget.tsx dans apps/www), sinon "client"/"pro"/
+  /// "livreur" selon l'app connectée qui a envoyé le message. Permet de
+  /// filtrer/identifier d'un coup d'œil dans l'admin (voir
+  /// ContactMessagesPage.tsx) sans avoir à deviner depuis le nom/email.
+  /// Libre plutôt qu'un enum, même raisonnement que `type` ci-dessus.
+  source      String               @default("www")
   subject     String
   message     String               @db.Text
   status      OrderReportStatus    @default(OPEN)

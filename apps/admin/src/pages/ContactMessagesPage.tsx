@@ -17,6 +17,16 @@ const STATUS_COLORS: Record<OrderReportStatus, { bg: string; text: string }> = {
   REJECTED: { bg: "#F3F4F6", text: "#6B7280" },
 } as Record<OrderReportStatus, { bg: string; text: string }>;
 
+// Libellés du badge "source" (23/09/2026, ajout des bulles Client/Pro/
+// Livreur) -- voir le commentaire équivalent dans prisma/schema.prisma
+// (model ContactMessage) et contactEmails.ts.
+const SOURCE_LABELS: Record<string, string> = {
+  www: "🌐 Site",
+  client: "📱 Client",
+  pro: "🏪 Pro",
+  livreur: "🛵 Livreur",
+};
+
 const FILTER_TABS: Array<{ key: string; label: string; statuses?: OrderReportStatus[] }> = [
   { key: "open", label: "À traiter", statuses: ["OPEN", "IN_PROGRESS"] as OrderReportStatus[] },
   { key: "resolved", label: "Résolus", statuses: ["RESOLVED"] as OrderReportStatus[] },
@@ -73,6 +83,9 @@ function MessageCard({ message }: { message: ContactMessage }) {
               {message.subject}
               <span className="ml-2 rounded-full bg-gris-light px-2 py-0.5 text-[10px] font-bold text-gris">
                 {message.type}
+              </span>
+              <span className="ml-1 rounded-full bg-gris-light px-2 py-0.5 text-[10px] font-bold text-gris">
+                {SOURCE_LABELS[message.source] ?? message.source}
               </span>
             </p>
             <p className="mt-1 text-xs text-gris">

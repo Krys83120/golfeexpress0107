@@ -4,13 +4,25 @@ interface ContactMessageData {
   name: string;
   email: string;
   type: string;
+  /** "www" | "client" | "pro" | "livreur" -- voir `source` dans prisma/schema.prisma (model ContactMessage). */
+  source: string;
   subject: string;
   message: string;
 }
 
+// Libellés d'affichage pour `source` (23/09/2026) -- voir le commentaire
+// équivalent dans contact/route.ts.
+const SOURCE_LABELS: Record<string, string> = {
+  www: "🌐 Site vitrine",
+  client: "📱 App Client",
+  pro: "🏪 App Pro",
+  livreur: "🛵 App Livreur",
+};
+
 /**
- * Alerte l'équipe Do You Geckoo dès qu'un message est envoyé via le widget
- * "Nous contacter" du site vitrine (voir ContactWidget.tsx et POST
+ * Alerte l'équipe Do You Geckoo dès qu'un message est envoyé via une des
+ * bulles "Nous contacter" (site vitrine, ou apps Client/Pro/Livreur depuis
+ * le 23/09/2026 -- voir leurs ContactWidget.tsx respectifs et POST
  * /api/contact) -- simple heads-up qu'un message est arrivé. Le traitement
  * et la réponse se font depuis l'admin (voir ContactMessagesPage.tsx et
  * sendContactMessageRepliedEmail ci-dessous), PAS en répondant à cet email :
@@ -21,7 +33,8 @@ export async function sendContactMessageEmail(data: ContactMessageData): Promise
   const html = emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">✉️ Nouveau message — Nous contacter</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
-      <strong>${data.name}</strong> (${data.email}) — type : <strong>${data.type}</strong>
+      <strong>${data.name}</strong> (${data.email}) — type : <strong>${data.type}</strong> — depuis :
+      <strong>${SOURCE_LABELS[data.source] ?? data.source}</strong>
     </p>
     ${infoBox(`<strong>${data.subject}</strong><br/>${data.message.replace(/\n/g, "<br/>")}`, "orange")}
     <p style="font-size:13px;color:#6B7280;margin-top:16px;">

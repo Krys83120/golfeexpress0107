@@ -16,6 +16,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { CookieConsent } from "@/components/CookieConsent";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
+import { ContactWidget } from "@/components/ContactWidget";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProOrdersStore } from "@/store/useProOrdersStore";
 import { useNewOrderNotifications } from "@/hooks/useNewOrderNotifications";
@@ -109,6 +110,7 @@ function MainApp() {
           de la Sidebar (voir Sidebar.tsx) -- inutile à partir de lg, où la
           Sidebar reste statique et n'a pas de bouton hamburger. */}
       <main className="min-w-0 flex-1 pt-16 lg:pt-0">{renderPage()}</main>
+      <ContactWidget />
     </div>
   );
 }

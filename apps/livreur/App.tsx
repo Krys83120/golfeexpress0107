@@ -16,6 +16,7 @@ import { useRiderStatsStore } from "@/store/useRiderStatsStore";
 import { SplashLoader } from "@/components/SplashLoader";
 import { CookieConsent } from "@/components/CookieConsent";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
+import { ContactWidget } from "@/components/ContactWidget";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
 import { useOnlineKeepAwake } from "@/hooks/useOnlineKeepAwake";
 import { AuthScreen } from "@/screens/AuthScreen";
@@ -89,6 +90,11 @@ function MainApp() {
           })}
         </View>
       </SafeAreaView>
+
+      {/* Bulle "Nous contacter" (23/09/2026, demande explicite de Krys) --
+          MainApp n'est rendu qu'une fois connecté (voir App() plus bas),
+          donc pas de garde supplémentaire nécessaire ici. */}
+      <ContactWidget />
     </View>
   );
 }
