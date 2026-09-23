@@ -114,3 +114,66 @@ export async function notifyNearbyRidersForOrder(order: NotifiableOrder): Promis
     console.error(`[riderNotifications] Échec marquage riderNotifiedAt (commande ${order.id}):`, err);
   });
 }
+
+/**
+ * Notifie tous les livreurs en ligne du secteur qu'une commande vient
+ * d'entrer en préparation chez ce Pro -- un premier "bip" générique (demande
+ * produit du 23/09/2026), distinct de notifyNearbyRidersForOrder ci-dessus
+ * qui, lui, se déclenche plus tard, quand la commande devient réellement une
+ * candidate dans la liste "disponibles" (voir riderSearchWindow.ts).
+ * Volontairement SANS numéro de commande ni adresse : l'idée est juste de
+ * prévenir les livreurs du secteur qu'une commande approche, pas de leur
+ * indiquer où aller la chercher avant qu'elle soit effectivement
+ * disponible -- ça reste entièrement cohérent avec le principe déjà en
+ * place ci-dessus (le rayon ne change jamais QUI peut voir/accepter une
+ * commande, seulement qui reçoit un "bip").
+ *
+ * Appelée une seule fois, directement depuis la transition de statut
+ * PREPARING (orders/[orderId]/status/route.ts) -- PAS depuis une route
+ * pollée comme available-orders -- donc pas besoin d'un verrou anti-doublon
+ * façon riderNotifiedAt : cette fonction n'est déclenchée qu'une seule fois
+ * par commande, au moment précis où le Pro démarre la préparation.
+ */
+export async function notifyNearbyRidersOrderPreparing(fromAddress: { lat: unknown; lng: unknown }): Promise<void> {
+  const fromLat = Number(fromAddress.lat);
+  const fromLng = Number(fromAddress.lng);
+  if (!Number.isFinite(fromLat) || !Number.isFinite(fromLng)) return;
+
+  const [radiusKm, candidates] = await Promise.all([
+    getRiderNotificationRadiusKm(),
+    prisma.rider.findMany({
+      where: {
+        isOnline: true,
+        status: RiderStatus.ACTIVE,
+        notificationsEnabled: true,
+        currentLat: { not: null },
+        currentLng: { not: null },
+        pushSubscriptions: { some: {} },
+      },
+      select: { id: true, currentLat: true, currentLng: true, currentLocationUpdatedAt: true },
+    }),
+  ]);
+
+  const now = Date.now();
+  const nearbyRiderIds = candidates
+    .filter((rider) => {
+      if (!rider.currentLocationUpdatedAt) return false;
+      const ageMinutes = (now - rider.currentLocationUpdatedAt.getTime()) / 60_000;
+      if (ageMinutes > MAX_LOCATION_AGE_MINUTES) return false;
+      const distanceKm = haversineDistanceKm(Number(rider.currentLat), Number(rider.currentLng), fromLat, fromLng);
+      return distanceKm <= radiusKm;
+    })
+    .map((rider) => rider.id);
+
+  if (nearbyRiderIds.length === 0) return;
+
+  await Promise.all(
+    nearbyRiderIds.map((riderId) =>
+      sendPushToRider(riderId, {
+        title: "Une commande se prépare 👀",
+        body: "Une commande est en préparation dans votre secteur — elle sera bientôt disponible.",
+        url: "/",
+      })
+    )
+  );
+}
