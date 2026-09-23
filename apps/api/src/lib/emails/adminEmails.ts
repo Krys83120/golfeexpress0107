@@ -52,3 +52,31 @@ export async function sendTransferFailedAlert(
   `);
   await sendAdminAlert(`⚠️ Échec virement Stripe — commande ${orderNumber}`, html);
 }
+
+/**
+ * Échec du virement Stripe Connect déclenché par une demande de retrait
+ * livreur (23/09/2026 -- voir riders/me/withdrawals/route.ts). Fonction
+ * dédiée plutôt que de réutiliser sendTransferFailedAlert ci-dessus : le
+ * message de celle-ci parle explicitement d'une "commande", ce qui n'a pas
+ * de sens ici (un retrait n'est rattaché à aucune commande précise).
+ */
+export async function sendWithdrawalTransferFailedAlert(
+  riderName: string,
+  amount: number,
+  errorMessage: string
+): Promise<void> {
+  const html = emailShell(`
+    <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">⚠️ Échec d'un virement de retrait livreur</h1>
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Le virement Stripe Connect de <strong>${amount.toFixed(2).replace(".", ",")} €</strong> demandé par le
+      livreur <strong>${riderName}</strong> a échoué.
+    </p>
+    ${infoBox(errorMessage, "red")}
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Le solde du livreur a déjà été débité pour cette demande, qui reste au statut PENDING (aucun montant
+      perdu — voir Withdrawal en base). À régulariser manuellement dès que possible : virement direct ou
+      nouvelle tentative depuis le Dashboard Stripe.
+    </p>
+  `);
+  await sendAdminAlert(`⚠️ Échec virement retrait livreur — ${riderName} (${amount.toFixed(2)} €)`, html);
+}

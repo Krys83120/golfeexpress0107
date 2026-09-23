@@ -1014,9 +1014,15 @@ model Withdrawal {
   amount      Decimal  @db.Decimal(8,2)
   status      WithdrawalStatus @default(PENDING)
   iban        String
+  /// Id du virement Stripe Connect réel une fois le retrait traité (correctif
+  /// du 23/09/2026 -- avant ça, un retrait restait PENDING indéfiniment sans
+  /// jamais déclencher de vrai virement, voir riders/me/withdrawals/route.ts).
+  /// Même convention que Order.proTransferId/riderTransferId : null tant que
+  /// le virement n'a pas encore réussi.
+  stripeTransferId String? @map("stripe_transfer_id")
   processedAt DateTime? @map("processed_at")
   createdAt   DateTime @default(now()) @map("created_at")
-  
+
   rider       Rider    @relation(fields: [riderId], references: [id])
 }
 
