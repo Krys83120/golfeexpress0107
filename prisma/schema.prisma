@@ -934,6 +934,14 @@ model Order {
   // IS NULL, status IN (READY, PREPARING), orderBy placedAt asc) --
   // interrogée par CHAQUE livreur en ligne toutes les 10 secondes.
   @@index([riderId, status, placedAt])
+  // Ajouté le 23/09/2026 (suite des lenteurs testées en réel) -- couvre
+  // spécifiquement cancelStalePendingOrders() dans orders/route.ts
+  // (WHERE status = PENDING AND placedAt < ...), exécutée à CHAQUE appel de
+  // GET /api/orders, par TOUS les rôles confondus (Client/Pro/Livreur/
+  // Admin) -- sans cet index, cette vérification scannait la table Order
+  // en entier à chaque chargement de liste de commandes, quel que soit le
+  // rôle qui la déclenche.
+  @@index([status, placedAt])
 }
 
 model OrderItem {
