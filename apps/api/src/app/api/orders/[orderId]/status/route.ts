@@ -13,6 +13,7 @@ import {
   sendOrderCancelledByClientToProEmail,
 } from "@/lib/emails/orderEmails";
 import { sendTransferFailedAlert } from "@/lib/emails/adminEmails";
+import { notifyNearbyRidersOrderPreparing } from "@/lib/riderNotifications";
 
 /**
  * PATCH /api/orders/[orderId]/status
@@ -382,6 +383,17 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
         ).catch(() => {});
       }
     }
+  }
+
+  // Premier "bip" livreurs du secteur (demande produit du 23/09/2026) --
+  // best-effort, jamais bloquant, jamais attendu (fire-and-forget comme les
+  // emails ci-dessous) pour ne pas ralentir la réponse de cette route. Voir
+  // notifyNearbyRidersOrderPreparing dans riderNotifications.ts pour le
+  // détail (générique, sans numéro de commande ni adresse).
+  if (nextStatus === OrderStatus.PREPARING) {
+    notifyNearbyRidersOrderPreparing(updated.fromAddress).catch((err) =>
+      console.error("[order status] Échec notification préparation (livreurs du secteur):", err)
+    );
   }
 
   // Emails "suivi de commande" (client) — best-effort, jamais bloquant.
