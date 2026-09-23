@@ -60,6 +60,33 @@ export async function sendTransferFailedAlert(
  * message de celle-ci parle explicitement d'une "commande", ce qui n'a pas
  * de sens ici (un retrait n'est rattaché à aucune commande précise).
  */
+/**
+ * Échec du virement Stripe Connect vers le livreur à la livraison d'une
+ * demande Colis Express (23/09/2026 -- voir parcel-orders/status/route.ts).
+ * Fonction dédiée plutôt que sendTransferFailedAlert ci-dessus, pour la même
+ * raison que sendWithdrawalTransferFailedAlert : "commande" ne s'applique
+ * pas à une demande Colis Express.
+ */
+export async function sendParcelTransferFailedAlert(
+  parcelNumber: string,
+  amount: number,
+  errorMessage: string
+): Promise<void> {
+  const html = emailShell(`
+    <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">⚠️ Échec d'un virement Colis Express</h1>
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Le virement automatique de <strong>${amount.toFixed(2).replace(".", ",")} €</strong> vers le livreur de
+      la demande Colis Express <strong>${parcelNumber}</strong> a échoué.
+    </p>
+    ${infoBox(errorMessage, "red")}
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      La demande reste valide et marquée livrée — seul le virement de la part livreur n'a pas abouti. À
+      régulariser manuellement depuis le Dashboard Stripe si besoin.
+    </p>
+  `);
+  await sendAdminAlert(`⚠️ Échec virement Colis Express — ${parcelNumber}`, html);
+}
+
 export async function sendWithdrawalTransferFailedAlert(
   riderName: string,
   amount: number,

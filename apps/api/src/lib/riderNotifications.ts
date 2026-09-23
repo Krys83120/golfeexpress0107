@@ -115,6 +115,71 @@ export async function notifyNearbyRidersForOrder(order: NotifiableOrder): Promis
   });
 }
 
+interface NotifiableParcelOrder {
+  id: string;
+  parcelNumber: string;
+  fromAddress: { lat: unknown; lng: unknown };
+}
+
+/**
+ * Équivalent notifyNearbyRidersForOrder ci-dessus, pour Colis Express
+ * (finition du workflow Livreur, 23/09/2026). Même mécanisme exact --
+ * rayon configurable, verrou anti-doublon via ParcelOrder.riderNotifiedAt,
+ * best-effort -- appelée depuis GET /api/riders/me/available-parcel-orders
+ * à chaque poll, comme notifyNearbyRidersForOrder l'est depuis
+ * available-orders.
+ */
+export async function notifyNearbyRidersForParcelOrder(parcelOrder: NotifiableParcelOrder): Promise<void> {
+  const fromLat = Number(parcelOrder.fromAddress.lat);
+  const fromLng = Number(parcelOrder.fromAddress.lng);
+  if (!Number.isFinite(fromLat) || !Number.isFinite(fromLng)) return;
+
+  const [radiusKm, candidates] = await Promise.all([
+    getRiderNotificationRadiusKm(),
+    prisma.rider.findMany({
+      where: {
+        isOnline: true,
+        status: RiderStatus.ACTIVE,
+        notificationsEnabled: true,
+        currentLat: { not: null },
+        currentLng: { not: null },
+        pushSubscriptions: { some: {} },
+      },
+      select: { id: true, currentLat: true, currentLng: true, currentLocationUpdatedAt: true },
+    }),
+  ]);
+
+  const now = Date.now();
+  const nearbyRiderIds = candidates
+    .filter((rider) => {
+      if (!rider.currentLocationUpdatedAt) return false;
+      const ageMinutes = (now - rider.currentLocationUpdatedAt.getTime()) / 60_000;
+      if (ageMinutes > MAX_LOCATION_AGE_MINUTES) return false;
+      const distanceKm = haversineDistanceKm(Number(rider.currentLat), Number(rider.currentLng), fromLat, fromLng);
+      return distanceKm <= radiusKm;
+    })
+    .map((rider) => rider.id);
+
+  if (nearbyRiderIds.length === 0) {
+    await prisma.parcelOrder.update({ where: { id: parcelOrder.id }, data: { riderNotifiedAt: new Date() } }).catch(() => {});
+    return;
+  }
+
+  await Promise.all(
+    nearbyRiderIds.map((riderId) =>
+      sendPushToRider(riderId, {
+        title: "Colis Express à proximité 📦",
+        body: `Une course Colis Express (${parcelOrder.parcelNumber}) est disponible près de vous.`,
+        url: "/",
+      })
+    )
+  );
+
+  await prisma.parcelOrder.update({ where: { id: parcelOrder.id }, data: { riderNotifiedAt: new Date() } }).catch((err) => {
+    console.error(`[riderNotifications] Échec marquage riderNotifiedAt (colis ${parcelOrder.id}):`, err);
+  });
+}
+
 /**
  * Notifie tous les livreurs en ligne du secteur qu'une commande vient
  * d'entrer en préparation chez ce Pro -- un premier "bip" générique (demande

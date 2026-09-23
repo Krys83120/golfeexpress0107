@@ -1123,6 +1123,17 @@ model ParcelOrder {
   cardBrand       String?           @map("card_brand")
   cardLast4       String?           @map("card_last_4")
 
+  /// Virement Stripe Connect réel vers le livreur une fois la demande
+  /// DELIVERED (finition du workflow Livreur, 23/09/2026 -- voir
+  /// parcel-orders/status/route.ts). Même convention que
+  /// Order.riderTransferId : null tant que le virement n'a pas encore réussi.
+  riderTransferId String?           @map("rider_transfer_id")
+  /// Même mécanisme que Order.riderNotifiedAt (voir riderNotifications.ts) --
+  /// évite de renotifier les livreurs à proximité à chaque poll de
+  /// riders/me/available-parcel-orders tant qu'aucun nouveau n'est entré
+  /// dans le rayon.
+  riderNotifiedAt DateTime?         @map("rider_notified_at")
+
   placedAt        DateTime          @default(now()) @map("placed_at")
   riderAssignedAt DateTime?         @map("rider_assigned_at")
   pickedUpAt      DateTime?         @map("picked_up_at")

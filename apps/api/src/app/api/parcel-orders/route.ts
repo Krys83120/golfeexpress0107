@@ -162,13 +162,40 @@ async function getHandler(req: NextRequest) {
     include: {
       fromAddress: true,
       toAddress: true,
-      rider: { select: { id: true, user: { select: { firstName: true, lastName: true } } } },
+      // currentLat/currentLng/vehicleType (23/09/2026 -- finition du
+      // workflow Livreur) : permet au Pro de suivre en direct où en est son
+      // colis une fois un livreur assigné, en réutilisant tel quel le suivi
+      // GPS déjà alimenté par riders/me/location (même position que celle
+      // utilisée pour le suivi des commandes classiques, voir orders/route.ts).
+      rider: {
+        select: {
+          id: true,
+          currentLat: true,
+          currentLng: true,
+          vehicleType: true,
+          user: { select: { firstName: true, lastName: true } },
+        },
+      },
     },
     orderBy: { placedAt: "desc" },
     take: 100,
   });
 
-  return NextResponse.json({ parcelOrders: parcelOrders.map(serializeParcelOrder) });
+  // rider.currentLat/currentLng sont des Decimal Prisma -> sérialisés en
+  // texte par défaut en JSON, même correctif que orders/route.ts (GET) pour
+  // que la carte de suivi côté Pro puisse les utiliser directement.
+  const serialized = parcelOrders.map((p) => ({
+    ...serializeParcelOrder(p),
+    rider: p.rider
+      ? {
+          ...p.rider,
+          currentLat: p.rider.currentLat !== null ? Number(p.rider.currentLat) : null,
+          currentLng: p.rider.currentLng !== null ? Number(p.rider.currentLng) : null,
+        }
+      : null,
+  }));
+
+  return NextResponse.json({ parcelOrders: serialized });
 }
 
 /**
