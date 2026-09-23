@@ -13,6 +13,7 @@ import {
 import { ApiRequestError } from "@/services/apiClient";
 import { ColisExpressPayment } from "@/components/ColisExpressPayment";
 import { ImageUploadField } from "@/components/ImageUploadField";
+import { MapView, type MapPin } from "@/components/MapView";
 import { uploadParcelOrderPhoto, withCacheBust } from "@/services/uploadsApi";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -51,6 +52,16 @@ const CANCELLABLE_STATUSES = new Set<string>([
   ParcelOrderStatus.PENDING,
   ParcelOrderStatus.CONFIRMED,
   ParcelOrderStatus.RIDER_ASSIGNED,
+]);
+
+// Un livreur est en course sur la demande dans ces 3 statuts -- c'est là que
+// le suivi en direct (position GPS + statut) a un sens (23/09/2026, finition
+// du workflow Livreur). Avant RIDER_ASSIGNED, il n'y a personne à suivre ;
+// après DELIVERED/CANCELLED, la course est terminée.
+const TRACKABLE_STATUSES = new Set<string>([
+  ParcelOrderStatus.RIDER_ASSIGNED,
+  ParcelOrderStatus.PICKED_UP,
+  ParcelOrderStatus.IN_DELIVERY,
 ]);
 
 const EMPTY_FORM = {
@@ -102,6 +113,62 @@ function riderName(p: ParcelOrder): string {
 }
 
 /**
+ * Position GPS courante du livreur assigné (23/09/2026, finition du
+ * workflow Livreur) -- alimentée par PATCH /api/riders/me/location, même
+ * champ exactement que le suivi des commandes classiques (voir
+ * parcel-orders/route.ts, GET, qui enrichit déjà `rider` avec
+ * currentLat/currentLng/vehicleType pour cette raison).
+ */
+function riderPosition(p: ParcelOrder): { lat: number; lng: number } | null {
+  const rider = p.rider as unknown as { currentLat?: number | null; currentLng?: number | null } | null | undefined;
+  if (rider?.currentLat == null || rider?.currentLng == null) return null;
+  return { lat: rider.currentLat, lng: rider.currentLng };
+}
+
+/**
+ * Construit les points de la carte de suivi d'une demande : boutique
+ * (retrait), destinataire (livraison), et position du livreur si déjà
+ * connue. Toujours les 2 premiers points même avant assignation d'un
+ * livreur -- seul TRACKABLE_STATUSES décide si ce bloc s'affiche du tout
+ * (voir plus bas).
+ */
+function buildTrackingPins(p: ParcelOrder): MapPin[] {
+  const pins: MapPin[] = [];
+  if (p.fromAddress) {
+    pins.push({
+      id: `from-${p.id}`,
+      lat: p.fromAddress.lat,
+      lng: p.fromAddress.lng,
+      color: "#2ECC71",
+      label: "🏪",
+      popupContent: "Retrait — votre boutique",
+    });
+  }
+  if (p.toAddress) {
+    pins.push({
+      id: `to-${p.id}`,
+      lat: p.toAddress.lat,
+      lng: p.toAddress.lng,
+      color: "#F97316",
+      label: "🏁",
+      popupContent: `Livraison — ${p.recipientName}`,
+    });
+  }
+  const position = riderPosition(p);
+  if (position) {
+    pins.push({
+      id: `rider-${p.id}`,
+      lat: position.lat,
+      lng: position.lng,
+      color: "#2196F3",
+      label: "🛵",
+      popupContent: `${riderName(p)} — position en direct`,
+    });
+  }
+  return pins;
+}
+
+/**
  * Espace Pro -- MVP Colis Express (19/09/2026), voir la proposition envoyée
  * à Krys. La demande est créée d'abord (statut "En attente", non payée),
  * puis le paiement carte est demandé immédiatement après (voir
@@ -120,9 +187,14 @@ function riderName(p: ParcelOrder): string {
  * Photo du colis (ajout du 19/09/2026, demande de Krys) : uploadée dans le
  * formulaire d'édition, tant que la demande reste PENDING/CONFIRMED (même
  * règle que canEdit ci-dessus). Stockée (ParcelOrder.photoUrl) et visible
- * ici côté Pro, mais PAS ENCORE affichée côté app Livreur -- cet écran n'y
- * existe pas encore pour Colis Express (décision explicite de Krys : ajouter
- * la photo maintenant, construire l'affichage Livreur dans un second temps).
+ * ici côté Pro.
+ *
+ * Suivi en direct (23/09/2026, finition du workflow Livreur) : une fois un
+ * livreur assigné (RIDER_ASSIGNED/PICKED_UP/IN_DELIVERY), le détail déplié
+ * affiche une carte avec la boutique, le destinataire, et la position GPS du
+ * livreur -- rafraîchie automatiquement tant qu'au moins une demande est en
+ * cours de livraison (voir le useEffect de polling ci-dessous), sur le même
+ * principe que le suivi des commandes classiques côté Pro.
  */
 export function ColisExpressPage() {
   const proId = useAuthStore((s) => s.profile?.id);
@@ -178,6 +250,21 @@ export function ColisExpressPage() {
   useEffect(() => {
     loadList();
   }, []);
+
+  // Suivi en direct (23/09/2026) -- tant qu'au moins une demande a un
+  // livreur en course, on rafraîchit la liste régulièrement pour que la
+  // position (rider.currentLat/currentLng) et le statut avancent sous les
+  // yeux du Pro sans qu'il ait à recharger la page. Pas de rafraîchissement
+  // silencieux plus large (spinner "Chargement..." à chaque tick) : loadList
+  // remet listStatus à "loading" à chaque appel, acceptable ici vu
+  // l'intervalle large (15s) et le fait que la liste reste affichée pendant
+  // le chargement.
+  useEffect(() => {
+    const hasTrackable = parcelOrders.some((p) => TRACKABLE_STATUSES.has(p.status));
+    if (!hasTrackable) return;
+    const interval = setInterval(loadList, 15000);
+    return () => clearInterval(interval);
+  }, [parcelOrders]);
 
   function updateField<K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -729,6 +816,22 @@ export function ColisExpressPage() {
                         <p className="mt-1">
                           <span className="font-semibold text-nuit">Livreur :</span> {riderName(p)}
                         </p>
+                      )}
+                      {TRACKABLE_STATUSES.has(p.status) && (
+                        <div className="mt-3">
+                          <span className="mb-1 block font-semibold text-nuit">Suivi en direct :</span>
+                          <MapView
+                            pins={buildTrackingPins(p)}
+                            height={200}
+                            emptyLabel="Position du livreur pas encore disponible"
+                          />
+                          {!riderPosition(p) && (
+                            <p className="mt-1 text-[11px] text-gris">
+                              Le livreur n'a pas encore partagé sa position -- elle apparaîtra dès qu'il sera en
+                              route.
+                            </p>
+                          )}
+                        </div>
                       )}
                       {p.cardBrand && p.cardLast4 && (
                         <p className="mt-1">

@@ -5,6 +5,8 @@ import { OnlineToggleHeader } from "@/components/OnlineToggleHeader";
 import { EarningsCard } from "@/components/EarningsCard";
 import { OrderCard } from "@/components/OrderCard";
 import { CurrentDeliveryCard } from "@/components/CurrentDeliveryCard";
+import { ParcelOrderCard } from "@/components/ParcelOrderCard";
+import { CurrentParcelDeliveryCard } from "@/components/CurrentParcelDeliveryCard";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -19,19 +21,35 @@ export function HomeScreen() {
   const cancelledDeliveryNotice = useRiderSessionStore((s) => s.cancelledDeliveryNotice);
   const dismissCancelledDeliveryNotice = useRiderSessionStore((s) => s.dismissCancelledDeliveryNotice);
 
+  // Colis Express (23/09/2026, finition du workflow Livreur) -- voir
+  // useRiderSessionStore.ts pour le détail de ces actions/états.
+  const activeParcelDelivery = useRiderSessionStore((s) => s.activeParcelDelivery);
+  const availableParcelOrders = useRiderSessionStore((s) => s.availableParcelOrders);
+  const availableParcelOrdersStatus = useRiderSessionStore((s) => s.availableParcelOrdersStatus);
+  const loadAvailableParcelOrders = useRiderSessionStore((s) => s.loadAvailableParcelOrders);
+  const loadActiveParcelDelivery = useRiderSessionStore((s) => s.loadActiveParcelDelivery);
+  const handleAcceptParcelOrder = useRiderSessionStore((s) => s.handleAcceptParcelOrder);
+
   const riderStatus = useAuthStore((s) => s.profile?.status);
 
   useEffect(() => {
     loadActiveDelivery();
-    if (isOnline) loadAvailableOrders();
+    loadActiveParcelDelivery();
+    if (isOnline) {
+      loadAvailableOrders();
+      loadAvailableParcelOrders();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!isOnline || activeDelivery) return;
-    const interval = setInterval(loadAvailableOrders, 10000);
+    if (!isOnline || activeDelivery || activeParcelDelivery) return;
+    const interval = setInterval(() => {
+      loadAvailableOrders();
+      loadAvailableParcelOrders();
+    }, 10000);
     return () => clearInterval(interval);
-  }, [isOnline, activeDelivery]);
+  }, [isOnline, activeDelivery, activeParcelDelivery]);
 
   // Tant qu'une livraison est en cours, on revérifie régulièrement son
   // statut côté serveur -- seul moyen pour ce livreur de savoir qu'elle a
@@ -43,6 +61,13 @@ export function HomeScreen() {
     const interval = setInterval(loadActiveDelivery, 20000);
     return () => clearInterval(interval);
   }, [Boolean(activeDelivery)]);
+
+  // Même principe pour Colis Express (23/09/2026).
+  useEffect(() => {
+    if (!activeParcelDelivery) return;
+    const interval = setInterval(loadActiveParcelDelivery, 20000);
+    return () => clearInterval(interval);
+  }, [Boolean(activeParcelDelivery)]);
 
   useEffect(() => {
     if (!cancelledDeliveryNotice) return;
@@ -56,6 +81,14 @@ export function HomeScreen() {
       await handleAcceptOrder(orderId);
     } catch {
       loadAvailableOrders();
+    }
+  }
+
+  async function handleAcceptParcel(parcelOrderId: string) {
+    try {
+      await handleAcceptParcelOrder(parcelOrderId);
+    } catch {
+      loadAvailableParcelOrders();
     }
   }
 
@@ -87,6 +120,8 @@ export function HomeScreen() {
 
         {activeDelivery ? (
           <CurrentDeliveryCard />
+        ) : activeParcelDelivery ? (
+          <CurrentParcelDeliveryCard />
         ) : (
           <>
             <View style={styles.mapPlaceholder}>
@@ -133,6 +168,45 @@ export function HomeScreen() {
                 ))
               )}
             </View>
+
+            {/* Colis Express (23/09/2026) -- section séparée sous les
+                commandes classiques : table distincte (ParcelOrder), volume
+                plus faible pour l'instant, pas de raison de mélanger les
+                deux listes. */}
+            {isOnline && (
+              <View style={styles.ordersSection}>
+                <Text style={styles.ordersTitle}>
+                  📦 Colis Express disponibles{" "}
+                  {availableParcelOrdersStatus === "loaded" ? `(${availableParcelOrders.length})` : ""}
+                </Text>
+
+                {availableParcelOrdersStatus === "loading" ? (
+                  <View style={styles.emptyState}>
+                    <ActivityIndicator color="#2196F3" />
+                  </View>
+                ) : availableParcelOrdersStatus === "error" ? (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>Impossible de charger les colis disponibles.</Text>
+                    <Pressable onPress={loadAvailableParcelOrders} style={{ marginTop: 8 }}>
+                      <Text style={styles.retryText}>Réessayer</Text>
+                    </Pressable>
+                  </View>
+                ) : availableParcelOrders.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyEmoji}>📦</Text>
+                    <Text style={styles.emptyText}>Aucun Colis Express disponible pour le moment</Text>
+                  </View>
+                ) : (
+                  availableParcelOrders.map((parcelOrder) => (
+                    <ParcelOrderCard
+                      key={parcelOrder.id}
+                      parcelOrder={parcelOrder}
+                      onAccept={() => handleAcceptParcel(parcelOrder.id)}
+                    />
+                  ))
+                )}
+              </View>
+            )}
           </>
         )}
       </ScrollView>

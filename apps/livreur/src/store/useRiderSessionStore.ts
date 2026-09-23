@@ -1,6 +1,12 @@
 import { create } from "zustand";
-import { OrderStatus, type Order } from "@golfeexpress/types";
+import { OrderStatus, ParcelOrderStatus, type Order, type ParcelOrder } from "@golfeexpress/types";
 import { acceptOrder, updateOrderStatus, setOnlineStatus, fetchAvailableOrders, fetchMyDeliveries } from "@/services/ridersApi";
+import {
+  fetchAvailableParcelOrders,
+  fetchMyParcelDeliveries,
+  acceptParcelOrder,
+  updateParcelOrderStatus,
+} from "@/services/parcelOrdersApi";
 import { useAuthStore } from "@/store/useAuthStore";
 
 // Ordre de progression pour une livraison en cours, utilisé pour déterminer
@@ -12,6 +18,16 @@ const DELIVERY_FLOW: OrderStatus[] = [
   OrderStatus.DELIVERED,
 ];
 
+// Même principe pour Colis Express (23/09/2026, finition du workflow
+// Livreur) -- table séparée (ParcelOrder), donc flow et actions dédiés,
+// jamais mélangés avec ceux des commandes classiques ci-dessus.
+const PARCEL_DELIVERY_FLOW: ParcelOrderStatus[] = [
+  ParcelOrderStatus.RIDER_ASSIGNED,
+  ParcelOrderStatus.PICKED_UP,
+  ParcelOrderStatus.IN_DELIVERY,
+  ParcelOrderStatus.DELIVERED,
+];
+
 interface RiderSessionState {
   isOnline: boolean;
   isTogglingOnline: boolean;
@@ -21,6 +37,15 @@ interface RiderSessionState {
   activeDelivery: Order | null;
   availableOrders: Order[];
   availableOrdersStatus: "idle" | "loading" | "loaded" | "error";
+
+  // Colis Express (23/09/2026) -- mêmes noms/formes que ci-dessus, en
+  // parallèle : un livreur peut avoir une livraison classique OU une
+  // demande Colis Express en cours (jamais les deux à la fois côté UI, voir
+  // HomeScreen.tsx), mais les deux listes "disponibles" sont chargées et
+  // affichées indépendamment.
+  activeParcelDelivery: ParcelOrder | null;
+  availableParcelOrders: ParcelOrder[];
+  availableParcelOrdersStatus: "idle" | "loading" | "loaded" | "error";
 
   // Message affiché (via Alert, voir HomeScreen.tsx) quand une livraison en
   // cours disparaît suite à un rafraîchissement (loadActiveDelivery) plutôt
@@ -35,6 +60,11 @@ interface RiderSessionState {
   loadActiveDelivery: () => Promise<void>;
   handleAcceptOrder: (orderId: string) => Promise<void>;
   advanceDeliveryStep: (proof?: { deliveryPhoto?: string; deliveryCode?: string }) => Promise<void>;
+
+  loadAvailableParcelOrders: () => Promise<void>;
+  loadActiveParcelDelivery: () => Promise<void>;
+  handleAcceptParcelOrder: (parcelOrderId: string) => Promise<void>;
+  advanceParcelDeliveryStep: () => Promise<void>;
 
   todayEarnings: number;
   todayDeliveries: number;
@@ -56,6 +86,7 @@ export const useRiderSessionStore = create<RiderSessionState>((set, get) => ({
       useAuthStore.getState().setProfile(rider);
       if (nextValue) {
         get().loadAvailableOrders();
+        get().loadAvailableParcelOrders();
       }
     } catch (err) {
       set({ toggleOnlineError: err instanceof Error ? err.message : "Impossible de changer de statut." });
@@ -67,6 +98,9 @@ export const useRiderSessionStore = create<RiderSessionState>((set, get) => ({
   activeDelivery: null,
   availableOrders: [],
   availableOrdersStatus: "idle",
+  activeParcelDelivery: null,
+  availableParcelOrders: [],
+  availableParcelOrdersStatus: "idle",
   cancelledDeliveryNotice: null,
 
   dismissCancelledDeliveryNotice: () => set({ cancelledDeliveryNotice: null }),
@@ -138,6 +172,61 @@ export const useRiderSessionStore = create<RiderSessionState>((set, get) => ({
       }));
     } else {
       set({ activeDelivery: updated });
+    }
+  },
+
+  // Colis Express (23/09/2026) -- mêmes principes exacts que les 4 méthodes
+  // ci-dessus, adaptés à ParcelOrder (pas de preuve de remise/photo/code,
+  // voir CurrentParcelDeliveryCard.tsx pour le détail de cette différence).
+  loadAvailableParcelOrders: async () => {
+    set({ availableParcelOrdersStatus: "loading" });
+    try {
+      const parcelOrders = await fetchAvailableParcelOrders();
+      set({ availableParcelOrders: parcelOrders, availableParcelOrdersStatus: "loaded" });
+    } catch {
+      set({ availableParcelOrdersStatus: "error" });
+    }
+  },
+
+  loadActiveParcelDelivery: async () => {
+    try {
+      const parcelOrders = await fetchMyParcelDeliveries([
+        ParcelOrderStatus.RIDER_ASSIGNED,
+        ParcelOrderStatus.PICKED_UP,
+        ParcelOrderStatus.IN_DELIVERY,
+      ]);
+      set({ activeParcelDelivery: parcelOrders[0] ?? null });
+    } catch {
+      // Échec silencieux — même choix que loadActiveDelivery ci-dessus.
+    }
+  },
+
+  handleAcceptParcelOrder: async (parcelOrderId) => {
+    const parcelOrder = await acceptParcelOrder(parcelOrderId);
+    set((state) => ({
+      activeParcelDelivery: parcelOrder,
+      availableParcelOrders: state.availableParcelOrders.filter((p) => p.id !== parcelOrderId),
+    }));
+  },
+
+  advanceParcelDeliveryStep: async () => {
+    const current = get().activeParcelDelivery;
+    if (!current) return;
+
+    const currentIndex = PARCEL_DELIVERY_FLOW.indexOf(current.status);
+    const nextStatus = PARCEL_DELIVERY_FLOW[currentIndex + 1];
+    if (!nextStatus) return;
+
+    const updated = await updateParcelOrderStatus(current.id, nextStatus);
+
+    if (nextStatus === ParcelOrderStatus.DELIVERED) {
+      set((state) => ({
+        activeParcelDelivery: null,
+        todayEarnings: state.todayEarnings + Number(updated.riderEarnings ?? 0),
+        todayDeliveries: state.todayDeliveries + 1,
+      }));
+    } else {
+      set({ activeParcelDelivery: updated });
     }
   },
 
