@@ -27,7 +27,12 @@ interface OrdersScreenProps {
 }
 
 export function OrdersScreen({ onOpenTracking, onReorder, onOpenReview, onReportIssue }: OrdersScreenProps) {
-  const [filter, setFilter] = useState<Filter>("all");
+  // Filtre par défaut "En cours" (23/09/2026, demande produit) : à
+  // l'ouverture de l'écran, un client a surtout envie de voir où en est sa
+  // commande en cours plutôt que tout son historique -- il reste ensuite
+  // entièrement libre de choisir "Toutes" ou "Historique" via les chips
+  // ci-dessous, ce state ne fait que fixer la valeur initiale.
+  const [filter, setFilter] = useState<Filter>("active");
   const [orders, setOrders] = useState<Order[]>([]);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
