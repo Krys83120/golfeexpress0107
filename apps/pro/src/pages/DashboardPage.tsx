@@ -3,6 +3,7 @@ import { StatCard } from "@/components/StatCard";
 import { RevenueChart } from "@/components/RevenueChart";
 import { TopProductsCard } from "@/components/TopProductsCard";
 import { OrdersTable } from "@/components/OrdersTable";
+import { ParcelExpressLiveCard } from "@/components/ParcelExpressLiveCard";
 import { useProDashboardStore, type PeriodFilter } from "@/store/useProDashboardStore";
 import { useProOrdersStore } from "@/store/useProOrdersStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -114,6 +115,14 @@ export function DashboardPage({ onViewAllOrders }: DashboardPageProps) {
           value={pageViews !== null ? String(pageViews) : "—"}
           accentColor="#2ECC71"
         />
+      </div>
+
+      {/* COLIS EXPRESS EN COURS (23/09/2026, retour de Krys : visu directe
+          demandée sur le dashboard, plutôt que réservée à l'onglet Colis
+          Express) -- toujours affichée, même sans course en cours (voir
+          ParcelExpressLiveCard.tsx). */}
+      <div className="mb-6">
+        <ParcelExpressLiveCard />
       </div>
 
       {/* CHART + TOP PRODUCTS */}
