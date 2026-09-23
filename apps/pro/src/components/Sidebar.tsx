@@ -5,6 +5,7 @@ import {
   Package,
   Truck,
   Wallet,
+  BarChart3,
   Crown,
   Star,
   Bell,
@@ -30,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "menu", label: "Produits", icon: <Package size={18} /> },
   { key: "colis-express", label: "Colis Express", icon: <Truck size={18} /> },
   { key: "finances", label: "Finances", icon: <Wallet size={18} /> },
+  { key: "stats", label: "Statistiques", icon: <BarChart3 size={18} /> },
   { key: "subscription", label: "Abonnement", icon: <Crown size={18} /> },
   { key: "reviews", label: "Avis clients", icon: <Star size={18} /> },
   { key: "notifications", label: "Notifications", icon: <Bell size={18} /> },
@@ -40,10 +42,10 @@ const NAV_ITEMS: NavItem[] = [
 /**
  * Nav visible pour un compte employé (role PRO_EMPLOYEE) -- volontairement
  * restreinte aux commandes en cours + notifications (impression des tickets
- * incluse dans la page Commandes). Jamais Finances/Abonnement/Avis/Réglages
- * ni le Dashboard, qui expose le chiffre d'affaires -- voir ProEmployee dans
- * prisma/schema.prisma et le commentaire équivalent côté serveur dans
- * requireProOrEmployee() (apps/api/src/middleware/auth.ts).
+ * incluse dans la page Commandes). Jamais Finances/Statistiques/Abonnement/
+ * Avis/Réglages ni le Dashboard, qui exposent le chiffre d'affaires -- voir
+ * ProEmployee dans prisma/schema.prisma et le commentaire équivalent côté
+ * serveur dans requireProOrEmployee() (apps/api/src/middleware/auth.ts).
  */
 const EMPLOYEE_NAV_KEYS = new Set(["orders", "notifications"]);
 

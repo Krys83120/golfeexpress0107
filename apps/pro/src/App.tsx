@@ -6,6 +6,7 @@ import { OrdersPage } from "@/pages/OrdersPage";
 import { MenuPage } from "@/pages/MenuPage";
 import { ColisExpressPage } from "@/pages/ColisExpressPage";
 import { FinancesPage } from "@/pages/FinancesPage";
+import { StatsPage } from "@/pages/StatsPage";
 import { SubscriptionPage } from "@/pages/SubscriptionPage";
 import { ReviewsPage } from "@/pages/ReviewsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -84,6 +85,8 @@ function MainApp() {
         return <ColisExpressPage />;
       case "finances":
         return <FinancesPage />;
+      case "stats":
+        return <StatsPage />;
       case "subscription":
         return <SubscriptionPage />;
       case "reviews":
