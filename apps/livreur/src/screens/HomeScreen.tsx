@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { OnlineToggleHeader } from "@/components/OnlineToggleHeader";
@@ -9,6 +9,14 @@ import { ParcelOrderCard } from "@/components/ParcelOrderCard";
 import { CurrentParcelDeliveryCard } from "@/components/CurrentParcelDeliveryCard";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
 import { useAuthStore } from "@/store/useAuthStore";
+
+/**
+ * Catégorie de commandes disponibles actuellement dépliée -- null = écran
+ * des 2 vignettes (23/09/2026, retour de Krys : ergonomiquement plus clair
+ * que les 2 listes empilées en permanence, surtout sur petit écran). Une
+ * seule catégorie dépliée à la fois, jamais les deux en même temps.
+ */
+type BrowseCategory = "orders" | "parcels" | null;
 
 export function HomeScreen() {
   const isOnline = useRiderSessionStore((s) => s.isOnline);
@@ -32,6 +40,9 @@ export function HomeScreen() {
 
   const riderStatus = useAuthStore((s) => s.profile?.status);
 
+  // Vignettes "Commandes" / "Colis Express" (23/09/2026) -- voir BrowseCategory.
+  const [activeCategory, setActiveCategory] = useState<BrowseCategory>(null);
+
   useEffect(() => {
     loadActiveDelivery();
     loadActiveParcelDelivery();
@@ -41,6 +52,12 @@ export function HomeScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Repasser hors ligne referme une catégorie ouverte -- évite de rester
+  // bloqué sur une liste vide avec un message qui ne correspond plus à rien.
+  useEffect(() => {
+    if (!isOnline) setActiveCategory(null);
+  }, [isOnline]);
 
   useEffect(() => {
     if (!isOnline || activeDelivery || activeParcelDelivery) return;
@@ -122,92 +139,125 @@ export function HomeScreen() {
           <CurrentDeliveryCard />
         ) : activeParcelDelivery ? (
           <CurrentParcelDeliveryCard />
-        ) : (
+        ) : !isOnline ? (
+          <View style={styles.mapPlaceholder}>
+            <Text style={styles.mapEmoji}>🗺️</Text>
+            <Text style={styles.mapCaption}>Passez en ligne pour recevoir des commandes</Text>
+          </View>
+        ) : activeCategory === null ? (
+          // VIGNETTES -- écran d'accueil de la recherche (23/09/2026, retour
+          // de Krys : plus lisible que les 2 listes empilées en permanence,
+          // surtout quand une seule des deux catégories a du contenu).
           <>
             <View style={styles.mapPlaceholder}>
               <Text style={styles.mapEmoji}>🗺️</Text>
-              <Text style={styles.mapCaption}>
-                {isOnline ? "Recherche de commandes à proximité..." : "Passez en ligne pour recevoir des commandes"}
-              </Text>
+              <Text style={styles.mapCaption}>Recherche de commandes à proximité...</Text>
             </View>
 
-            <View style={styles.ordersSection}>
-              <Text style={styles.ordersTitle}>
-                📋 Commandes disponibles {isOnline && availableOrdersStatus === "loaded" ? `(${availableOrders.length})` : ""}
-              </Text>
-
-              {!isOnline ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyEmoji}>😴</Text>
-                  <Text style={styles.emptyText}>Vous êtes hors ligne</Text>
-                </View>
-              ) : availableOrdersStatus === "loading" ? (
-                <View style={styles.emptyState}>
-                  <ActivityIndicator color="#2ECC71" />
-                </View>
-              ) : availableOrdersStatus === "error" ? (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>Impossible de charger les commandes disponibles.</Text>
-                  <Pressable onPress={loadAvailableOrders} style={{ marginTop: 8 }}>
-                    <Text style={styles.retryText}>Réessayer</Text>
-                  </Pressable>
-                </View>
-              ) : availableOrders.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyEmoji}>🔍</Text>
-                  <Text style={styles.emptyText}>Aucune commande disponible pour le moment</Text>
-                </View>
-              ) : (
-                availableOrders.map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    onAccept={() => handleAccept(order.id)}
-                    onDecline={() => {}}
-                  />
-                ))
-              )}
-            </View>
-
-            {/* Colis Express (23/09/2026) -- section séparée sous les
-                commandes classiques : table distincte (ParcelOrder), volume
-                plus faible pour l'instant, pas de raison de mélanger les
-                deux listes. */}
-            {isOnline && (
-              <View style={styles.ordersSection}>
-                <Text style={styles.ordersTitle}>
-                  📦 Colis Express disponibles{" "}
-                  {availableParcelOrdersStatus === "loaded" ? `(${availableParcelOrders.length})` : ""}
+            <View style={styles.tilesRow}>
+              <Pressable
+                onPress={() => setActiveCategory("orders")}
+                style={[styles.tile, { backgroundColor: "#FFF3E0" }]}
+              >
+                <Text style={styles.tileEmoji}>📋</Text>
+                <Text style={styles.tileLabel}>Commandes</Text>
+                <Text style={[styles.tileCount, { color: "#F97316" }]}>
+                  {availableOrdersStatus === "loading"
+                    ? "..."
+                    : availableOrdersStatus === "error"
+                      ? "Erreur"
+                      : `${availableOrders.length} dispo`}
                 </Text>
+              </Pressable>
 
-                {availableParcelOrdersStatus === "loading" ? (
-                  <View style={styles.emptyState}>
-                    <ActivityIndicator color="#2196F3" />
-                  </View>
-                ) : availableParcelOrdersStatus === "error" ? (
-                  <View style={styles.errorBox}>
-                    <Text style={styles.errorText}>Impossible de charger les colis disponibles.</Text>
-                    <Pressable onPress={loadAvailableParcelOrders} style={{ marginTop: 8 }}>
-                      <Text style={styles.retryText}>Réessayer</Text>
-                    </Pressable>
-                  </View>
-                ) : availableParcelOrders.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyEmoji}>📦</Text>
-                    <Text style={styles.emptyText}>Aucun Colis Express disponible pour le moment</Text>
-                  </View>
-                ) : (
-                  availableParcelOrders.map((parcelOrder) => (
-                    <ParcelOrderCard
-                      key={parcelOrder.id}
-                      parcelOrder={parcelOrder}
-                      onAccept={() => handleAcceptParcel(parcelOrder.id)}
-                    />
-                  ))
-                )}
-              </View>
-            )}
+              <Pressable
+                onPress={() => setActiveCategory("parcels")}
+                style={[styles.tile, { backgroundColor: "#E3F2FD" }]}
+              >
+                <Text style={styles.tileEmoji}>📦</Text>
+                <Text style={styles.tileLabel}>Colis Express</Text>
+                <Text style={[styles.tileCount, { color: "#2196F3" }]}>
+                  {availableParcelOrdersStatus === "loading"
+                    ? "..."
+                    : availableParcelOrdersStatus === "error"
+                      ? "Erreur"
+                      : `${availableParcelOrders.length} dispo`}
+                </Text>
+              </Pressable>
+            </View>
           </>
+        ) : activeCategory === "orders" ? (
+          <View style={styles.ordersSection}>
+            <Pressable onPress={() => setActiveCategory(null)} hitSlop={8} style={styles.backRow}>
+              <Text style={styles.backText}>← Retour</Text>
+            </Pressable>
+            <Text style={styles.ordersTitle}>
+              📋 Commandes disponibles {availableOrdersStatus === "loaded" ? `(${availableOrders.length})` : ""}
+            </Text>
+
+            {availableOrdersStatus === "loading" ? (
+              <View style={styles.emptyState}>
+                <ActivityIndicator color="#2ECC71" />
+              </View>
+            ) : availableOrdersStatus === "error" ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>Impossible de charger les commandes disponibles.</Text>
+                <Pressable onPress={loadAvailableOrders} style={{ marginTop: 8 }}>
+                  <Text style={styles.retryText}>Réessayer</Text>
+                </Pressable>
+              </View>
+            ) : availableOrders.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyEmoji}>🔍</Text>
+                <Text style={styles.emptyText}>Aucune commande disponible pour le moment</Text>
+              </View>
+            ) : (
+              availableOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onAccept={() => handleAccept(order.id)}
+                  onDecline={() => {}}
+                />
+              ))
+            )}
+          </View>
+        ) : (
+          <View style={styles.ordersSection}>
+            <Pressable onPress={() => setActiveCategory(null)} hitSlop={8} style={styles.backRow}>
+              <Text style={styles.backText}>← Retour</Text>
+            </Pressable>
+            <Text style={styles.ordersTitle}>
+              📦 Colis Express disponibles{" "}
+              {availableParcelOrdersStatus === "loaded" ? `(${availableParcelOrders.length})` : ""}
+            </Text>
+
+            {availableParcelOrdersStatus === "loading" ? (
+              <View style={styles.emptyState}>
+                <ActivityIndicator color="#2196F3" />
+              </View>
+            ) : availableParcelOrdersStatus === "error" ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>Impossible de charger les colis disponibles.</Text>
+                <Pressable onPress={loadAvailableParcelOrders} style={{ marginTop: 8 }}>
+                  <Text style={styles.retryText}>Réessayer</Text>
+                </Pressable>
+              </View>
+            ) : availableParcelOrders.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyEmoji}>📦</Text>
+                <Text style={styles.emptyText}>Aucun Colis Express disponible pour le moment</Text>
+              </View>
+            ) : (
+              availableParcelOrders.map((parcelOrder) => (
+                <ParcelOrderCard
+                  key={parcelOrder.id}
+                  parcelOrder={parcelOrder}
+                  onAccept={() => handleAcceptParcel(parcelOrder.id)}
+                />
+              ))
+            )}
+          </View>
         )}
       </ScrollView>
     </View>
@@ -232,6 +282,32 @@ const styles = StyleSheet.create({
   },
   mapEmoji: { fontSize: 32 },
   mapCaption: { marginTop: 4, fontSize: 13, color: "#6B7280" },
+  // Vignettes "Commandes" / "Colis Express" (23/09/2026) -- côte à côte,
+  // hauteur fixe, contenu centré : même logique de carte que le reste de
+  // l'app (EarningsCard, OrderCard...) mais format compact et cliquable.
+  tilesRow: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    gap: 12,
+  },
+  tile: {
+    flex: 1,
+    height: 110,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  tileEmoji: { fontSize: 28 },
+  tileLabel: { marginTop: 6, fontSize: 14, fontWeight: "700", color: "#1A1A2E" },
+  tileCount: { marginTop: 2, fontSize: 12, fontWeight: "600" },
+  backRow: { marginBottom: 8, alignSelf: "flex-start" },
+  backText: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
   ordersSection: { marginTop: 24, paddingHorizontal: 20 },
   ordersTitle: { marginBottom: 12, fontSize: 18, fontWeight: "700", color: "#1A1A2E" },
   emptyState: { alignItems: "center", paddingVertical: 48 },
