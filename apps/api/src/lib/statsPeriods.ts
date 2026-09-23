@@ -50,3 +50,24 @@ export function resolveStatsPeriod(period: StatsPeriod): { since: Date | null; r
 
   return { since, rangeLabel: PERIOD_LABELS[period] };
 }
+
+const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+
+export function formatStatsDate(date: Date): string {
+  return dateFormatter.format(date);
+}
+
+/**
+ * Construit le libellé "Du X au Y" (23/09/2026, suite au retour de Krys :
+ * "il manque surtout les dates") à partir des dates RÉELLEMENT observées
+ * dans les commandes trouvées -- et non des bornes théoriques de la
+ * période (`since`/maintenant) -- plus parlant pour un bilan : "Du 16 sept.
+ * 2026 au 23 sept. 2026" reflète quand les ventes ont vraiment eu lieu, pas
+ * juste la fenêtre de filtre demandée. `null` si aucune commande sur la
+ * période (rien à afficher).
+ */
+export function formatStatsDateRange(start: Date | null, end: Date | null): string | null {
+  if (!start || !end) return null;
+  if (start.toDateString() === end.toDateString()) return `Le ${formatStatsDate(start)}`;
+  return `Du ${formatStatsDate(start)} au ${formatStatsDate(end)}`;
+}
