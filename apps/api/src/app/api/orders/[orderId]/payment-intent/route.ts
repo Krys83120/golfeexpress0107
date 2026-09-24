@@ -48,7 +48,13 @@ async function postHandler(req: NextRequest, ctx: { params: { orderId: string } 
   });
   await prisma.order.update({
     where: { id: order.id },
-    data: { paymentStatus: PaymentStatus.AUTHORIZED },
+    // stripePaymentIntentId stocké dès la création (ajout du 25/09/2026,
+    // même principe que parcel-orders/payment-intent/route.ts) -- condition
+    // nécessaire pour pouvoir déclencher un remboursement automatique si
+    // cette commande est annulée après paiement (voir
+    // orders/[orderId]/status/route.ts et
+    // admin/orders/[orderId]/force-cancel/route.ts).
+    data: { paymentStatus: PaymentStatus.AUTHORIZED, stripePaymentIntentId: paymentIntent.id },
   });
   return NextResponse.json({ clientSecret: paymentIntent.client_secret });
 }

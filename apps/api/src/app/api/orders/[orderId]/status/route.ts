@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OrderStatus, UserRole } from "@golfeexpress/types";
+import { OrderStatus, PaymentStatus, UserRole } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { updateOrderStatusSchema } from "@/lib/validation/orders";
@@ -12,7 +12,7 @@ import {
   sendOrderCancelledEmail,
   sendOrderCancelledByClientToProEmail,
 } from "@/lib/emails/orderEmails";
-import { sendTransferFailedAlert } from "@/lib/emails/adminEmails";
+import { sendTransferFailedAlert, sendOrderRefundFailedAlert } from "@/lib/emails/adminEmails";
 import { notifyNearbyRidersOrderPreparing } from "@/lib/riderNotifications";
 
 /**
@@ -385,6 +385,62 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
     }
   }
 
+  // Remboursement Stripe automatique à l'annulation (ajout du 25/09/2026,
+  // suite à la relecture de Krys) -- même pattern que
+  // parcel-orders/cancel/route.ts, déjà en prod pour Colis Express : si le
+  // paiement avait déjà été capturé, on tente un remboursement Stripe
+  // immédiat, best-effort et hors transaction (comme les virements Connect
+  // ci-dessus). Contrairement à Colis Express, on NE bloque PAS l'annulation
+  // elle-même si ce remboursement échoue -- choix assumé : mieux vaut une
+  // commande annulée avec un remboursement à régulariser manuellement
+  // (alerte Admin ci-dessous) qu'un client bloqué par un simple souci Stripe
+  // passager au moment d'annuler.
+  //
+  // Sans risque vis-à-vis des virements Connect Pro/Rider : cette route
+  // n'autorise -> CANCELLED que depuis les statuts couverts par
+  // CANCELLABLE_FROM (voir orderStateMachine.ts), qui exclut DELIVERED -- et
+  // les virements Pro/Rider ci-dessus ne partent JAMAIS avant DELIVERED.
+  // Aucun virement n'est donc jamais déjà parti quand ce bloc s'exécute.
+  let cancelledBy: "client" | "pro" | "system" = "system";
+  if (nextStatus === OrderStatus.CANCELLED) {
+    cancelledBy =
+      auth.role === UserRole.CLIENT
+        ? "client"
+        : auth.role === UserRole.PRO || auth.role === UserRole.PRO_EMPLOYEE
+          ? "pro"
+          : "system";
+
+    if (updated.paymentStatus === PaymentStatus.CAPTURED) {
+      if (updated.stripePaymentIntentId) {
+        try {
+          const refund = await stripe.refunds.create({ payment_intent: updated.stripePaymentIntentId });
+          await prisma.order.update({
+            where: { id: updated.id },
+            data: { paymentStatus: PaymentStatus.REFUNDED, stripeRefundId: refund.id },
+          });
+        } catch (err) {
+          console.error(`[order status] Échec remboursement Stripe (commande ${updated.id}):`, err);
+          sendOrderRefundFailedAlert(
+            updated.orderNumber,
+            Number(updated.total),
+            cancelledBy,
+            err instanceof Error ? err.message : "Erreur inconnue"
+          ).catch(() => {});
+        }
+      } else {
+        // Commande créée avant l'ajout de stripePaymentIntentId (25/09/2026)
+        // -- aucune référence Stripe à rembourser automatiquement, même
+        // traitement qu'un échec de remboursement.
+        sendOrderRefundFailedAlert(
+          updated.orderNumber,
+          Number(updated.total),
+          cancelledBy,
+          "Commande créée avant l'ajout du suivi automatique du paiement Stripe (stripePaymentIntentId manquant) -- retrouvez le paiement manuellement dans le Dashboard Stripe."
+        ).catch(() => {});
+      }
+    }
+  }
+
   // Premier "bip" livreurs du secteur (demande produit du 23/09/2026) --
   // best-effort, jamais bloquant, jamais attendu (fire-and-forget comme les
   // emails ci-dessous) pour ne pas ralentir la réponse de cette route. Voir
@@ -433,12 +489,9 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
           console.error("[order status] Échec email livrée:", err)
         );
       } else if (nextStatus === OrderStatus.CANCELLED) {
-        const cancelledBy =
-          auth.role === UserRole.CLIENT
-            ? "client"
-            : auth.role === UserRole.PRO || auth.role === UserRole.PRO_EMPLOYEE
-              ? "pro"
-              : "system";
+        // cancelledBy calculé plus haut (bloc remboursement automatique) --
+        // réutilisé ici pour ne jamais risquer une incohérence entre les
+        // deux (ex: si la logique de résolution du rôle changeait un jour).
         sendOrderCancelledEmail(client.user.email, emailData, cancelledBy).catch((err) =>
           console.error("[order status] Échec email annulation:", err)
         );

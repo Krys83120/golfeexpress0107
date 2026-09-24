@@ -1,4 +1,4 @@
-import { sendAdminAlert, emailShell, button, infoBox, PORTAL_URLS } from "./shared";
+import { sendAdminAlert, emailShell, button, infoBox, formatEuros, PORTAL_URLS } from "./shared";
 
 // Les boutons ci-dessous pointent vers la RACINE de l'admin (PORTAL_URLS.admin),
 // jamais vers un sous-chemin comme "/validations" -- corrigé le 25/08/2026 :
@@ -85,6 +85,56 @@ export async function sendParcelTransferFailedAlert(
     </p>
   `);
   await sendAdminAlert(`⚠️ Échec virement Colis Express — ${parcelNumber}`, html);
+}
+
+/**
+ * Échec du remboursement Stripe automatique déclenché par l'annulation d'une
+ * commande déjà payée (ajout du 24/09/2026, demande de Krys ; refonte du
+ * 25/09/2026 suite à sa relecture -- voir orders/[orderId]/status/route.ts
+ * et admin/orders/[orderId]/force-cancel/route.ts). Historique : la
+ * première version de cette alerte partait du principe qu'AUCUN
+ * remboursement automatique n'existait ("à faire manuellement à chaque
+ * annulation") -- Krys a eu raison de pousser pour mieux : les deux routes
+ * d'annulation tentent maintenant elles-mêmes un remboursement Stripe réel
+ * (même pattern que parcel-orders/cancel/route.ts, déjà en prod pour Colis
+ * Express) dès que paymentStatus === CAPTURED. Cette alerte ne part donc
+ * plus à CHAQUE annulation payée, mais uniquement quand cette tentative
+ * échoue -- filet de sécurité, même principe que sendTransferFailedAlert/
+ * sendWithdrawalTransferFailedAlert ci-dessus : jamais un montant dû sans
+ * que quelqu'un ne soit prévenu. L'annulation elle-même n'est jamais
+ * bloquée par cet échec (choix assumé, voir les deux routes) -- la commande
+ * reste normalement CANCELLED, seul le remboursement reste à traiter.
+ *
+ * Périmètre actuel : uniquement les annulations AVANT livraison (les
+ * seules possibles aujourd'hui -- CANCELLABLE_FROM/canAdminForceCancel
+ * excluent DELIVERED, et les virements Connect Pro/Rider ne partent
+ * justement qu'à la livraison, donc jamais de virement déjà envoyé à
+ * rembourser en double ici). Un futur remboursement après livraison
+ * (litige) est un chantier séparé, pas géré par cette alerte.
+ */
+export async function sendOrderRefundFailedAlert(
+  orderNumber: string,
+  amount: number,
+  cancelledBy: "client" | "pro" | "system",
+  errorMessage: string
+): Promise<void> {
+  const cancelledByLabel =
+    cancelledBy === "client" ? "le client" : cancelledBy === "pro" ? "le commerçant" : "un administrateur";
+  const html = emailShell(`
+    <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">💸 Échec d'un remboursement automatique</h1>
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      La commande <strong>${orderNumber}</strong> (<strong>${formatEuros(amount)}</strong>), annulée par
+      ${cancelledByLabel} alors que le paiement avait déjà été prélevé, aurait dû être remboursée
+      automatiquement -- la tentative a échoué.
+    </p>
+    ${infoBox(errorMessage, "red")}
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      L'annulation elle-même a bien été appliquée -- seul le remboursement reste à faire, manuellement depuis
+      le Dashboard Stripe. Le client a reçu un email lui annonçant qu'il serait remboursé sous quelques
+      jours : pensez à tenir cette promesse.
+    </p>
+  `);
+  await sendAdminAlert(`💸 Échec remboursement auto — commande ${orderNumber} (${formatEuros(amount)})`, html);
 }
 
 export async function sendWithdrawalTransferFailedAlert(

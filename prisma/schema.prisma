@@ -898,6 +898,25 @@ model Order {
   cardBrand       String?     @map("card_brand")
   cardLast4       String?     @map("card_last_4")
 
+  /// Id du PaymentIntent Stripe de cette commande (ajout du 25/09/2026,
+  /// même principe que ParcelOrder.stripePaymentIntentId) -- posé dès la
+  /// création du PaymentIntent (voir orders/[orderId]/payment-intent/
+  /// route.ts), PAS seulement au moment où le webhook confirme le paiement,
+  /// pour être disponible immédiatement si la commande est annulée avant
+  /// même que le webhook Stripe soit passé. Indispensable pour pouvoir
+  /// déclencher un remboursement automatique à l'annulation (voir
+  /// orders/[orderId]/status/route.ts et
+  /// admin/orders/[orderId]/force-cancel/route.ts) -- sans cette référence,
+  /// impossible de savoir QUEL paiement Stripe rembourser. Reste null pour
+  /// toutes les commandes créées avant ce déploiement (remboursement de
+  /// celles-ci : manuel depuis le Dashboard Stripe, comme aujourd'hui).
+  stripePaymentIntentId String? @map("stripe_payment_intent_id")
+  /// Id du remboursement Stripe (Refund) une fois qu'un remboursement
+  /// automatique a réussi (ajout du 25/09/2026) -- traçabilité uniquement
+  /// (affichage futur côté Admin), ne conditionne aucune logique métier :
+  /// c'est paymentStatus qui reste la source de vérité (REFUNDED).
+  stripeRefundId  String?     @map("stripe_refund_id")
+
   client          Client      @relation(fields: [clientId], references: [id])
   pro             Pro         @relation(fields: [proId], references: [id])
   rider           Rider?      @relation(fields: [riderId], references: [id])
