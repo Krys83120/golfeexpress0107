@@ -30,12 +30,6 @@ export async function createOrRefreshOnboardingLink(params: {
   const returnBase = kind === "pro" ? PRO_APP_URL : RIDER_APP_URL;
 
   let accountId = existingAccountId;
-  // On ne connaît le VRAI état d'avancement (onboarding fini ou pas) qu'en
-  // relisant le compte chez Stripe — un stripeAccountId peut exister sans
-  // que l'inscription soit terminée (ex: la personne a fermé l'onglet en
-  // cours de route), auquel cas il faut redonner "account_onboarding" et
-  // pas "account_update".
-  let onboardingComplete = false;
 
   if (!accountId) {
     const account = await stripe.accounts.create({
@@ -50,18 +44,6 @@ export async function createOrRefreshOnboardingLink(params: {
       },
     });
     accountId = account.id;
-  } else {
-    const account = await stripe.accounts.retrieve(accountId);
-    // Se fier à details_submitted (ou même à requirements.currently_due)
-    // s'est révélé insuffisant en pratique : l'erreur Stripe "You cannot
-    // create `account_update` type Account Links for this account"
-    // persistait encore le 24/09/2026 côté Pro ET Livreur malgré un premier
-    // correctif basé sur currently_due. payouts_enabled est le signal le
-    // plus fiable de Stripe pour "compte totalement vérifié et opérationnel"
-    // -- tant qu'il n'est pas à true, on redemande "account_onboarding",
-    // toujours valide même sur un compte partiellement rempli (il ne
-    // redemande alors que ce qui manque réellement).
-    onboardingComplete = Boolean(account.payouts_enabled);
   }
 
   const accountLink = await stripe.accountLinks.create({
@@ -71,11 +53,18 @@ export async function createOrRefreshOnboardingLink(params: {
     // redemander un nouveau lien.
     refresh_url: `${returnBase}?stripe_onboarding=refresh`,
     return_url: `${returnBase}?stripe_onboarding=complete`,
-    // "account_onboarding" tant que l'inscription n'est pas finie,
-    // "account_update" une fois validée (ex: la personne change de banque)
-    // — Stripe refuse account_onboarding sur un compte déjà pleinement
-    // vérifié.
-    type: onboardingComplete ? "account_update" : "account_onboarding",
+    // Toujours "account_onboarding", jamais "account_update" -- 3 essais
+    // successifs le 24/09/2026 pour déterminer dynamiquement quand
+    // "account_update" est valide (details_submitted, puis
+    // requirements.currently_due, puis payouts_enabled) ont tous échoué :
+    // Stripe a rejeté "account_update" à chaque fois avec "Valid types for
+    // this account are [account_onboarding]", y compris sur le compte Pro
+    // "Repar Mon Phone" dont payouts_enabled valait pourtant déjà true.
+    // "account_onboarding" est le seul type que Stripe accepte de façon
+    // fiable pour ces comptes Connect Express -- il fonctionne aussi bien
+    // pour une première inscription que pour modifier des coordonnées déjà
+    // enregistrées (il ne redemande alors que ce qui doit changer).
+    type: "account_onboarding",
   });
 
   return { url: accountLink.url, accountId };
