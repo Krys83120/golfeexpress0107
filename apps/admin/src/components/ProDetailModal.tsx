@@ -359,7 +359,12 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
               label="Gérant"
               value={pro.managerFirstName || pro.managerLastName ? `${pro.managerFirstName ?? ""} ${pro.managerLastName ?? ""}`.trim() : null}
             />
-            <Field label="Téléphone" value={pro.user.phone ?? pro.phone} />
+            {/* Numéro de connexion (User.phone), distinct de "Téléphone
+                professionnel" plus haut (Pro.phone, modifiable par le Pro
+                depuis ses Réglages) -- à ne pas confondre : l'un ne se met
+                jamais à jour via l'autre (24/09/2026, confusion réelle de
+                Krys en Admin après une modif côté Pro). */}
+            <Field label="Téléphone du compte (connexion)" value={pro.user.phone ?? pro.phone} />
           </div>
         </div>
 
