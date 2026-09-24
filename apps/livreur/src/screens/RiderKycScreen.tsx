@@ -22,6 +22,39 @@ const PROFESSIONAL_STATUS_LABELS: Record<RiderProfessionalStatus, string> = {
 
 const TERMS_VERSION = "1.0";
 
+/**
+ * Le champ "Date de naissance" ci-dessous est un texte libre (pas de
+ * sélecteur de date natif fiable en React Native web/mobile) -- on
+ * affiche/saisit au format français JJ-MM-AAAA (demande de Krys,
+ * 24/09/2026 : le AAAA-MM-JJ prêtait à confusion), mais on continue à
+ * envoyer au serveur le format ISO YYYY-MM-DD attendu par l'API (voir
+ * riderProfile.ts, "ISO date, ex: 1995-04-12") -- rien ne change côté
+ * stockage, seule la saisie/l'affichage sont convertis.
+ */
+function isoToDisplayDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return "";
+  return `${d}-${m}-${y}`;
+}
+
+function displayDateToIso(display: string): string | null {
+  const match = display.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!match) return null;
+  const [, d, m, y] = match;
+  // Vérifie que la date existe réellement (ex: rejette 31-02-1995) --
+  // Date() est tolérant et "déborde" sinon sur le mois suivant sans erreur.
+  const date = new Date(`${y}-${m}-${d}T00:00:00Z`);
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getUTCFullYear() !== Number(y) ||
+    date.getUTCMonth() + 1 !== Number(m) ||
+    date.getUTCDate() !== Number(d)
+  ) {
+    return null;
+  }
+  return `${y}-${m}-${d}`;
+}
+
 function Field({ label, children }: { label: string; children: any }) {
   return (
     <View style={{ marginBottom: 14 }}>
@@ -66,7 +99,7 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
     fetchMyRiderProfile()
       .then((data) => {
         setRider(data);
-        setBirthDate(data.birthDate?.slice(0, 10) ?? "");
+        setBirthDate(data.birthDate ? isoToDisplayDate(data.birthDate.slice(0, 10)) : "");
         setStreet(data.street ?? "");
         setZipCode(data.zipCode ?? "");
         setCity(data.city ?? "");
@@ -87,6 +120,19 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
     setSaving(true);
     setMessage(null);
     try {
+      // Conversion JJ-MM-AAAA (saisie) -> ISO (stockage/API) -- voir les
+      // helpers en haut du fichier. Un format invalide bloque l'enregistrement
+      // plutôt que d'envoyer une date silencieusement fausse au serveur.
+      let birthDateIso: string | null = null;
+      if (birthDate.trim()) {
+        birthDateIso = displayDateToIso(birthDate.trim());
+        if (!birthDateIso) {
+          setMessage("❌ Date de naissance invalide — format attendu JJ-MM-AAAA (ex: 12-04-1995).");
+          setSaving(false);
+          return;
+        }
+      }
+
       // Photo de profil obligatoire avant d'accepter les CGU/CGV (soumission
       // du dossier pour validation admin) — voir aussi le contrôle côté
       // serveur dans /api/admin/riders/[riderId]/validate qui bloque
@@ -98,7 +144,7 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
       }
 
       const updated = await updateMyRiderProfile({
-        birthDate: birthDate || null,
+        birthDate: birthDateIso,
         street: street || null,
         zipCode: zipCode || null,
         city: city || null,
@@ -145,8 +191,8 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <Section title="État civil">
-          <Field label="Date de naissance (AAAA-MM-JJ)">
-            <TextInput value={birthDate} onChangeText={setBirthDate} placeholder="1995-04-12" style={styles.input} />
+          <Field label="Date de naissance (JJ-MM-AAAA)">
+            <TextInput value={birthDate} onChangeText={setBirthDate} placeholder="12-04-1995" style={styles.input} />
           </Field>
         </Section>
 
