@@ -52,18 +52,16 @@ export async function createOrRefreshOnboardingLink(params: {
     accountId = account.id;
   } else {
     const account = await stripe.accounts.retrieve(accountId);
-    // Se fier uniquement à details_submitted est insuffisant : ce flag
-    // passe à true dès la première soumission du formulaire, mais Stripe
-    // peut ensuite redemander des informations complémentaires (vérif.
-    // d'identité, justificatifs...) sans le repasser à false --
-    // account.requirements.currently_due reflète alors ce qui reste
-    // réellement en attente. S'y fier en plus évite l'erreur Stripe "You
-    // cannot create `account_update` type Account Links for this account"
-    // rencontrée le 24/09/2026 (Pro ET Livreur) : on retombe sur
-    // "account_onboarding", toujours valide même sur un compte déjà
-    // partiellement rempli (il ne redemande alors que ce qui manque).
-    const requirementsPending = (account.requirements?.currently_due?.length ?? 0) > 0;
-    onboardingComplete = Boolean(account.details_submitted) && !requirementsPending;
+    // Se fier à details_submitted (ou même à requirements.currently_due)
+    // s'est révélé insuffisant en pratique : l'erreur Stripe "You cannot
+    // create `account_update` type Account Links for this account"
+    // persistait encore le 24/09/2026 côté Pro ET Livreur malgré un premier
+    // correctif basé sur currently_due. payouts_enabled est le signal le
+    // plus fiable de Stripe pour "compte totalement vérifié et opérationnel"
+    // -- tant qu'il n'est pas à true, on redemande "account_onboarding",
+    // toujours valide même sur un compte partiellement rempli (il ne
+    // redemande alors que ce qui manque réellement).
+    onboardingComplete = Boolean(account.payouts_enabled);
   }
 
   const accountLink = await stripe.accountLinks.create({
