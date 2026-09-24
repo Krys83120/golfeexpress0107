@@ -44,9 +44,23 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
 
   const missingProfilePhoto = !rider.profilePhotoUrl;
 
+  // Coordonnées bancaires Stripe non configurées -- bloque la validation au
+  // même titre que la photo de profil (demande de Krys, 24/09/2026 :
+  // s'assurer qu'un livreur validé peut effectivement être payé). On ne
+  // bloque que sur l'existence du compte Stripe (démarche entamée), pas sur
+  // son activation complète (stripePayoutsEnabled), qui peut dépendre de
+  // délais de vérification Stripe hors du contrôle du livreur.
+  const missingBankAccount = !rider.stripeAccountId;
+
   async function handleValidate() {
     if (missingProfilePhoto) {
       setError("Impossible de valider : ce livreur n'a pas encore fourni de photo de profil (obligatoire).");
+      return;
+    }
+    if (missingBankAccount) {
+      setError(
+        "Impossible de valider : ce livreur n'a pas encore configuré ses coordonnées bancaires Stripe (obligatoire pour pouvoir être payé)."
+      );
       return;
     }
     setSaving(true);
@@ -151,12 +165,24 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
                       ⚠️ Photo de profil manquante — validation impossible tant qu'elle n'est pas fournie.
                     </span>
                   )}
+                  {missingBankAccount && (
+                    <span className="mt-1 block text-xs font-semibold text-red-500">
+                      ⚠️ Coordonnées bancaires Stripe non configurées — validation impossible tant qu'elles ne le
+                      sont pas.
+                    </span>
+                  )}
                 </p>
                 <button
                   type="button"
                   onClick={handleValidate}
-                  disabled={saving || missingProfilePhoto}
-                  title={missingProfilePhoto ? "Photo de profil obligatoire manquante" : undefined}
+                  disabled={saving || missingProfilePhoto || missingBankAccount}
+                  title={
+                    missingProfilePhoto
+                      ? "Photo de profil obligatoire manquante"
+                      : missingBankAccount
+                        ? "Coordonnées bancaires Stripe non configurées"
+                        : undefined
+                  }
                   className="flex items-center gap-1.5 rounded-sm bg-golfe-green px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-60"
                 >
                   <CheckCircle2 size={14} /> Valider
@@ -235,6 +261,32 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
           <DetailField label="SIRET (si indépendant)" value={rider.siret} />
           <DetailField label="Assurance" value={rider.insuranceProvider} />
           <DetailField label="N° police d'assurance" value={rider.insurancePolicyNumber} />
+        </div>
+
+        {/* Coordonnées bancaires Stripe Connect -- ne reflète jamais un RIB
+            stocké chez nous (voir stripeConnect.ts : l'inscription bancaire
+            est hébergée par Stripe), seulement l'avancement de l'inscription
+            Stripe du livreur. Ajouté le 24/09/2026 (demande de Krys) : avant,
+            aucune visibilité Admin sur ce point avant validation. */}
+        <div className="mb-5 rounded-sm bg-gris-light p-4">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gris">
+            💳 Coordonnées bancaires (Stripe)
+          </p>
+          {rider.stripePayoutsEnabled ? (
+            <p className="flex items-center gap-1.5 text-sm text-golfe-green">
+              <CheckCircle2 size={15} /> Versements activés — ce livreur peut être payé
+            </p>
+          ) : rider.stripeOnboardingComplete ? (
+            <p className="flex items-center gap-1.5 text-sm text-corail">⏳ Vérification Stripe en cours...</p>
+          ) : rider.stripeAccountId ? (
+            <p className="flex items-center gap-1.5 text-sm text-corail">
+              <XCircle size={15} /> Inscription bancaire incomplète
+            </p>
+          ) : (
+            <p className="flex items-center gap-1.5 text-sm text-corail">
+              <XCircle size={15} /> Coordonnées bancaires non configurées
+            </p>
+          )}
         </div>
 
         {/* CGU/CGV */}

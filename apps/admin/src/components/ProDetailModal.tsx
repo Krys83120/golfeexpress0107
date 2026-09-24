@@ -163,7 +163,21 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
   const rating = pro.rating ? Number(pro.rating) : null;
   const statusMeta = PRO_STATUS_LABELS[pro.status];
 
+  // Coordonnées bancaires Stripe non configurées -- bloque la validation
+  // comme pour la photo de profil obligatoire du livreur (demande de Krys,
+  // 24/09/2026 : s'assurer qu'un Pro validé peut effectivement être payé).
+  // On ne bloque que sur l'existence du compte Stripe (démarche entamée),
+  // pas sur son activation complète (stripePayoutsEnabled), qui peut
+  // dépendre de délais de vérification Stripe hors du contrôle du Pro.
+  const missingBankAccount = !pro.stripeAccountId;
+
   async function handleValidate() {
+    if (missingBankAccount) {
+      setError(
+        "Impossible de valider : ce commerçant n'a pas encore configuré ses coordonnées bancaires Stripe (obligatoire pour pouvoir être payé)."
+      );
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -245,11 +259,20 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
           <div className="mb-6 rounded-sm bg-orange-50 p-4">
             {!showRejectReason ? (
               <div className="flex items-center gap-3">
-                <p className="flex-1 text-sm text-nuit">Ce commerçant attend une validation KYC.</p>
+                <p className="flex-1 text-sm text-nuit">
+                  Ce commerçant attend une validation KYC.
+                  {missingBankAccount && (
+                    <span className="mt-1 block text-xs font-semibold text-red-500">
+                      ⚠️ Coordonnées bancaires Stripe non configurées — validation impossible tant qu'elles ne le
+                      sont pas.
+                    </span>
+                  )}
+                </p>
                 <button
                   type="button"
                   onClick={handleValidate}
-                  disabled={saving}
+                  disabled={saving || missingBankAccount}
+                  title={missingBankAccount ? "Coordonnées bancaires Stripe non configurées" : undefined}
                   className="flex items-center gap-1.5 rounded-sm bg-golfe-green px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-60"
                 >
                   <CheckCircle2 size={14} /> Valider
@@ -365,6 +388,33 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
                 jamais à jour via l'autre (24/09/2026, confusion réelle de
                 Krys en Admin après une modif côté Pro). */}
             <Field label="Téléphone du compte (connexion)" value={pro.user.phone ?? pro.phone} />
+          </div>
+        </div>
+
+        {/* Coordonnées bancaires Stripe Connect -- ne reflète jamais un RIB
+            stocké chez nous (voir stripeConnect.ts : l'inscription bancaire
+            est hébergée par Stripe, on n'affiche jamais nous-mêmes de
+            formulaire IBAN), seulement l'avancement de l'inscription
+            Stripe du Pro. Ajouté le 24/09/2026 (demande de Krys) : avant,
+            aucune visibilité Admin sur ce point avant validation. */}
+        <div className="mb-6">
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gris">💳 Coordonnées bancaires (Stripe)</h3>
+          <div className="rounded-sm bg-gris-light p-4">
+            {pro.stripePayoutsEnabled ? (
+              <p className="flex items-center gap-1.5 text-sm text-golfe-green">
+                <CheckCircle2 size={15} /> Versements activés — ce commerçant peut être payé
+              </p>
+            ) : pro.stripeOnboardingComplete ? (
+              <p className="flex items-center gap-1.5 text-sm text-corail">⏳ Vérification Stripe en cours...</p>
+            ) : pro.stripeAccountId ? (
+              <p className="flex items-center gap-1.5 text-sm text-corail">
+                <XCircle size={15} /> Inscription bancaire incomplète
+              </p>
+            ) : (
+              <p className="flex items-center gap-1.5 text-sm text-corail">
+                <XCircle size={15} /> Coordonnées bancaires non configurées
+              </p>
+            )}
           </div>
         </div>
 

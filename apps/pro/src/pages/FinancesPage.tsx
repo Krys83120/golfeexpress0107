@@ -185,10 +185,21 @@ export function FinancesPage() {
           )}
         </div>
         {!stripeStatus?.payoutsEnabled && (
-          <p className="mt-3 text-xs text-gris">
-            Le formulaire s'ouvre dans un nouvel onglet, hébergé et sécurisé par Stripe. Vos coordonnées bancaires ne
-            transitent jamais par Do You Geckoo.
-          </p>
+          <>
+            <p className="mt-3 text-xs text-gris">
+              Le formulaire s'ouvre dans un nouvel onglet, hébergé et sécurisé par Stripe. Vos coordonnées bancaires
+              ne transitent jamais par Do You Geckoo.
+            </p>
+            {/* Astuce site web -- demande de Krys (24/09/2026) : la plupart
+                des Pros n'ont pas de site, et le champ "Site web" de Stripe
+                bloque sinon la progression du formulaire si on ne sait pas
+                qu'il existe une alternative. */}
+            <p className="mt-2 text-xs text-gris">
+              💡 Si Stripe vous demande un site web et que vous n'en avez pas : cliquez sur « Pas de site web,
+              veuillez décrire les produits ou les services que vous proposez » et indiquez une phrase simple
+              décrivant votre activité (ex : « Je suis Pro sur Do You Geckoo »).
+            </p>
+          </>
         )}
       </div>
 

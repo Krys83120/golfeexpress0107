@@ -88,25 +88,39 @@ export function EarningsScreen() {
         ) : (
           <>
             {!stripeStatus?.payoutsEnabled && (
-              <View style={styles.bankCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.bankCardTitle}>
-                    {stripeStatus?.connected ? "🏦 Inscription bancaire incomplète" : "🏦 Coordonnées bancaires"}
-                  </Text>
-                  <Text style={styles.bankCardSubtitle}>
-                    {stripeStatus?.onboardingComplete
-                      ? "Vérification Stripe en cours..."
-                      : "Configurez-les pour être payé automatiquement après chaque livraison."}
+              <>
+                <View style={styles.bankCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.bankCardTitle}>
+                      {stripeStatus?.connected ? "🏦 Inscription bancaire incomplète" : "🏦 Coordonnées bancaires"}
+                    </Text>
+                    <Text style={styles.bankCardSubtitle}>
+                      {stripeStatus?.onboardingComplete
+                        ? "Vérification Stripe en cours..."
+                        : "Configurez-les pour être payé automatiquement après chaque livraison."}
+                    </Text>
+                  </View>
+                  <Pressable onPress={handleConfigureBankAccount} disabled={onboardingLoading} style={styles.bankCardBtn}>
+                    {onboardingLoading ? (
+                      <ActivityIndicator color="white" size="small" />
+                    ) : (
+                      <Text style={styles.bankCardBtnText}>{stripeStatus?.connected ? "Continuer" : "Configurer"}</Text>
+                    )}
+                  </Pressable>
+                </View>
+                {/* Astuce site web -- demande de Krys (24/09/2026) : la
+                    plupart des livreurs n'ont pas de site, et le champ
+                    "Site web" de Stripe bloque sinon la progression du
+                    formulaire si on ne sait pas qu'il existe une
+                    alternative. */}
+                <View style={styles.bankTipWrap}>
+                  <Text style={styles.bankTipText}>
+                    💡 Si Stripe vous demande un site web et que vous n'en avez pas : appuyez sur « Pas de site web,
+                    veuillez décrire les produits ou les services que vous proposez » et indiquez une phrase simple
+                    décrivant votre activité (ex : « Je suis livreur sur Do You Geckoo »).
                   </Text>
                 </View>
-                <Pressable onPress={handleConfigureBankAccount} disabled={onboardingLoading} style={styles.bankCardBtn}>
-                  {onboardingLoading ? (
-                    <ActivityIndicator color="white" size="small" />
-                  ) : (
-                    <Text style={styles.bankCardBtnText}>{stripeStatus?.connected ? "Continuer" : "Configurer"}</Text>
-                  )}
-                </Pressable>
-              </View>
+              </>
             )}
 
             {stripeStatus?.payoutsEnabled && (
@@ -304,6 +318,8 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   bankUpdateText: { fontSize: 12, fontWeight: "600", color: "#6B7280", textDecorationLine: "underline" },
+  bankTipWrap: { marginHorizontal: 20, marginTop: 8 },
+  bankTipText: { fontSize: 11, lineHeight: 15, color: "#6B7280" },
   balanceCard: { marginHorizontal: 20, marginTop: 12, borderRadius: 16, padding: 20 },
   balanceLabel: { fontSize: 13, color: "rgba(255,255,255,0.7)" },
   balanceAmount: { marginTop: 4, fontSize: 32, fontWeight: "800", color: "white" },
