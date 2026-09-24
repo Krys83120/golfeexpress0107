@@ -98,8 +98,20 @@ export function FinancesPage() {
     try {
       const url = await createStripeOnboardingLink();
       window.open(url, "_blank");
-    } catch {
-      alert("Impossible d'ouvrir le formulaire bancaire Stripe. Réessayez dans un instant.");
+    } catch (err) {
+      // Message générique auparavant même en cas d'erreur serveur précise
+      // (24/09/2026, retour de Krys : impossible de diagnostiquer un échec
+      // sans voir le vrai message) -- err.message reste volontairement
+      // vague pour une erreur 500 non prévue ("Erreur interne du serveur.",
+      // voir withErrorHandling côté API, qui ne renvoie jamais le détail
+      // d'une exception inattendue au client) : le détail réel (ex: erreur
+      // Stripe) n'apparaît alors que dans les logs Vercel de la fonction.
+      console.error("Ouverture formulaire bancaire Stripe échouée :", err);
+      alert(
+        err instanceof Error
+          ? `Impossible d'ouvrir le formulaire bancaire Stripe : ${err.message}`
+          : "Impossible d'ouvrir le formulaire bancaire Stripe. Réessayez dans un instant."
+      );
     } finally {
       setOnboardingLoading(false);
     }

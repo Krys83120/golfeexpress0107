@@ -58,7 +58,17 @@ export function EarningsScreen() {
       const url = await createStripeOnboardingLink();
       await Linking.openURL(url);
     } catch (err) {
-      Alert.alert("Erreur", "Impossible d'ouvrir le formulaire bancaire Stripe. Réessayez dans un instant.");
+      // Message générique auparavant même en cas d'erreur serveur précise
+      // (24/09/2026, retour de Krys, même correctif que FinancesPage.tsx
+      // côté Pro) -- voir ce fichier pour le détail sur ce que peut/ne peut
+      // pas révéler err.message.
+      console.error("Ouverture formulaire bancaire Stripe échouée :", err);
+      Alert.alert(
+        "Erreur",
+        err instanceof Error
+          ? `Impossible d'ouvrir le formulaire bancaire Stripe : ${err.message}`
+          : "Impossible d'ouvrir le formulaire bancaire Stripe. Réessayez dans un instant."
+      );
     } finally {
       setOnboardingLoading(false);
     }
