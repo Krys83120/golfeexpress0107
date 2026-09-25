@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, MoreVertical, Star, Eye, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Search, MoreVertical, Star, Eye, ArrowUp, ArrowDown, ArrowUpDown, Rocket } from "lucide-react";
+import { SubscriptionType } from "@golfeexpress/types";
 import { PRO_STATUS_LABELS, SUBSCRIPTION_LABELS, PRO_CATEGORY_EMOJIS } from "@/services/proLabels";
 import { fetchAdminPros, type AdminProRow } from "@/services/adminEntitiesApi";
 import { fetchAdminProViews, type AdminProductViewRow } from "@/services/proViewsApi";
 import { MapView, type MapPin } from "@/components/MapView";
 import { ProDetailModal } from "@/components/ProDetailModal";
+import { PremiumUpsellModal } from "@/components/PremiumUpsellModal";
 
 export function ProsPage() {
   const [search, setSearch] = useState("");
@@ -13,6 +15,10 @@ export function ProsPage() {
   const [error, setError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedPro, setSelectedPro] = useState<AdminProRow | null>(null);
+  // Mail d'incitation Premium (25/09/2026) -- fiche séparée de ProDetailModal
+  // ci-dessus pour ne jamais mélanger l'édition/validation du commerçant
+  // avec un envoi d'email marketing, deux actions bien distinctes.
+  const [upsellPro, setUpsellPro] = useState<AdminProRow | null>(null);
 
   // Compteurs de vues (19/09/2026, demande explicite de Krys) -- chargés à
   // part de fetchAdminPros (route dédiée, voir proViewsApi.ts) : proViews en
@@ -355,7 +361,7 @@ export function ProsPage() {
                       {openMenuId === pro.id && (
                         <>
                           <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
-                          <div className="absolute right-4 top-10 z-20 w-48 rounded-sm border border-gris-light bg-white py-1 shadow-lg">
+                          <div className="absolute right-4 top-10 z-20 w-56 rounded-sm border border-gris-light bg-white py-1 shadow-lg">
                             <button
                               onClick={() => {
                                 setSelectedPro(pro);
@@ -365,6 +371,18 @@ export function ProsPage() {
                             >
                               Voir / modifier / valider
                             </button>
+                            {pro.subscriptionType === SubscriptionType.FREE && (
+                              <button
+                                onClick={() => {
+                                  setUpsellPro(pro);
+                                  setOpenMenuId(null);
+                                }}
+                                className="flex w-full items-center gap-1.5 px-4 py-2 text-left text-sm text-nuit hover:bg-gris-light"
+                              >
+                                <Rocket size={13} className="text-gris" />
+                                Encourager à passer Premium
+                              </button>
+                            )}
                           </div>
                         </>
                       )}
@@ -406,6 +424,16 @@ export function ProsPage() {
           pro={selectedPro}
           onClose={() => setSelectedPro(null)}
           onUpdated={(updated) => setPros((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))}
+        />
+      )}
+
+      {upsellPro && (
+        <PremiumUpsellModal
+          pro={upsellPro}
+          onClose={() => setUpsellPro(null)}
+          onSent={(sentAt) =>
+            setPros((prev) => prev.map((p) => (p.id === upsellPro.id ? { ...p, lastPremiumUpsellEmailAt: sentAt } : p)))
+          }
         />
       )}
     </div>

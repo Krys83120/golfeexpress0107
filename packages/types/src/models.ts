@@ -76,6 +76,8 @@ export interface Pro {
   commissionRate: number;
   subscriptionType: SubscriptionType;
   subscriptionExpiry?: string | null;
+  /** Date du dernier email d'incitation Premium envoyé par un Admin (25/09/2026). Voir prisma/schema.prisma. */
+  lastPremiumUpsellEmailAt?: string | null;
   rating?: number | null;
   ratingCount: number;
   instagramUrl?: string | null;

@@ -1,3 +1,4 @@
+import type { AdminPartnerPack } from "@golfeexpress/types";
 import { sendEmail, emailShell, button, infoBox, formatEuros, formatDate, PORTAL_URLS } from "./shared";
 
 const SUBSCRIPTION_URL = `${PORTAL_URLS.pro}?tab=subscription`;
@@ -97,4 +98,68 @@ export async function sendSubscriptionReactivatedEmail(email: string, data: Subs
     ${button("Voir mon abonnement", SUBSCRIPTION_URL)}
   `);
   await sendEmail(email, `Abonnement ${data.packName} réactivé`, html);
+}
+
+export interface PremiumUpsellEmailData {
+  businessName: string;
+  /** Texte d'accroche saisi/modifié par l'Admin avant envoi -- voir
+   * admin/pros/[proId]/premium-upsell/route.ts. Tout le reste du mail
+   * (comparatif des packs, bouton, mise en forme) reste fixe. */
+  introText: string;
+  /** Commission actuelle du Pro (son pack en cours, généralement Découverte). */
+  currentCommissionRate: number;
+  premiumPack: AdminPartnerPack;
+  premiumPlusPack: AdminPartnerPack;
+}
+
+function packCard(pack: AdminPartnerPack, accentColor: string): string {
+  const featuresHtml = pack.features
+    .map((f) => `<li style="margin-bottom:4px;">${f}</li>`)
+    .join("");
+  return `
+    <div style="border:2px solid ${accentColor};border-radius:12px;padding:20px;margin:16px 0;">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:${accentColor};margin:0 0 6px;">
+        Pack ${pack.name}
+      </p>
+      <p style="font-size:22px;font-weight:800;color:#1A1A2E;margin:0 0 12px;">
+        ${formatEuros(pack.priceMonthly)} <span style="font-size:13px;font-weight:400;color:#6B7280;">/ mois</span>
+      </p>
+      <ul style="margin:0;padding-left:18px;font-size:13px;color:#374151;line-height:1.5;">${featuresHtml}</ul>
+    </div>`;
+}
+
+/**
+ * Construit le HTML du mail d'incitation Premium sans l'envoyer -- séparé
+ * de sendPremiumUpsellEmail ci-dessous pour servir aussi à l'aperçu côté
+ * admin (mode "preview" de la route, qui ne doit jamais déclencher un vrai
+ * envoi). Les prix/commissions/avantages affichés viennent TOUJOURS des
+ * packs passés en paramètre (lus en live depuis la config Admin > Packs
+ * Partenaires via findPack, jamais codés en dur ici) -- si Krys ajuste un
+ * tarif, le prochain envoi (et son aperçu) reflètent immédiatement le
+ * nouveau prix.
+ */
+export function buildPremiumUpsellEmailHtml(data: PremiumUpsellEmailData): string {
+  const { businessName, introText, currentCommissionRate, premiumPack, premiumPlusPack } = data;
+  return emailShell(`
+    <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🚀 Passez à un pack Premium</h1>
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Bonjour <strong>${businessName}</strong>,
+    </p>
+    <p style="font-size:14px;color:#374151;line-height:1.6;white-space:pre-line;">${introText}</p>
+    ${packCard(premiumPack, "#2196F3")}
+    ${packCard(premiumPlusPack, "#9C27B0")}
+    <p style="font-size:13px;color:#6B7280;line-height:1.6;">
+      Actuellement, votre commerce est sur le pack Découverte (gratuit), avec une commission de
+      ${(currentCommissionRate * 100).toFixed(0)}% par commande. Passer à un pack payant réduit cette commission
+      dès le mois suivant, en plus des autres avantages ci-dessus. Vous pouvez changer de pack à tout moment
+      depuis votre espace Pro.
+    </p>
+    ${button("Découvrir les packs Premium", SUBSCRIPTION_URL)}
+  `);
+}
+
+/** Envoi réel (ou test) du mail d'incitation Premium -- voir buildPremiumUpsellEmailHtml ci-dessus. */
+export async function sendPremiumUpsellEmail(email: string, subject: string, data: PremiumUpsellEmailData): Promise<void> {
+  const html = buildPremiumUpsellEmailHtml(data);
+  await sendEmail(email, subject, html);
 }

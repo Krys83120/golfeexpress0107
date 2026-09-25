@@ -291,6 +291,11 @@ model Pro {
   commissionRate    Decimal     @default(0.15) @map("commission_rate")
   subscriptionType  SubscriptionType @default(FREE) @map("subscription_type")
   subscriptionExpiry DateTime?  @map("subscription_expiry")
+  /// Date du dernier email d'incitation à passer sur un pack payant, envoyé
+  /// manuellement par un Admin depuis Commerçants (ajout du 25/09/2026,
+  /// demande de Krys) -- affiché sur la fiche pour éviter de relancer deux
+  /// fois le même commerçant sans s'en rendre compte. null = jamais envoyé.
+  lastPremiumUpsellEmailAt DateTime? @map("last_premium_upsell_email_at")
   rating            Decimal?    @db.Decimal(2,1)
   ratingCount     Int      @default(0) @map("rating_count")
 

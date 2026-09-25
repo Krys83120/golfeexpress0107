@@ -300,6 +300,23 @@ export async function updateAdminPro(proId: string, payload: UpdateAdminProPaylo
   return data.pro;
 }
 
+/**
+ * POST /api/admin/pros/:proId/premium-upsell (ajout du 25/09/2026, demande
+ * de Krys) -- un seul endpoint pour les 3 usages du mail d'incitation
+ * Premium : "preview" (aperçu sans envoi, renvoie le HTML), "test" (envoi à
+ * l'admin connecté pour vérifier le rendu réel) et "send" (envoi réel au
+ * commerçant, met à jour lastPremiumUpsellEmailAt côté serveur).
+ */
+export async function premiumUpsellAction(
+  proId: string,
+  payload: { subject: string; introText: string; mode: "preview" | "test" | "send" }
+): Promise<{ html?: string; sent?: boolean; sentAt?: string; to?: string }> {
+  return apiFetch(`/api/admin/pros/${proId}/premium-upsell`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
 /** GET /api/admin/riders/:riderId/reviews */
 export async function fetchAdminRiderReviews(riderId: string): Promise<Review[]> {
   const data = await apiFetch<{ reviews: Review[] }>(`/api/admin/riders/${riderId}/reviews`);
