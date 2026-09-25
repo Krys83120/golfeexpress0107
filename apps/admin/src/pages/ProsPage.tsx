@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Search, MoreVertical, Star, Eye } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Search, MoreVertical, Star, Eye, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { PRO_STATUS_LABELS, SUBSCRIPTION_LABELS, PRO_CATEGORY_EMOJIS } from "@/services/proLabels";
 import { fetchAdminPros, type AdminProRow } from "@/services/adminEntitiesApi";
 import { fetchAdminProViews, type AdminProductViewRow } from "@/services/proViewsApi";
@@ -22,6 +22,32 @@ export function ProsPage() {
   const [proViews, setProViews] = useState<Map<string, number>>(new Map());
   const [topProducts, setTopProducts] = useState<AdminProductViewRow[]>([]);
 
+  // Tri + filtres par colonne (ajout du 25/09/2026, demande de Krys) -- tri
+  // cliquable sur toutes les colonnes du tableau, filtres déroulants sur les
+  // colonnes "catégorielles" (Ville, Abonnement, Statut) où filtrer par
+  // valeur a du sens ; Note/Commandes/Vues restent triables mais pas
+  // filtrables par plage, ça n'apportait pas grand-chose de plus que le tri.
+  type SortKey = "name" | "city" | "subscription" | "rating" | "orders" | "views" | "status";
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [filterCity, setFilterCity] = useState("");
+  const [filterSubscription, setFilterSubscription] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortIcon = (key: SortKey) => {
+    if (sortKey !== key) return <ArrowUpDown size={12} className="text-gris-light" />;
+    return sortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />;
+  };
+
   useEffect(() => {
     fetchAdminPros()
       .then((data) => {
@@ -43,9 +69,66 @@ export function ProsPage() {
       });
   }, []);
 
-  const filtered = pros.filter((p) =>
-    `${p.businessName} ${p.addresses[0]?.city ?? ""}`.toLowerCase().includes(search.toLowerCase())
+  // Valeurs disponibles pour les filtres déroulants -- dérivées des
+  // commerçants réellement présents (pas de toutes les valeurs possibles de
+  // l'enum) pour ne jamais proposer un filtre qui viderait la liste.
+  const uniqueCities = useMemo(
+    () => Array.from(new Set(pros.map((p) => p.addresses[0]?.city).filter((c): c is string => Boolean(c)))).sort(
+      (a, b) => a.localeCompare(b)
+    ),
+    [pros]
   );
+  const uniqueSubscriptions = useMemo(
+    () => Array.from(new Set(pros.map((p) => p.subscriptionType))),
+    [pros]
+  );
+  const uniqueStatuses = useMemo(() => Array.from(new Set(pros.map((p) => p.status))), [pros]);
+
+  const filtered = useMemo(() => {
+    let result = pros.filter((p) =>
+      `${p.businessName} ${p.addresses[0]?.city ?? ""}`.toLowerCase().includes(search.toLowerCase())
+    );
+    if (filterCity) result = result.filter((p) => p.addresses[0]?.city === filterCity);
+    if (filterSubscription) result = result.filter((p) => p.subscriptionType === filterSubscription);
+    if (filterStatus) result = result.filter((p) => p.status === filterStatus);
+
+    if (sortKey) {
+      const dir = sortDir === "asc" ? 1 : -1;
+      result = [...result].sort((a, b) => {
+        switch (sortKey) {
+          case "name":
+            return a.businessName.localeCompare(b.businessName) * dir;
+          case "city":
+            return (a.addresses[0]?.city ?? "").localeCompare(b.addresses[0]?.city ?? "") * dir;
+          case "subscription":
+            return SUBSCRIPTION_LABELS[a.subscriptionType].label.localeCompare(
+              SUBSCRIPTION_LABELS[b.subscriptionType].label
+            ) * dir;
+          case "status":
+            return PRO_STATUS_LABELS[a.status].label.localeCompare(PRO_STATUS_LABELS[b.status].label) * dir;
+          case "orders":
+            return (a._count.orders - b._count.orders) * dir;
+          case "views":
+            return ((proViews.get(a.id) ?? 0) - (proViews.get(b.id) ?? 0)) * dir;
+          case "rating": {
+            // Un commerçant sans note ("—") reste toujours en fin de liste,
+            // quel que soit le sens du tri -- comportement attendu pour ce
+            // genre de tableau (sinon "trier par note" ferait remonter les
+            // non-notés en premier au tri décroissant, contre-intuitif).
+            const ra = a.rating ? Number(a.rating) : null;
+            const rb = b.rating ? Number(b.rating) : null;
+            if (ra === null && rb === null) return 0;
+            if (ra === null) return 1;
+            if (rb === null) return -1;
+            return (ra - rb) * dir;
+          }
+          default:
+            return 0;
+        }
+      });
+    }
+    return result;
+  }, [pros, search, filterCity, filterSubscription, filterStatus, sortKey, sortDir, proViews]);
 
   const pins: MapPin[] = pros
     .filter((p) => p.addresses[0])
@@ -70,7 +153,11 @@ export function ProsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="font-heading text-2xl font-extrabold text-nuit">Commerçants</h1>
-          <p className="text-sm text-gris">{pros.length} commerçants sur la plateforme</p>
+          <p className="text-sm text-gris">
+            {filtered.length === pros.length
+              ? `${pros.length} commerçants sur la plateforme`
+              : `${filtered.length} sur ${pros.length} commerçants`}
+          </p>
         </div>
       </div>
 
@@ -79,14 +166,30 @@ export function ProsPage() {
         <MapView pins={pins} height={480} emptyLabel="Aucun commerçant géolocalisé" />
       </div>
 
-      <div className="mb-4 flex items-center gap-2 rounded-sm border border-gris-light bg-white px-3 py-2">
-        <Search size={16} className="text-gris" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un commerçant..."
-          className="flex-1 text-sm outline-none"
-        />
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex flex-1 items-center gap-2 rounded-sm border border-gris-light bg-white px-3 py-2">
+          <Search size={16} className="text-gris" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un commerçant..."
+            className="flex-1 text-sm outline-none"
+          />
+        </div>
+        {(filterCity || filterSubscription || filterStatus || sortKey) && (
+          <button
+            onClick={() => {
+              setFilterCity("");
+              setFilterSubscription("");
+              setFilterStatus("");
+              setSortKey(null);
+              setSortDir("asc");
+            }}
+            className="whitespace-nowrap rounded-sm border border-gris-light px-3 py-2 text-xs font-semibold text-gris hover:bg-gris-light"
+          >
+            Réinitialiser
+          </button>
+        )}
       </div>
 
       {status === "error" && <div className="mb-4 rounded-sm bg-red-50 p-4 text-sm text-red-500">{error}</div>}
@@ -100,13 +203,98 @@ export function ProsPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gris-light text-xs uppercase tracking-wide text-gris">
-                <th className="py-2 pr-4 font-medium">Commerçant</th>
-                <th className="py-2 pr-4 font-medium">Ville</th>
-                <th className="py-2 pr-4 font-medium">Abonnement</th>
-                <th className="py-2 pr-4 font-medium">Note</th>
-                <th className="py-2 pr-4 font-medium">Commandes</th>
-                <th className="py-2 pr-4 font-medium">Vues</th>
-                <th className="py-2 pr-4 font-medium">Statut</th>
+                <th className="py-2 pr-4 font-medium">
+                  <button
+                    onClick={() => handleSort("name")}
+                    className="flex items-center gap-1 uppercase tracking-wide text-gris hover:text-nuit"
+                  >
+                    Commerçant {sortIcon("name")}
+                  </button>
+                </th>
+                <th className="py-2 pr-4 font-medium">
+                  <button
+                    onClick={() => handleSort("city")}
+                    className="flex items-center gap-1 uppercase tracking-wide text-gris hover:text-nuit"
+                  >
+                    Ville {sortIcon("city")}
+                  </button>
+                  <select
+                    value={filterCity}
+                    onChange={(e) => setFilterCity(e.target.value)}
+                    className="mt-1 w-full max-w-[110px] rounded-sm border border-gris-light bg-white px-1 py-0.5 text-xs normal-case tracking-normal text-nuit outline-none"
+                  >
+                    <option value="">Toutes</option>
+                    {uniqueCities.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </th>
+                <th className="py-2 pr-4 font-medium">
+                  <button
+                    onClick={() => handleSort("subscription")}
+                    className="flex items-center gap-1 uppercase tracking-wide text-gris hover:text-nuit"
+                  >
+                    Abonnement {sortIcon("subscription")}
+                  </button>
+                  <select
+                    value={filterSubscription}
+                    onChange={(e) => setFilterSubscription(e.target.value)}
+                    className="mt-1 w-full max-w-[110px] rounded-sm border border-gris-light bg-white px-1 py-0.5 text-xs normal-case tracking-normal text-nuit outline-none"
+                  >
+                    <option value="">Tous</option>
+                    {uniqueSubscriptions.map((s) => (
+                      <option key={s} value={s}>
+                        {SUBSCRIPTION_LABELS[s].label}
+                      </option>
+                    ))}
+                  </select>
+                </th>
+                <th className="py-2 pr-4 font-medium">
+                  <button
+                    onClick={() => handleSort("rating")}
+                    className="flex items-center gap-1 uppercase tracking-wide text-gris hover:text-nuit"
+                  >
+                    Note {sortIcon("rating")}
+                  </button>
+                </th>
+                <th className="py-2 pr-4 font-medium">
+                  <button
+                    onClick={() => handleSort("orders")}
+                    className="flex items-center gap-1 uppercase tracking-wide text-gris hover:text-nuit"
+                  >
+                    Commandes {sortIcon("orders")}
+                  </button>
+                </th>
+                <th className="py-2 pr-4 font-medium">
+                  <button
+                    onClick={() => handleSort("views")}
+                    className="flex items-center gap-1 uppercase tracking-wide text-gris hover:text-nuit"
+                  >
+                    Vues {sortIcon("views")}
+                  </button>
+                </th>
+                <th className="py-2 pr-4 font-medium">
+                  <button
+                    onClick={() => handleSort("status")}
+                    className="flex items-center gap-1 uppercase tracking-wide text-gris hover:text-nuit"
+                  >
+                    Statut {sortIcon("status")}
+                  </button>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="mt-1 w-full max-w-[110px] rounded-sm border border-gris-light bg-white px-1 py-0.5 text-xs normal-case tracking-normal text-nuit outline-none"
+                  >
+                    <option value="">Tous</option>
+                    {uniqueStatuses.map((s) => (
+                      <option key={s} value={s}>
+                        {PRO_STATUS_LABELS[s].label}
+                      </option>
+                    ))}
+                  </select>
+                </th>
                 <th className="py-2 pr-4 font-medium"></th>
               </tr>
             </thead>
