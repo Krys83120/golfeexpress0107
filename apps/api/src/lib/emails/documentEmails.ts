@@ -2,7 +2,7 @@ import { sendEmail, emailShell } from "./shared";
 
 /** Envoie le ticket de commande (PDF) en pièce jointe au destinataire. */
 export async function sendReceiptEmail(to: string, orderNumber: string, pdf: Buffer): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🧾 Votre ticket de commande</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Voici le ticket de votre commande <strong>${orderNumber}</strong>, en pièce jointe (PDF).
@@ -15,7 +15,7 @@ export async function sendReceiptEmail(to: string, orderNumber: string, pdf: Buf
 
 /** Envoie le rapport Z (PDF) en pièce jointe au Pro. */
 export async function sendZReportEmail(to: string, periodLabel: string, pdf: Buffer): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">📄 Rapport Z</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Voici votre rapport Z pour la période <strong>${periodLabel}</strong>, en pièce jointe (PDF).

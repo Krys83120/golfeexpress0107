@@ -30,7 +30,7 @@ const SOURCE_LABELS: Record<string, string> = {
  * court-circuiterait l'archivage.
  */
 export async function sendContactMessageEmail(data: ContactMessageData): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">✉️ Nouveau message — Nous contacter</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       <strong>${data.name}</strong> (${data.email}) — type : <strong>${data.type}</strong> — depuis :
@@ -46,7 +46,7 @@ export async function sendContactMessageEmail(data: ContactMessageData): Promise
 
 /** Accusé de réception envoyé au visiteur, pour confirmer que son message a bien été transmis. */
 export async function sendContactMessageConfirmation(email: string, name: string): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">✅ Message bien reçu</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour ${name}, nous avons bien reçu votre message et reviendrons vers vous sous 24h.
@@ -66,7 +66,7 @@ interface ContactMessageRepliedData {
 
 /** Envoyé au visiteur dès que l'admin répond à son message depuis ContactMessagesPage.tsx. */
 export async function sendContactMessageRepliedEmail(email: string, data: ContactMessageRepliedData): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">💬 Réponse à votre message</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Votre message « ${data.subject} » a reçu une réponse le ${formatDate(data.repliedAt)} :

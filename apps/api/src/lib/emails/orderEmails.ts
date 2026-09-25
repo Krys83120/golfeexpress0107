@@ -23,7 +23,7 @@ const TRACKING_URL = `${PORTAL_URLS.client}?tab=orders`;
 
 /** Envoyé quand le paiement est confirmé (webhook Stripe payment_intent.succeeded). */
 export async function sendOrderConfirmedEmail(email: string, order: OrderEmailData): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">✅ Commande confirmée</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Votre commande <strong>${order.orderNumber}</strong> chez <strong>${order.proBusinessName}</strong> est
@@ -50,7 +50,7 @@ export async function sendOrderPreparingEmail(
   order: OrderEmailData,
   estimatedMinutes: number
 ): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">👨‍🍳 Votre commande est en préparation</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       <strong>${order.proBusinessName}</strong> prépare votre commande <strong>${order.orderNumber}</strong>.
@@ -63,7 +63,7 @@ export async function sendOrderPreparingEmail(
 
 /** Envoyé quand le livreur récupère la commande (PICKED_UP) et se met en route. */
 export async function sendOrderOnTheWayEmail(email: string, order: OrderEmailData): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🛵 Votre livreur est en route !</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Votre commande <strong>${order.orderNumber}</strong> a été récupérée chez ${order.proBusinessName} et arrive
@@ -95,7 +95,7 @@ export async function sendOrderDeliveredEmail(email: string, order: OrderEmailDa
     )
     .join("");
 
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">📦 Commande livrée !</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Votre commande <strong>${order.orderNumber}</strong> chez ${order.proBusinessName} vient d'être livrée.
@@ -134,7 +134,7 @@ export async function sendOrderCancelledEmail(
     system: "Cette commande a été annulée automatiquement.",
   }[cancelledBy];
 
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">Commande annulée</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Votre commande <strong>${order.orderNumber}</strong> a été annulée. ${reasonText}
@@ -146,7 +146,7 @@ export async function sendOrderCancelledEmail(
 
 /** Envoyé quand un remboursement Stripe est effectué (webhook charge.refunded). */
 export async function sendOrderRefundedEmail(email: string, order: OrderEmailData, amount: number): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">💶 Remboursement effectué</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Un remboursement de <strong>${formatEuros(amount)}</strong> pour votre commande
@@ -161,7 +161,7 @@ export async function sendOrderRefundedEmail(email: string, order: OrderEmailDat
 
 /** Envoyé au Pro dès qu'une nouvelle commande payée arrive. */
 export async function sendNewOrderToProEmail(email: string, order: OrderEmailData, clientName: string): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🔔 Nouvelle commande !</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Vous avez reçu une nouvelle commande <strong>${order.orderNumber}</strong> de la part de
@@ -174,7 +174,7 @@ export async function sendNewOrderToProEmail(email: string, order: OrderEmailDat
 
 /** Envoyé au Pro quand un client annule une commande déjà transmise. */
 export async function sendOrderCancelledByClientToProEmail(email: string, order: OrderEmailData): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">Commande annulée par le client</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       La commande <strong>${order.orderNumber}</strong> vient d'être annulée par le client. Aucune action de votre

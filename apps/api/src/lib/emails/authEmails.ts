@@ -26,7 +26,7 @@ const WELCOME_CONTENT: Record<WelcomeRole, { title: string; body: string; ctaLab
 /** Envoyé juste après une inscription réussie, quel que soit le rôle. */
 export async function sendWelcomeEmail(email: string, firstName: string, role: WelcomeRole): Promise<void> {
   const content = WELCOME_CONTENT[role];
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">${content.title}</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour ${firstName},<br><br>
@@ -48,7 +48,7 @@ export async function sendPasswordResetEmail(
   firstName: string,
   resetUrl: string
 ): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">Réinitialisation de mot de passe</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour ${firstName},<br><br>

@@ -22,7 +22,7 @@ interface SubscriptionEmailData {
  * reçu de paiement automatique de Stripe.
  */
 export async function sendSubscriptionConfirmedEmail(email: string, data: SubscriptionEmailData): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🎉 Abonnement ${data.packName} confirmé</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour <strong>${data.businessName}</strong>, votre souscription au pack <strong>${data.packName}</strong>
@@ -61,7 +61,7 @@ interface SubscriptionCancelledEmailData {
  * immédiate.
  */
 export async function sendSubscriptionCancelledEmail(email: string, data: SubscriptionCancelledEmailData): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">Résiliation enregistrée</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour <strong>${data.businessName}</strong>, votre résiliation du pack <strong>${data.packName}</strong>
@@ -88,7 +88,7 @@ interface SubscriptionReactivatedEmailData {
 
 /** Envoyé quand une résiliation en attente est annulée avant d'avoir pris effet. */
 export async function sendSubscriptionReactivatedEmail(email: string, data: SubscriptionReactivatedEmailData): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">✅ Abonnement réactivé</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour <strong>${data.businessName}</strong>, votre résiliation du pack <strong>${data.packName}</strong> a
@@ -138,7 +138,7 @@ function packCard(pack: AdminPartnerPack, accentColor: string): string {
  * tarif, le prochain envoi (et son aperçu) reflètent immédiatement le
  * nouveau prix.
  */
-export function buildPremiumUpsellEmailHtml(data: PremiumUpsellEmailData): string {
+export async function buildPremiumUpsellEmailHtml(data: PremiumUpsellEmailData): Promise<string> {
   const { businessName, introText, currentCommissionRate, premiumPack, premiumPlusPack } = data;
   return emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🚀 Passez à un pack Premium</h1>
@@ -160,6 +160,6 @@ export function buildPremiumUpsellEmailHtml(data: PremiumUpsellEmailData): strin
 
 /** Envoi réel (ou test) du mail d'incitation Premium -- voir buildPremiumUpsellEmailHtml ci-dessus. */
 export async function sendPremiumUpsellEmail(email: string, subject: string, data: PremiumUpsellEmailData): Promise<void> {
-  const html = buildPremiumUpsellEmailHtml(data);
+  const html = await buildPremiumUpsellEmailHtml(data);
   await sendEmail(email, subject, html);
 }

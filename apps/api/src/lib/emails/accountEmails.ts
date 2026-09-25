@@ -3,7 +3,7 @@ import { sendEmail, emailShell, button, infoBox, PORTAL_URLS } from "./shared";
 // ==================== KYC (déjà existants, repris ici) ====================
 
 export async function sendProValidatedEmail(email: string, businessName: string): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🎉 Votre boutique est validée !</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour,<br><br>
@@ -17,7 +17,7 @@ export async function sendProValidatedEmail(email: string, businessName: string)
 }
 
 export async function sendProRejectedEmail(email: string, businessName: string, reason: string): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">Votre dossier nécessite une correction</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour,<br><br>
@@ -34,7 +34,7 @@ export async function sendProRejectedEmail(email: string, businessName: string, 
 }
 
 export async function sendRiderValidatedEmail(email: string, firstName: string): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🎉 Votre dossier livreur est validé !</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour ${firstName},<br><br>
@@ -47,7 +47,7 @@ export async function sendRiderValidatedEmail(email: string, firstName: string):
 }
 
 export async function sendRiderRejectedEmail(email: string, firstName: string, reason: string): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">Votre dossier nécessite une correction</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour ${firstName},<br><br>
@@ -71,7 +71,7 @@ export async function sendAccountSuspendedEmail(
   reason?: string
 ): Promise<void> {
   const label = kind === "pro" ? "votre boutique" : "votre compte livreur";
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">Compte suspendu</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour ${firstName},<br><br>
@@ -88,7 +88,7 @@ export async function sendAccountSuspendedEmail(
 export async function sendAccountReactivatedEmail(email: string, firstName: string, kind: "pro" | "rider"): Promise<void> {
   const portalUrl = kind === "pro" ? PORTAL_URLS.pro : PORTAL_URLS.rider;
   const label = kind === "pro" ? "Votre boutique" : "Votre compte livreur";
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">✅ Compte réactivé</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour ${firstName},<br><br>
@@ -107,7 +107,7 @@ export async function sendStripeConnectActivatedEmail(
   kind: "pro" | "rider"
 ): Promise<void> {
   const portalUrl = kind === "pro" ? PORTAL_URLS.pro : PORTAL_URLS.rider;
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">💳 Paiements automatiques activés</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour ${firstName},<br><br>
@@ -128,7 +128,7 @@ export async function sendStripeConnectActivatedEmail(
  * récapitulatif final.
  */
 export async function sendKbisReminderEmail(email: string, businessName: string, daysRemaining: number): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">📄 Pensez à renouveler votre Kbis</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Bonjour,<br><br>

@@ -9,7 +9,7 @@ import { sendAdminAlert, emailShell, button, infoBox, formatEuros, PORTAL_URLS }
 // façon un badge avec le nombre de dossiers en attente -- facile à repérer.
 
 export async function sendNewProPendingAlert(businessName: string, email: string): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🏪 Nouveau commerçant inscrit</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       <strong>${businessName}</strong> (${email}) vient de s'inscrire et attend la validation de son dossier.
@@ -20,7 +20,7 @@ export async function sendNewProPendingAlert(businessName: string, email: string
 }
 
 export async function sendNewRiderPendingAlert(firstName: string, lastName: string, email: string): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🛵 Nouveau livreur inscrit</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       <strong>${firstName} ${lastName}</strong> (${email}) vient de s'inscrire et attend la validation de son
@@ -37,7 +37,7 @@ export async function sendTransferFailedAlert(
   amount: number,
   errorMessage: string
 ): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">⚠️ Échec d'un virement Stripe Connect</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Le virement automatique de <strong>${amount.toFixed(2).replace(".", ",")} €</strong> vers le
@@ -72,7 +72,7 @@ export async function sendParcelTransferFailedAlert(
   amount: number,
   errorMessage: string
 ): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">⚠️ Échec d'un virement Colis Express</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Le virement automatique de <strong>${amount.toFixed(2).replace(".", ",")} €</strong> vers le livreur de
@@ -120,7 +120,7 @@ export async function sendOrderRefundFailedAlert(
 ): Promise<void> {
   const cancelledByLabel =
     cancelledBy === "client" ? "le client" : cancelledBy === "pro" ? "le commerçant" : "un administrateur";
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">💸 Échec d'un remboursement automatique</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       La commande <strong>${orderNumber}</strong> (<strong>${formatEuros(amount)}</strong>), annulée par
@@ -142,7 +142,7 @@ export async function sendWithdrawalTransferFailedAlert(
   amount: number,
   errorMessage: string
 ): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">⚠️ Échec d'un virement de retrait livreur</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Le virement Stripe Connect de <strong>${amount.toFixed(2).replace(".", ",")} €</strong> demandé par le

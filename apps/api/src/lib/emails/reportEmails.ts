@@ -32,7 +32,7 @@ interface NewReportEmailData {
 
 /** Alerte l'équipe Do You Geckoo dès qu'une nouvelle réclamation/signalement est créé, quel que soit le rôle. */
 export async function sendNewReportAdminAlert(data: NewReportEmailData): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">🚩 Nouvelle réclamation</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Signalée par <strong>${ROLE_LABELS[data.reporterRole] ?? data.reporterRole}</strong>
@@ -53,7 +53,7 @@ interface ReportRepliedEmailData {
 
 /** Envoyé à l'auteur de la réclamation (client, livreur ou pro) dès que l'admin répond ou clôt le dossier. */
 export async function sendReportRepliedEmail(email: string, data: ReportRepliedEmailData): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">💬 Réponse à votre signalement</h1>
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Votre signalement (${CATEGORY_LABELS[data.category] ?? data.category}) concernant la commande

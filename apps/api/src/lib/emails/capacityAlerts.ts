@@ -13,7 +13,7 @@ export async function sendStuckOrderAlert(data: {
   proBusinessName: string;
   minutesWaiting: number;
 }): Promise<void> {
-  const html = emailShell(`
+  const html = await emailShell(`
     <h2 style="font-size:18px;color:#1A1A2E;margin:0 0 12px;">🚨 Commande sans livreur</h2>
     <p style="font-size:14px;color:#1A1A2E;margin:0 0 8px;">
       La commande <strong>#${data.orderNumber}</strong> chez <strong>${data.proBusinessName}</strong> attend un
