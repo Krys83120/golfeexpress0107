@@ -39,10 +39,31 @@ export async function sendEmail(
   attachments?: EmailAttachment[],
   replyTo?: string
 ): Promise<void> {
+  await sendTrackedEmail(to, subject, html, attachments, replyTo);
+}
+
+/**
+ * Identique à `sendEmail`, mais renvoie l'identifiant du message Resend
+ * (`{ id }` dans la réponse de leur API) -- ajouté le 26/09/2026 pour la
+ * prospection commerciale (voir lib/emails/prospectingEmails.ts et
+ * app/api/webhooks/resend/route.ts) : c'est cet identifiant qui permet de
+ * relier un événement webhook Resend ("email.opened", "email.clicked") au
+ * bon Prospect en base, puisque Resend n'accepte pas de métadonnée
+ * personnalisée arbitraire sur un envoi simple. `sendEmail` ci-dessus reste
+ * inchangé pour tous les autres appelants (aucun n'a besoin de cet id) --
+ * ils continuent d'ignorer la valeur de retour comme avant.
+ */
+export async function sendTrackedEmail(
+  to: string,
+  subject: string,
+  html: string,
+  attachments?: EmailAttachment[],
+  replyTo?: string
+): Promise<{ id: string | null }> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn(`[email] RESEND_API_KEY manquante — email non envoyé (destinataire: ${to}, sujet: ${subject}).`);
-    return;
+    return { id: null };
   }
 
   try {
@@ -61,11 +82,16 @@ export async function sendEmail(
 
     if (!response.ok) {
       console.error(`[email] Échec de l'envoi à ${to}:`, await response.text());
+      return { id: null };
     }
+
+    const data = await response.json().catch(() => null);
+    return { id: typeof data?.id === "string" ? data.id : null };
   } catch (err) {
     // Erreur réseau vers Resend : on journalise et on continue, jamais
     // d'exception remontée à l'appelant pour un email raté.
     console.error(`[email] Erreur réseau lors de l'envoi à ${to}:`, err);
+    return { id: null };
   }
 }
 

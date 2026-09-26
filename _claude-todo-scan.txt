@@ -1,0 +1,47 @@
+﻿C:\Golfe0107\golfeexpress\apps\api\src\app\api\admin\cities\route.ts:16: * les livreurs actifs au global divisé proportionnellement — TODO: affiner
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\admin\parcel-orders\reassign\route.ts:17: * -- possible uniquement tant que le colis n'a pas encore été récupéré
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\admin\parcel-orders\reassign\route.ts:23: * demande était encore CONFIRMED (pas encore de livreur), elle passe à
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\admin\pros\[proId]\categories\route.ts:13: * n'a pas encore de ligne MenuCategory : elle apparaît quand même ici (comptée
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\admin\pros\[proId]\products\set-images\route.ts:16: * pensé pour compléter un import CSV qui ne gère pas encore les images
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\admin\pros\[proId]\products\set-images\route.ts:25: * -- ex: doublons pas encore nettoyés) est simplement ignoré et remonté
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\admin\pros\[proId]\products\set-images\route.ts:62: // précédent, pas encore nettoyés via .../products/reset) -- on
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\admin\settings\route.ts:14: * TODO: GET /api/settings/public qui ne renvoie qu'une liste blanche de clés.
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\admin\stats\route.ts:15: * premier jet. Si le volume de données devient important, envisager un job
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\orders\[orderId]\accept\route.ts:30: throw new ApiError(403, "Votre compte livreur n'est pas encore activé.");
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\orders\[orderId]\status\route.ts:37: // SERVICE_FEE dans orders/route.ts : codé en dur pour ce premier jet, à
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\orders\[orderId]\status\route.ts:125: "Cette commande n'est pas encore marquée prête par le commerçant — impossible de la récupérer pour l'instant."
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\orders\route.ts:24: // Frais de service — pas encore piloté depuis Admin > Tarification (voir
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\orders\route.ts:92: // comprenne qu'il s'agit d'un commerçant pas encore complètement
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\orders\route.ts:97: "Ce commerçant n'a pas encore renseigné ses horaires d'ouverture — commande impossible pour le moment."
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\orders\route.ts:164: `Do You Geckoo n'est pas encore disponible à ${toAddress.city}. Nous ouvrons le service commune par commune — revenez bientôt !`
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\orders\route.ts:172: // toutes communes confondues), pas encore un calcul par zone avec ETA
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\orders\route.ts:562: * Exclut les commandes PENDING (pas encore payées) du `where` d'un Pro ou
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\parcel-orders\cancel\route.ts:15: * Annulable tant que le colis n'a pas encore été récupéré par le livreur
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\parcel-orders\cancel\route.ts:24: *  - Paiement créé mais pas encore confirmé (AUTHORIZED) -> on annule
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\parcel-orders\update\route.ts:25: * pas encore payée (paymentStatus !== CAPTURED). Une fois le paiement
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\parcel-orders\update\route.ts:128: const expressFee = Number(parcelOrder.expressFee); // pas encore proposé côté formulaire, voir parcel-orders/route.ts
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\parcel-orders\route.ts:19: * Ce qu'elle NE fait PAS ENCORE (étapes suivantes, volontairement séparées) :
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\parcel-orders\route.ts:20: *  - Débiter le Pro via Stripe (paymentStatus reste PENDING) -- à câbler une
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\parcel-orders\route.ts:28: const EXPRESS_FEE = 0; // Pas encore proposé côté formulaire -- voir schema.prisma, champ conservé pour plus tard.
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\parcel-orders\route.ts:155: * étapes suivantes (paiement, intégration Livreur), pas encore branchées.
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\pros\me\finances\route.ts:15: * Pas de table Payout dédiée : il n'existe pas encore de vrai virement
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\pros\me\finances\route.ts:19: * versement automatique n'est pas implémenté.
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\pros\me\google-rating\sync\route.ts:35: "La synchronisation Google Avis n'est pas encore configurée côté serveur (clé API Google manquante)."
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\pros\me\products\[productId]\options\route.ts:85: // n'existe pas encore à ce stade (OptionChoice est créé juste après,
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\pros\me\stripe\status\route.ts:13: * account.updated n'est pas encore arrivé.
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\pros\me\subscription\checkout\route.ts:42: throw new ApiError(400, "Ce pack n'est pas encore disponible à la souscription, contactez le support.");
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\pros\me\subscription\invoices\route.ts:25: // Pas encore de Customer Stripe (jamais souscrit à un pack payant) : pas
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\pros\me\subscription\reactivate\route.ts:11: * période payée en cours n'est pas encore terminée — l'abonnement continue
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\riders\me\available-orders\route.ts:20: * Pour ce premier jet, pas de vrai filtrage géographique (distance à vol
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\riders\me\available-orders\route.ts:22: * disponibles sont renvoyées, triées par urgence. TODO: une fois
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\riders\me\available-orders\route.ts:30: * candidate pas encore notifiée (`riderNotifiedAt === null`), un
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\riders\me\available-orders\route.ts:46: throw new ApiError(403, "Votre compte livreur n'est pas encore activé.");
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\riders\me\withdrawals\route.ts:41: * pour ce premier jet (pas de virement SEPA déclenché) : on crée la ligne
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\riders\me\withdrawals\route.ts:44: * TODO: brancher un vrai virement (ex: Stripe Connect payouts) qui fera
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\settings\branding\route.ts:32: * build Client/Livreur pas encore redéployé — mais ça a eu l'effet inverse
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\settings\branding\route.ts:36: * pas encore redéployé retombe sur `undefined` → émoji 🦎 par défaut :
+C:\Golfe0107\golfeexpress\apps\api\src\app\api\settings\branding\route.ts:37: * un signal clair ("pas encore à jour") plutôt qu'un mauvais logo qui a
+C:\Golfe0107\golfeexpress\apps\api\src\lib\emails\accountEmails.ts:126: * voir Pro.kbisUploadedAt dans le schéma). Pas encore de tâche planifiée
+C:\Golfe0107\golfeexpress\apps\api\src\lib\partnerPacks.ts:143: * actuel — crée le Produit Stripe s'il n'existe pas encore, puis crée un
+C:\Golfe0107\golfeexpress\apps\api\src\lib\riderSearchWindow.ts:20: * commande pas encore physiquement prête.
+C:\Golfe0107\golfeexpress\apps\api\src\lib\riderSearchWindow.ts:22: * TODO: remplacer par un calcul par livreur (distance réelle / vitesse

@@ -10,6 +10,7 @@ import { VisitsPage } from "./pages/VisitsPage";
 import { ValidationsPage } from "./pages/ValidationsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { ProsPage } from "./pages/ProsPage";
+import { ProspectionPage } from "./pages/ProspectionPage";
 import { RidersPage } from "./pages/RidersPage";
 import { AdminFinancesPage } from "./pages/AdminFinancesPage";
 import { PartnerPacksPage } from "./pages/PartnerPacksPage";
@@ -63,6 +64,8 @@ function MainApp() {
         return <UsersPage />;
       case "pros":
         return <ProsPage />;
+      case "prospection":
+        return <ProspectionPage />;
       case "riders":
         return <RidersPage />;
       case "finances":

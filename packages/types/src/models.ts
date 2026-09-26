@@ -630,3 +630,35 @@ export interface SubscriptionInvoice {
   /** Lien direct vers le PDF de la facture. */
   invoicePdfUrl: string | null;
 }
+
+/**
+ * Prospect de la page "Prospection" côté Admin (ajout du 26/09/2026, demande
+ * de Krys) -- restaurant/commerce du Golfe de Saint-Tropez pas encore Pro
+ * sur la plateforme, démarché depuis Admin. Voir Prospect côté Prisma pour
+ * le détail du raisonnement de chaque champ.
+ */
+export interface Prospect {
+  id: string;
+  businessName: string;
+  city: string;
+  category: ProCategory;
+  email: string | null;
+  phone: string | null;
+  websiteUrl: string | null;
+  googleMapsUrl: string | null;
+  notes: string | null;
+  /** "recherche_web" (import initial) ou "manuel" (ajouté/corrigé depuis Admin). */
+  source: string;
+  /** ISO, null si jamais envoyé. */
+  prospectingEmailSentAt: string | null;
+  prospectingEmailId: string | null;
+  /** ISO, null si jamais ouvert (nécessite le tracking Resend activé côté domaine). */
+  prospectingEmailOpenedAt: string | null;
+  /** ISO, null si jamais cliqué. */
+  prospectingEmailClickedAt: string | null;
+  /** ISO, rempli automatiquement dès l'inscription d'un Pro avec le même email. */
+  convertedAt: string | null;
+  convertedProId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

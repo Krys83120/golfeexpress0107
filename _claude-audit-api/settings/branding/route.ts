@@ -1,0 +1,151 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+// Sans ça, Next.js traite ce handler GET comme STATIQUE (exécuté une
+// seule fois au moment du build, réponse figée définitivement) puisqu'il
+// ne lit aucune donnée "dynamique" explicite (pas de cookies/headers/
+// searchParams). Ça a fait passer inaperçu un bug pendant un moment : une
+// valeur déjà correcte au moment du build (logoUrl) semblait fonctionner
+// "en direct", alors qu'en réalité c'était juste une coïncidence — toute
+// mise à jour ultérieure (wwwLogoUrl) restait bloquée à sa valeur figée
+// au build, quoi qu'on fasse côté cache HTTP/CDN.
+export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/settings/branding
+ *
+ * Route PUBLIQUE (aucune auth) — contrairement à /api/admin/settings qui
+ * expose tous les GlobalSetting et nécessite un rôle Admin. Les écrans de
+ * connexion/chargement de Pro/Client/Livreur l'appellent AVANT que la
+ * personne soit connectée, donc l'auth y est impossible. Le site vitrine
+ * (www) l'appelle aussi, côté serveur, pour son propre logo (wwwLogoUrl).
+ *
+ * Historique (25/08/2026) : proLogoUrl/commanderLogoUrl/livreurLogoUrl
+ * remplacent l'ancien logoUrl UNIQUE partagé par Admin+Pro+Client+Livreur —
+ * ce partage faisait qu'un seul logo uploadé depuis Admin > Branding
+ * s'affichait à l'identique dans les 4 apps, sans aucun moyen de les
+ * distinguer. Chaque app a maintenant sa propre clé, réglable
+ * indépendamment depuis Admin > Branding.
+ *
+ * PAS de champ `logoUrl` de rétro-compat ici (retiré le 25/08/2026) : un
+ * premier essai le faisait pointer vers proLogoUrl pour ne pas casser un
+ * build Client/Livreur pas encore redéployé — mais ça a eu l'effet inverse
+ * de celui recherché : tant que Client/Livreur n'étaient pas redéployés
+ * (donc encore sur l'ancien code lisant `logoUrl`), ils affichaient
+ * silencieusement le logo de Pro au lieu du leur. Sans ce champ, un front
+ * pas encore redéployé retombe sur `undefined` → émoji 🦎 par défaut :
+ * un signal clair ("pas encore à jour") plutôt qu'un mauvais logo qui a
+ * l'air correct.
+ *
+ * On expose ici volontairement une liste blanche minimaliste plutôt que de
+ * rendre /api/admin/settings public. Le logo d'Admin n'a pas besoin d'être
+ * ici : cette app est toujours authentifiée, elle lit sa propre clé via
+ * /api/admin/settings/branding.logo_url_admin.
+ *
+ * proSplashUrl/commanderSplashUrl/livreurSplashUrl (21/08/2026) : même
+ * principe que le logo, mais pour l'image du BADGE central de l'écran de
+ * chargement animé (SplashLoader) affiché au lancement de
+ * Pro/Commander/Livreur — jusqu'ici une image statique figée dans le build
+ * (public/ ou assets/), impossible à changer sans redéployer. Admin lit sa
+ * propre clé (branding.splash_url_admin) en authentifié, pour la même
+ * raison que son logo.
+ *
+ * proSplashRunnerUrl/commanderSplashRunnerUrl/livreurSplashRunnerUrl
+ * (21/08/2026) : pendant de ce qui précède, mais pour la MASCOTTE QUI
+ * TRAVERSE L'ÉCRAN de gauche à droite une fois le chargement terminé —
+ * réglable indépendamment du badge (avant, la même image servait aux
+ * deux). Admin lit sa propre clé (branding.splash_runner_url_admin) en
+ * authentifié.
+ */
+export async function GET() {
+  const [
+    proLogoSetting,
+    commanderLogoSetting,
+    livreurLogoSetting,
+    wwwLogoSetting,
+    wwwOgTextSetting,
+    proSplashSetting,
+    commanderSplashSetting,
+    livreurSplashSetting,
+    proSplashRunnerSetting,
+    commanderSplashRunnerSetting,
+    livreurSplashRunnerSetting,
+    seoPublicLaunchSetting,
+  ] = await Promise.all([
+    prisma.globalSetting.findUnique({ where: { key: "branding.logo_url_pro" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.logo_url_commander" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.logo_url_livreur" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.www_logo_url" } }),
+    prisma.globalSetting.findUnique({ where: { key: "seo.www_og_text" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.splash_url_pro" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.splash_url_commander" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.splash_url_livreur" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.splash_runner_url_pro" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.splash_runner_url_commander" } }),
+    prisma.globalSetting.findUnique({ where: { key: "branding.splash_runner_url_livreur" } }),
+    // Garde-fou indexation publique (voir robots.ts + layout.tsx côté www) --
+    // volontairement FERMÉ (false) par défaut tant qu'Admin > SEO/GEO ne l'a
+    // jamais activé explicitement : un GlobalSetting absent ne doit jamais
+    // se comporter comme "ouvert", sans quoi une base de données jamais
+    // configurée ouvrirait l'indexation par accident.
+    prisma.globalSetting.findUnique({ where: { key: "seo.public_launch" } }),
+  ]);
+
+  function extractUrl(setting: typeof wwwLogoSetting): string | null {
+    return setting && typeof setting.value === "object" && setting.value !== null && "url" in (setting.value as any)
+      ? (setting.value as { url: string }).url
+      : null;
+  }
+
+  const proLogoUrl = extractUrl(proLogoSetting);
+  const commanderLogoUrl = extractUrl(commanderLogoSetting);
+  const livreurLogoUrl = extractUrl(livreurLogoSetting);
+  const proSplashUrl = extractUrl(proSplashSetting);
+  const commanderSplashUrl = extractUrl(commanderSplashSetting);
+  const livreurSplashUrl = extractUrl(livreurSplashSetting);
+  const proSplashRunnerUrl = extractUrl(proSplashRunnerSetting);
+  const commanderSplashRunnerUrl = extractUrl(commanderSplashRunnerSetting);
+  const livreurSplashRunnerUrl = extractUrl(livreurSplashRunnerSetting);
+
+  // Titre/description utilisés pour l'aperçu de partage (WhatsApp/iMessage/
+  // Facebook...) du site vitrine — éditables depuis Admin > SEO/GEO, avec
+  // repli sur null si jamais configurés (le site vitrine garde alors ses
+  // valeurs par défaut codées en dur dans layout.tsx).
+  const wwwOgText =
+    wwwOgTextSetting &&
+    typeof wwwOgTextSetting.value === "object" &&
+    wwwOgTextSetting.value !== null &&
+    "title" in (wwwOgTextSetting.value as any) &&
+    "description" in (wwwOgTextSetting.value as any)
+      ? (wwwOgTextSetting.value as { title: string; description: string })
+      : null;
+
+  const seoPublicLaunch =
+    seoPublicLaunchSetting &&
+    typeof seoPublicLaunchSetting.value === "object" &&
+    seoPublicLaunchSetting.value !== null &&
+    "enabled" in (seoPublicLaunchSetting.value as any)
+      ? Boolean((seoPublicLaunchSetting.value as { enabled: boolean }).enabled)
+      : false;
+
+  return NextResponse.json(
+    {
+      proLogoUrl,
+      commanderLogoUrl,
+      livreurLogoUrl,
+      wwwLogoUrl: extractUrl(wwwLogoSetting),
+      wwwOgText,
+      proSplashUrl,
+      commanderSplashUrl,
+      livreurSplashUrl,
+      proSplashRunnerUrl,
+      commanderSplashRunnerUrl,
+      livreurSplashRunnerUrl,
+      seoPublicLaunch,
+    },
+    // Cache court côté CDN/navigateur — le logo ne change pas souvent,
+    // mais on veut qu'une mise à jour depuis l'Admin se propage sans
+    // attendre trop longtemps non plus.
+    { headers: { "Cache-Control": "public, max-age=10, stale-while-revalidate=30" } }
+  );
+}

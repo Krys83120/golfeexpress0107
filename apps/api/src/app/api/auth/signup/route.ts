@@ -89,7 +89,7 @@ async function handler(req: NextRequest) {
   // ne pourrait plus recréer (email déjà pris).
   try {
     if (role === "PRO") {
-      await prisma.pro.create({
+      const newPro = await prisma.pro.create({
         data: {
           userId: data.user.id,
           businessName: `${firstName} ${lastName}`, // valeur de départ, modifiable ensuite
@@ -99,6 +99,20 @@ async function handler(req: NextRequest) {
           emailContact: email,
         },
       });
+
+      // Prospection commerciale (ajout du 26/09/2026, demande de Krys) : si
+      // ce mail correspond à un Prospect démarché depuis Admin > Prospection
+      // (même email, comparaison insensible à la casse), on marque la
+      // conversion immédiatement -- c'est le signal "objectif atteint" que
+      // Krys veut voir sur cette page, sans job périodique ni action
+      // manuelle de sa part. Ne fait jamais échouer l'inscription : un souci
+      // ici n'a aucun rapport avec la création du compte Pro.
+      await prisma.prospect
+        .updateMany({
+          where: { email: { equals: email, mode: "insensitive" }, convertedAt: null },
+          data: { convertedAt: new Date(), convertedProId: newPro.id },
+        })
+        .catch((err) => console.error("[signup] Échec du marquage de conversion Prospect:", err));
     } else if (role === "RIDER") {
       await prisma.rider.create({
         data: {

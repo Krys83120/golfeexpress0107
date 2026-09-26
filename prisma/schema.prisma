@@ -1467,3 +1467,64 @@ model RateLimitHit {
 
   @@map("rate_limit_hits")
 }
+
+// ==================== PROSPECTION COMMERCIALE ====================
+
+/// Restaurants/commerces du Golfe de Saint-Tropez qui ne sont PAS encore
+/// Pro sur la plateforme -- ajout du 26/09/2026, demande de Krys : liste de
+/// prospection pour démarcher de nouveaux commerçants directement depuis
+/// Admin. Liste de départ constituée par recherche web (site officiel du
+/// commerce, office de tourisme, mairie -- PAS d'extraction de la base
+/// Uber Eats, qui n'expose aucun email de contact public et dont les
+/// conditions d'utilisation interdisent ce type de collecte pour un usage
+/// commercial concurrent), voir lib/prospectSeedData.ts. Krys complète/
+/// corrige ensuite directement les lignes depuis la page admin (email
+/// manquant, mauvais numéro...).
+model Prospect {
+  id           String      @id @default(uuid())
+  businessName String      @map("business_name")
+  city         String
+  category     ProCategory @default(AUTRE)
+  email        String?
+  phone        String?
+  websiteUrl   String?     @map("website_url")
+  /// Lien vers la fiche Google Maps/Google Business -- Krys s'en sert pour
+  /// vérifier rapidement le commerce avant d'envoyer un mail.
+  googleMapsUrl String?    @map("google_maps_url")
+  notes        String?
+
+  /// D'où vient cette ligne : "recherche_web" (import initial du
+  /// 26/09/2026) ou "manuel" (ajoutée/corrigée à la main depuis Admin).
+  source       String      @default("manuel")
+
+  /// Suivi de l'envoi du mail de prospection (voir
+  /// app/api/admin/prospects/[prospectId]/send-email/route.ts). Un seul
+  /// mail par prospect à la fois -- renvoyer écrase juste les dates
+  /// précédentes, on ne garde pas d'historique multi-envois pour l'instant.
+  prospectingEmailSentAt    DateTime? @map("prospecting_email_sent_at")
+  /// Identifiant du message retourné par Resend au moment de l'envoi --
+  /// c'est LA clé utilisée par le webhook Resend (voir
+  /// app/api/webhooks/resend/route.ts) pour retrouver ce Prospect quand un
+  /// événement "email.opened"/"email.clicked" arrive. Resend n'accepte pas
+  /// de métadonnée personnalisée sur un envoi simple, donc pas d'autre
+  /// moyen de faire le lien.
+  prospectingEmailId        String?   @map("prospecting_email_id")
+  prospectingEmailOpenedAt  DateTime? @map("prospecting_email_opened_at")
+  prospectingEmailClickedAt DateTime? @map("prospecting_email_clicked_at")
+
+  /// Rempli automatiquement dès qu'un compte Pro est créé (signup) avec le
+  /// même email que ce prospect (voir app/api/auth/signup/route.ts) --
+  /// c'est le signal "objectif atteint" que Krys veut voir sur la page.
+  /// Pas de vraie relation Prisma vers Pro : Pro n'existe pas forcément
+  /// encore au moment de la création du Prospect, et on ne veut surtout pas
+  /// qu'une suppression de Pro entraîne la suppression de l'historique de
+  /// prospection.
+  convertedAt   DateTime? @map("converted_at")
+  convertedProId String?  @map("converted_pro_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@map("prospects")
+}
