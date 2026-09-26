@@ -170,10 +170,27 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
     ${packCards()}
     <p style="font-size:11px;color:#9CA3AF;line-height:1.5;margin:8px 0 0;">Prix affichés TTC. Commission calculée uniquement sur les commandes effectivement livrées.</p>
 
+    ${sectionLabel("🎨", "Pas le temps de mettre votre carte en ligne ?")}
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Si vous n'êtes pas à l'aise avec l'informatique ou que vous manquez simplement de temps, nous proposons un
+      <strong>forfait de création et de mise en ligne de vos produits</strong> : description, photos, prix, groupes
+      d'options et catégories, tout est préparé pour vous par notre équipe. Vous gardez la main jusqu'au bout --
+      rien n'est visible par vos clients tant que vous n'avez pas <strong>validé la fiche</strong> vous-même.
+    </p>
+
+    ${sectionLabel("🔒", "Vos paiements, sécurisés")}
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Toutes les transactions sont gérées et sécurisées par <strong>Stripe</strong>, la référence mondiale du
+      paiement en ligne -- nous n'avons à aucun moment accès à vos informations bancaires, qui ne transitent que par
+      leur solution sécurisée. Plus de détails sur notre fonctionnement sur
+      <a href="https://www.doyougeckoo.fr" style="color:#1E8449;font-weight:700;">www.doyougeckoo.fr</a>.
+    </p>
+
     ${infoBox(
       `<strong>En résumé :</strong> vous gardez la main sur votre menu, vos horaires et vos tarifs. Pas de frais
-      d'entrée, pas d'abonnement obligatoire, une commission parmi les plus basses du secteur, et un réseau de
-      livreurs locaux mieux payés donc plus motivés. Dossier commerçant simple, validé en général sous 24 à 48h.`,
+      d'entrée, pas d'abonnement obligatoire, une commission parmi les plus basses du secteur, un réseau de livreurs
+      locaux mieux payés donc plus motivés, une mise en ligne possible clé en main si besoin, et des paiements
+      sécurisés par Stripe. Dossier commerçant simple, validé en général sous 24 à 48h.`,
       "green"
     )}
 
