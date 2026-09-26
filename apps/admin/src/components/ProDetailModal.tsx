@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { X, Star, CheckCircle2, XCircle, Package, FolderCog, Upload } from "lucide-react";
 import type { ProStatus, Product, Review } from "@golfeexpress/types";
+import { OrderIntegrationMode } from "@golfeexpress/types";
 import { PRO_STATUS_LABELS, PRO_CATEGORY_EMOJIS } from "@/services/proLabels";
 import {
   updateAdminPro,
@@ -63,6 +64,19 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
   const [showImportMenu, setShowImportMenu] = useState(false);
   const [showRejectReason, setShowRejectReason] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+
+  // Mode d'intégration commande / infos système de caisse (ajout du
+  // 26/09/2026, préparation en vue d'une éventuelle grande enseigne type
+  // McDonald's/Burger King -- voir prisma/schema.prisma Pro.orderIntegrationMode).
+  // MANUAL est la seule valeur réellement câblée aujourd'hui : ce bloc ne
+  // fait rien de plus que stocker l'info, aucun comportement de commande
+  // ne change tant qu'aucun vrai connecteur POS n'existe.
+  const [orderIntegrationMode, setOrderIntegrationMode] = useState<OrderIntegrationMode>(
+    pro.orderIntegrationMode ?? OrderIntegrationMode.MANUAL
+  );
+  const [posProvider, setPosProvider] = useState(pro.posProvider ?? "");
+  const [posIntegrationNotes, setPosIntegrationNotes] = useState(pro.posIntegrationNotes ?? "");
+  const [savingPos, setSavingPos] = useState(false);
 
   // Import CSV manuel : ouvert à ADMIN et SUPER_ADMIN (même restriction que
   // côté serveur, voir POST .../products/import) — initialement réservé au
@@ -217,6 +231,23 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
       setError(err instanceof Error ? err.message : "Impossible de mettre à jour le statut.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSavePosInfo() {
+    setSavingPos(true);
+    setError(null);
+    try {
+      const updated = await updateAdminPro(pro.id, {
+        orderIntegrationMode,
+        posProvider: posProvider.trim() || null,
+        posIntegrationNotes: posIntegrationNotes.trim() || null,
+      });
+      onUpdated(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible d'enregistrer.");
+    } finally {
+      setSavingPos(false);
     }
   }
 
@@ -614,6 +645,61 @@ export function ProDetailModal({ pro, onClose, onUpdated }: ProDetailModalProps)
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="mb-6 rounded-sm border border-gris-light p-4">
+          <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-gris">🖥️ Intégration commande / caisse (POS)</h3>
+          <p className="mb-3 text-xs leading-5 text-gris">
+            "Manuel" est le fonctionnement normal (le commerçant accepte chaque commande depuis l'app Pro) -- les
+            autres options sont réservées pour une éventuelle grande enseigne avec son propre système de caisse,
+            aucun connecteur réel n'existe encore derrière.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gris">
+                Mode d'intégration
+              </label>
+              <select
+                value={orderIntegrationMode}
+                onChange={(e) => setOrderIntegrationMode(e.target.value as OrderIntegrationMode)}
+                className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm outline-none focus:border-nuit"
+              >
+                <option value={OrderIntegrationMode.MANUAL}>Manuel (par défaut)</option>
+                <option value={OrderIntegrationMode.TABLET}>Tablette dédiée</option>
+                <option value={OrderIntegrationMode.API}>Connecteur API</option>
+                <option value={OrderIntegrationMode.POS}>Caisse (POS)</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gris">
+                Système de caisse (si connu)
+              </label>
+              <input
+                value={posProvider}
+                onChange={(e) => setPosProvider(e.target.value)}
+                placeholder="ex: NCR Aloha, Oracle Micros..."
+                className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm outline-none focus:border-nuit"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gris">Notes</label>
+              <textarea
+                value={posIntegrationNotes}
+                onChange={(e) => setPosIntegrationNotes(e.target.value)}
+                rows={2}
+                placeholder="Contact chez l'enseigne, avancement des discussions..."
+                className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm outline-none focus:border-nuit"
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSavePosInfo}
+            disabled={savingPos}
+            className="mt-3 rounded-sm bg-nuit px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {savingPos ? "Enregistrement..." : "Enregistrer"}
+          </button>
         </div>
 
         {(currentRole === "ADMIN" || currentRole === "SUPER_ADMIN") && pauseState && (

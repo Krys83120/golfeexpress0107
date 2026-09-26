@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { UserRole, ProStatus, ProCategory } from "@golfeexpress/types";
+import { UserRole, ProStatus, ProCategory, OrderIntegrationMode } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { sendAccountSuspendedEmail, sendAccountReactivatedEmail } from "@/lib/emails/accountEmails";
@@ -29,6 +29,11 @@ async function patchHandler(req: NextRequest, ctx: { params: { proId: string } }
     "managerLastName",
     "phone",
     "emailContact",
+    // Ajout du 26/09/2026 -- mémo système de caisse (voir orderIntegrationMode
+    // juste en dessous), renseignés manuellement par un Admin depuis la fiche
+    // Pro. Aucun connecteur réel derrière, voir prisma/schema.prisma.
+    "posProvider",
+    "posIntegrationNotes",
   ] as const;
 
   for (const field of stringFields) {
@@ -41,6 +46,9 @@ async function patchHandler(req: NextRequest, ctx: { params: { proId: string } }
   }
   if (body.status && Object.values(ProStatus).includes(body.status)) {
     data.status = body.status;
+  }
+  if (body.orderIntegrationMode && Object.values(OrderIntegrationMode).includes(body.orderIntegrationMode)) {
+    data.orderIntegrationMode = body.orderIntegrationMode;
   }
 
   if (Object.keys(data).length === 0) {

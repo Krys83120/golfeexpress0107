@@ -289,6 +289,9 @@ export interface UpdateAdminProPayload {
   emailContact?: string;
   category?: Pro["category"];
   status?: Pro["status"];
+  orderIntegrationMode?: Pro["orderIntegrationMode"];
+  posProvider?: string | null;
+  posIntegrationNotes?: string | null;
 }
 
 /** PATCH /api/admin/pros/:proId */
