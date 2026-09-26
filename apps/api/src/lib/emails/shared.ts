@@ -17,6 +17,8 @@ export const PORTAL_URLS = {
   pro: "https://pro.doyougeckoo.fr",
   rider: "https://livreur.doyougeckoo.fr",
   admin: "https://admin.doyougeckoo.fr",
+  /** Site vitrine -- ajouté le 26/09/2026 pour rendre le logo cliquable dans emailShell (demande de Krys). */
+  www: "https://www.doyougeckoo.fr",
 };
 
 /** Pièce jointe Resend — `content` est le fichier encodé en base64 (pas de préfixe "data:"). */
@@ -138,13 +140,22 @@ async function getWwwLogoUrl(): Promise<string | null> {
   }
 }
 
-/** Habillage visuel commun (logo, carte blanche, pied de page) à tous les emails. */
+/**
+ * Habillage visuel commun (logo, carte blanche, pied de page) à tous les
+ * emails. Logo cliquable vers le site vitrine depuis le 26/09/2026 (demande
+ * de Krys, mail de prospection : "le logo en haut aussi doit être
+ * cliquable") -- appliqué à emailShell globalement plutôt qu'en cas
+ * particulier pour le mail de prospection, puisque c'est un comportement
+ * standard et sans risque pour n'importe quel email transactionnel (le clic
+ * ramène simplement vers doyougeckoo.fr).
+ */
 export async function emailShell(bodyHtml: string): Promise<string> {
   const logoUrl = await getWwwLogoUrl();
-  const header = logoUrl
+  const logoContent = logoUrl
     ? `<img src="${logoUrl}" alt="Do You Geckoo" style="max-width:220px;max-height:80px;width:auto;height:auto;" />`
     : `<span style="font-size:32px;">🦎</span>
       <div style="font-size:20px;font-weight:800;color:#1A1A2E;margin-top:4px;">Do You Geckoo</div>`;
+  const header = `<a href="${PORTAL_URLS.www}" style="text-decoration:none;">${logoContent}</a>`;
   return `
 <!DOCTYPE html>
 <html>

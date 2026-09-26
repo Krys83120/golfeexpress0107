@@ -63,6 +63,22 @@ function sectionLabel(emoji: string, text: string): string {
   return `<p style="display:inline-block;background:#1A1A2E;color:#FFFFFF;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:6px 14px;border-radius:999px;margin:28px 0 12px;">${emoji} ${text}</p>`;
 }
 
+/**
+ * Bouton d'appel à l'action "intermédiaire" (26/09/2026, demande de Krys :
+ * "il faut des boutons intermédiaires encourageants d'action pour pouvoir
+ * se connecter de suite au site au lieu d'attendre la fin du texte") --
+ * volontairement en style "contour" (moins massif que button() de
+ * shared.ts) pour ne pas concurrencer visuellement le bouton final, tout en
+ * restant clairement cliquable à chaque étape clé du mail plutôt que
+ * d'obliger à lire jusqu'au bout pour s'inscrire.
+ */
+function midButton(label: string, url: string): string {
+  return `
+  <div style="text-align:center;margin:18px 0 8px;">
+    <a href="${url}" style="display:inline-block;background:#FFFFFF;color:#1A1A2E;font-weight:700;font-size:13px;padding:11px 24px;border-radius:999px;text-decoration:none;border:2px solid #1A1A2E;">${label}</a>
+  </div>`;
+}
+
 /** Table 2 colonnes (compatible Outlook) comparant Uber Eats & co. à Do You Geckoo. */
 function commissionComparisonTable(): string {
   return `
@@ -129,6 +145,11 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       ${data.introText}
     </p>
 
+    ${midButton("🚀 Je m'inscris tout de suite →", `${PORTAL_URLS.pro}/inscription`)}
+    <p style="text-align:center;font-size:11px;color:#9CA3AF;margin:0 0 8px;">
+      (ou continuez la lecture pour tout comprendre en détail)
+    </p>
+
     ${sectionLabel("🌍", "Une plateforme 100% locale")}
     <p style="font-size:14px;color:#374151;line-height:1.6;">
       Do You Geckoo est une plateforme de livraison créée localement, dans le Golfe de Saint-Tropez, pour les
@@ -151,6 +172,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       Sur une commande livrée, voici où va vraiment l'argent -- chez une plateforme classique, et chez nous :
     </p>
     ${commissionComparisonTable()}
+    ${midButton("Je veux garder ma marge →", `${PORTAL_URLS.pro}/inscription`)}
 
     ${sectionLabel("🛵", "Des livreurs mieux payés")}
     <p style="font-size:14px;color:#374151;line-height:1.6;">
@@ -169,6 +191,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
     </p>
     ${packCards()}
     <p style="font-size:11px;color:#9CA3AF;line-height:1.5;margin:8px 0 0;">Prix affichés TTC. Commission calculée uniquement sur les commandes effectivement livrées.</p>
+    ${midButton("Commencer avec le pack gratuit →", `${PORTAL_URLS.pro}/inscription`)}
 
     ${sectionLabel("🎨", "Pas le temps de mettre votre carte en ligne ?")}
     <p style="font-size:14px;color:#374151;line-height:1.6;">
