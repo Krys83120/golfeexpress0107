@@ -53,12 +53,27 @@ export function AppDownload() {
             <p className="mt-2 text-sm text-gris">
               Commandez chez vos commerçants préférés et suivez votre livraison en direct sur la carte.
             </p>
-            <a
-              href="https://commander.doyougeckoo.fr"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-golfe-green px-6 py-3 text-sm font-bold text-nuit transition hover:bg-golfe-green-dark hover:text-white"
-            >
-              Ouvrir l'app Client →
-            </a>
+            {/* Icône telle qu'elle apparaît réellement sur l'écran d'accueil
+                une fois l'app ajoutée (26/09/2026, demande de Krys) -- on
+                reprend directement icon-512-maskable.png de apps/client
+                (fond plein, sans transparence -- c'est ce que l'OS affiche
+                après "Ajouter à l'écran d'accueil"), plutôt qu'un montage
+                approximatif façon App Store. */}
+            <div className="mt-6 flex items-center gap-3">
+              <a
+                href="https://commander.doyougeckoo.fr"
+                className="inline-flex items-center gap-2 rounded-full bg-golfe-green px-6 py-3 text-sm font-bold text-nuit transition hover:bg-golfe-green-dark hover:text-white"
+              >
+                Ouvrir l'app Client →
+              </a>
+              <img
+                src="/app-icon-client.png"
+                alt="Icône de l'app Client sur l'écran d'accueil"
+                width={56}
+                height={56}
+                className="h-14 w-14 flex-none rounded-2xl shadow-md ring-1 ring-black/5"
+              />
+            </div>
             <p className="mt-2 text-[11px] text-gris">Sur l'App Store et Google Play prochainement</p>
           </div>
 
@@ -70,12 +85,21 @@ export function AppDownload() {
             <p className="mt-2 text-sm text-white/70">
               Passez en ligne quand vous voulez, acceptez des courses proches de vous, suivez vos gains en direct.
             </p>
-            <a
-              href="https://livreur.doyougeckoo.fr"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-golfe-green px-6 py-3 text-sm font-bold text-nuit transition hover:bg-white"
-            >
-              Ouvrir l'app Livreur →
-            </a>
+            <div className="mt-6 flex items-center gap-3">
+              <a
+                href="https://livreur.doyougeckoo.fr"
+                className="inline-flex items-center gap-2 rounded-full bg-golfe-green px-6 py-3 text-sm font-bold text-nuit transition hover:bg-white"
+              >
+                Ouvrir l'app Livreur →
+              </a>
+              <img
+                src="/app-icon-livreur.png"
+                alt="Icône de l'app Livreur sur l'écran d'accueil"
+                width={56}
+                height={56}
+                className="h-14 w-14 flex-none rounded-2xl shadow-md ring-1 ring-white/20"
+              />
+            </div>
             <p className="mt-2 text-[11px] text-white/50">Sur l'App Store et Google Play prochainement</p>
           </div>
         </div>
