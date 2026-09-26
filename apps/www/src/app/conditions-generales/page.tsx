@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "19 août 2026";
+const LAST_UPDATED = "26 septembre 2026";
 
 interface TocItem {
   id: string;
@@ -272,6 +272,35 @@ export default function CguPage() {
                 professionnel envers les Commerçants et les Clients, à assurer son véhicule conformément à la
                 réglementation en vigueur, à remettre chaque Commande contre présentation du code de vérification
                 communiqué par le Client, et à signaler sans délai tout incident survenu pendant une course.
+              </p>
+
+              {/* Ajouté le 26/09/2026 (demande de Krys) : règle sac isotherme /
+                  hygiène, reprise à l'identique dans RIDER_REQUIREMENTS et
+                  RIDER_FAQ (lib/partnerContent.ts) sur /devenir-livreur --
+                  une seule formulation de fond, jamais divergente entre le
+                  règlement et la page de recrutement. */}
+              <SubHeading>Équipement obligatoire et hygiène</SubHeading>
+              <p>
+                Pour chaque course, le Livreur doit être équipé d'un <strong className="text-nuit">sac de livraison
+                isotherme en bon état</strong>, permettant de maintenir les plats chauds à température de service
+                (chaîne du chaud) et les produits nécessitant du froid — desserts glacés, produits frais, boissons
+                fraîches, etc. — à température adaptée jusqu'à leur remise au Client (chaîne du froid). Ce sac doit
+                être propre, exempt de toute odeur ou salissure, et nettoyé régulièrement, notamment après le
+                transport de tout produit alimentaire.
+              </p>
+              <p>
+                Plus largement, le Livreur s'engage à respecter des conditions d'hygiène irréprochables tout au long
+                de la course : mains propres au moment de la prise en charge et de la remise de la Commande,
+                transport des plats et produits à plat, à l'abri des chocs et séparés de tout objet personnel, et
+                absence de tout élément susceptible de contaminer ou d'endommager le contenu de la Commande. Ces
+                règles s'appliquent à toute Commande, y compris les Colis Express ne comportant pas de denrées
+                alimentaires.
+              </p>
+              <p>
+                Le non-respect de ces règles d'équipement ou d'hygiène peut entraîner un avertissement, une
+                suspension temporaire ou la résiliation du compte Livreur (voir section 12), notamment en cas de
+                réclamation d'un Client ou d'un Commerçant relative à la température, à la propreté ou à l'état de
+                la Commande à la livraison.
               </p>
 
               <SubHeading>Responsabilité</SubHeading>

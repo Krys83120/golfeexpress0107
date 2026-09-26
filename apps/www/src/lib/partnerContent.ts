@@ -48,11 +48,17 @@ export const RIDER_REQUIREMENTS: string[] = [
   "Fournir une attestation d'assurance responsabilité civile professionnelle",
   "Avoir un statut d'indépendant (auto-entrepreneur ou équivalent)",
   "Fournir une photo de profil — obligatoire, c'est elle qui sera visible par vos clients",
+  "Disposer d'un sac de livraison isotherme en bon état, respectant la chaîne du chaud et la chaîne du froid",
 ];
 
+// Ajouté le 26/09/2026 (demande de Krys) : règle sac isotherme / hygiène,
+// reflétée à l'identique ici, dans les CGU (section 7, "Équipement
+// obligatoire et hygiène") et dans la FAQ ci-dessous -- une seule source
+// pour la liste de conditions, jamais dupliquée avec un texte différent.
 export const RIDER_FAQ: FaqItem[] = [
   { q: "Dois-je avoir un statut d'auto-entrepreneur ?", a: "Oui, vous exercez en toute indépendance : auto-entrepreneur, société ou tout autre statut autorisé. Do You Geckoo n'est pas votre employeur." },
   { q: "Puis-je choisir mes horaires ?", a: "Oui, entièrement. Vous passez en ligne quand vous le souhaitez, sur les zones que vous choisissez, et pouvez refuser une course sans justification." },
   { q: "Pourquoi la photo de profil est-elle obligatoire ?", a: "C'est elle qui rassure le client pendant sa livraison — comme sur les plateformes comparables, il doit pouvoir identifier son livreur. Votre dossier ne peut pas être validé sans elle." },
+  { q: "Le sac isotherme est-il vraiment obligatoire ?", a: "Oui. C'est lui qui garantit que les plats chauds arrivent chauds et que les produits nécessitant du froid (desserts glacés, produits frais...) restent à bonne température jusqu'au Client, dans des conditions d'hygiène irréprochables. Vous devez vous en équiper avant votre première course — c'est une condition rappelée dans nos Conditions Générales." },
   { q: "Comment suis-je payé ?", a: "Chaque course affiche son montant avant acceptation. Vos gains sont visibles en temps réel et peuvent être retirés vers votre compte bancaire via Stripe Connect." },
 ];
