@@ -1493,6 +1493,19 @@ model Prospect {
   googleMapsUrl String?    @map("google_maps_url")
   notes        String?
 
+  /// null = inconnu (pas encore vérifié), true/false = vérifié par recherche
+  /// web (site officiel/réseaux sociaux/office de tourisme du commerce --
+  /// jamais consulté depuis Uber Eats/Deliveroo/Just Eat, voir
+  /// app/api/admin/prospects/annotate/route.ts). Ajout du 26/09/2026 --
+  /// Krys veut repérer d'un coup d'œil qui prospecter, et retirer ceux qui
+  /// ne font pas de vente à emporter.
+  offersTakeaway     Boolean? @map("offers_takeaway")
+  /// true seulement si LE COMMERCE LUI-MÊME affiche/mentionne Uber Eats sur
+  /// ses propres canaux (site, réseaux sociaux) -- jamais déduit d'une
+  /// consultation de la plateforme Uber Eats elle-même. null/false = aucune
+  /// mention trouvée, pas une confirmation d'absence.
+  advertisesUberEats Boolean? @map("advertises_uber_eats")
+
   /// D'où vient cette ligne : "recherche_web" (import initial du
   /// 26/09/2026) ou "manuel" (ajoutée/corrigée à la main depuis Admin).
   source       String      @default("manuel")

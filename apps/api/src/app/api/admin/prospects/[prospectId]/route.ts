@@ -17,6 +17,8 @@ const updateProspectSchema = z.object({
   websiteUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
   googleMapsUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
   notes: z.string().trim().optional().nullable(),
+  offersTakeaway: z.boolean().optional().nullable(),
+  advertisesUberEats: z.boolean().optional().nullable(),
 });
 
 /**

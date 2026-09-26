@@ -647,6 +647,10 @@ export interface Prospect {
   websiteUrl: string | null;
   googleMapsUrl: string | null;
   notes: string | null;
+  /** null = pas encore vérifié, true/false = vérifié par recherche web (jamais via Uber Eats/Deliveroo/Just Eat). */
+  offersTakeaway: boolean | null;
+  /** true seulement si le commerce affiche lui-même Uber Eats sur ses propres canaux. */
+  advertisesUberEats: boolean | null;
   /** "recherche_web" (import initial) ou "manuel" (ajouté/corrigé depuis Admin). */
   source: string;
   /** ISO, null si jamais envoyé. */

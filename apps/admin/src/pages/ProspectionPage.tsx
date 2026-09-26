@@ -12,6 +12,8 @@ import {
   MousePointerClick,
   RefreshCw,
   X,
+  ShoppingBag,
+  HelpCircle,
 } from "lucide-react";
 import { ProCategory } from "@golfeexpress/types";
 import type { Prospect } from "@golfeexpress/types";
@@ -21,6 +23,7 @@ import {
   updateProspect,
   deleteProspect,
   seedProspects,
+  annotateProspects,
   type CreateProspectInput,
 } from "@/services/prospectsApi";
 import { downloadCsv } from "@/services/csvExport";
@@ -61,11 +64,13 @@ export function ProspectionPage() {
   const [error, setError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
+  const [annotating, setAnnotating] = useState(false);
 
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [takeawayFilter, setTakeawayFilter] = useState<"all" | "yes" | "unknown">("all");
   const [sortBy, setSortBy] = useState<SortBy>("city");
 
   const [emailModalProspect, setEmailModalProspect] = useState<Prospect | null>(null);
@@ -102,6 +107,8 @@ export function ProspectionPage() {
     if (cityFilter !== "all") list = list.filter((p) => p.city === cityFilter);
     if (categoryFilter !== "all") list = list.filter((p) => p.category === categoryFilter);
     if (statusFilter !== "all") list = list.filter((p) => statusOf(p) === statusFilter);
+    if (takeawayFilter === "yes") list = list.filter((p) => p.offersTakeaway === true);
+    if (takeawayFilter === "unknown") list = list.filter((p) => p.offersTakeaway === null);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
@@ -118,7 +125,7 @@ export function ProspectionPage() {
       sorted.sort((a, b) => a.city.localeCompare(b.city, "fr") || a.businessName.localeCompare(b.businessName, "fr"));
     }
     return sorted;
-  }, [prospects, cityFilter, categoryFilter, statusFilter, search, sortBy]);
+  }, [prospects, cityFilter, categoryFilter, statusFilter, takeawayFilter, search, sortBy]);
 
   const stats = useMemo(() => {
     const total = prospects.length;
@@ -168,6 +175,26 @@ export function ProspectionPage() {
     }
   }
 
+  async function handleAnnotate() {
+    setAnnotating(true);
+    setError(null);
+    setSeedMessage(null);
+    try {
+      const result = await annotateProspects();
+      load();
+      const parts: string[] = [];
+      if (result.updated > 0) parts.push(`${result.updated} mis à jour`);
+      if (result.deleted > 0) parts.push(`${result.deleted} retiré${result.deleted > 1 ? "s" : ""} (pas de vente à emporter)`);
+      setSeedMessage(
+        parts.length > 0 ? parts.join(", ") + "." : "Rien à mettre à jour -- déjà vérifié."
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de la vérification.");
+    } finally {
+      setAnnotating(false);
+    }
+  }
+
   async function handleDelete(p: Prospect) {
     if (!window.confirm(`Supprimer ${p.businessName} de la liste de prospection ?`)) return;
     try {
@@ -196,6 +223,15 @@ export function ProspectionPage() {
           >
             <RefreshCw size={16} className={seeding ? "animate-spin" : ""} />
             {seeding ? "Import..." : "Importer la liste de départ"}
+          </button>
+          <button
+            onClick={handleAnnotate}
+            disabled={annotating}
+            title="Vérifie vente à emporter et présence Uber Eats (recherche web classique -- jamais via Uber Eats/Deliveroo/Just Eat directement), et retire les commerces qui ne font pas de vente à emporter"
+            className="flex items-center gap-1.5 rounded-sm border border-gris-light bg-white px-3 py-2 text-sm font-semibold text-nuit hover:bg-gris-light disabled:opacity-50"
+          >
+            <ShoppingBag size={16} className={annotating ? "animate-pulse" : ""} />
+            {annotating ? "Vérification..." : "Vérifier vente à emporter / Uber Eats"}
           </button>
           <button
             onClick={handleExportCsv}
@@ -282,6 +318,15 @@ export function ProspectionPage() {
           <option value="converted">Inscrit ✅</option>
         </select>
         <select
+          value={takeawayFilter}
+          onChange={(e) => setTakeawayFilter(e.target.value as "all" | "yes" | "unknown")}
+          className="rounded-sm border border-gris-light px-2 py-1.5 text-sm"
+        >
+          <option value="all">Vente à emporter : tous</option>
+          <option value="yes">🥡 Vente à emporter confirmée</option>
+          <option value="unknown">À vérifier</option>
+        </select>
+        <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as SortBy)}
           className="rounded-sm border border-gris-light px-2 py-1.5 text-sm"
@@ -322,6 +367,9 @@ export function ProspectionPage() {
                 <th className="px-4 py-3">Commerce</th>
                 <th className="px-4 py-3">Ville</th>
                 <th className="px-4 py-3">Catégorie</th>
+                <th className="px-4 py-3" title="Vente à emporter / présence Uber Eats -- voir bouton 'Vérifier vente à emporter / Uber Eats'">
+                  Livraison
+                </th>
                 <th className="px-4 py-3">Contact</th>
                 <th className="px-4 py-3">Statut</th>
                 <th className="px-4 py-3 text-right">Actions</th>
@@ -360,6 +408,35 @@ export function ProspectionPage() {
                     </td>
                     <td className="px-4 py-3 text-gris">{p.city}</td>
                     <td className="px-4 py-3 text-gris">{CATEGORY_LABELS[p.category] ?? p.category}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {p.offersTakeaway === true && (
+                          <span
+                            title="Vente à emporter confirmée"
+                            className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700"
+                          >
+                            <ShoppingBag size={11} /> Emporter
+                          </span>
+                        )}
+                        {p.offersTakeaway === null && (
+                          <span
+                            title="Vente à emporter pas encore vérifiée"
+                            className="inline-flex items-center gap-1 rounded-full bg-gris-light/60 px-2 py-0.5 text-[11px] font-semibold text-gris"
+                          >
+                            <HelpCircle size={11} /> À vérifier
+                          </span>
+                        )}
+                        {p.advertisesUberEats === true && (
+                          <span
+                            title="Affiche Uber Eats sur ses propres canaux"
+                            className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
+                            style={{ backgroundColor: "#06C167" }}
+                          >
+                            Uber Eats
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       {p.email ? (
                         <span className="text-nuit">{p.email}</span>

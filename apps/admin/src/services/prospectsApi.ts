@@ -55,3 +55,8 @@ export async function sendProspectingEmailAction(
 export async function seedProspects(): Promise<{ imported: number; skipped: number }> {
   return apiFetch("/api/admin/prospects/seed", { method: "POST" });
 }
+
+/** POST /api/admin/prospects/annotate -- applique vente à emporter / présence Uber Eats, voir prospectAnnotations.ts côté API. */
+export async function annotateProspects(): Promise<{ updated: number; deleted: number; notFound: number }> {
+  return apiFetch("/api/admin/prospects/annotate", { method: "POST" });
+}

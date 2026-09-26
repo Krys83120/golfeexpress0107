@@ -35,6 +35,8 @@ const createProspectSchema = z.object({
   websiteUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
   googleMapsUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
   notes: z.string().trim().optional().nullable(),
+  offersTakeaway: z.boolean().optional().nullable(),
+  advertisesUberEats: z.boolean().optional().nullable(),
 });
 
 /**
@@ -63,6 +65,8 @@ async function postHandler(req: NextRequest) {
       websiteUrl: parsed.data.websiteUrl || null,
       googleMapsUrl: parsed.data.googleMapsUrl || null,
       notes: parsed.data.notes || null,
+      offersTakeaway: parsed.data.offersTakeaway ?? null,
+      advertisesUberEats: parsed.data.advertisesUberEats ?? null,
       source: "manuel",
     },
   });
