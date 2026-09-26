@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { fetchPublicPros, fetchPublicServiceCities, buildProSlug } from "@/lib/publicApi";
+import { getSortedBlogPosts } from "@/lib/blogPosts";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://www.doyougeckoo.fr";
@@ -28,6 +29,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: c.isActive ? 0.8 : 0.5,
     }));
 
+  // Blog SEO/GEO (26/09/2026, demande de Krys) -- contenu statique connu au
+  // build (voir lib/blogPosts.ts), donc lastModified = date de publication
+  // réelle de chaque article plutôt qu'un "new Date()" qui donnerait
+  // l'impression trompeuse que chaque article a été modifié aujourd'hui.
+  const blogPosts = getSortedBlogPosts();
+  const blogUrls: MetadataRoute.Sitemap = blogPosts.map((post) => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: new Date(`${post.publishedAt}T00:00:00Z`),
+    changeFrequency: "monthly",
+    priority: 0.6,
+  }));
+
   return [
     {
       url: baseUrl,
@@ -40,6 +53,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/blog`,
+      lastModified: blogPosts[0] ? new Date(`${blogPosts[0].publishedAt}T00:00:00Z`) : new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
     },
     {
       url: `${baseUrl}/comment-ca-marche`,
@@ -90,6 +109,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.3,
     },
     ...cityUrls,
+    ...blogUrls,
     ...proUrls,
   ];
 }

@@ -9,6 +9,7 @@ import { VisitTracker } from "@/components/VisitTracker";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { fetchWwwOgText } from "@/lib/brandingApi";
 import { isSeoPublicLaunchEnabled } from "@/lib/seoSettings";
+import { fetchPublicServiceCities } from "@/lib/publicApi";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -72,12 +73,21 @@ export async function generateMetadata(): Promise<Metadata> {
     // suivie sur les chiffres comparatifs).
     description:
       "Commandez auprès des restaurants et commerces du Golfe de Saint-Tropez avec Do You Geckoo, la plateforme locale qui valorise commerces et livreurs.",
+    // Liste élargie le 26/09/2026 (mission SEO/GEO, demande de Krys) avec les
+    // expressions à fort volume de recherche autour de la livraison de repas
+    // -- gardées génériques (pas de nom de ville non active accolé) pour ne
+    // jamais suggérer une couverture qui n'est pas réelle.
     keywords: [
       "livraison Sainte-Maxime",
       "livraison Saint-Tropez",
       "livraison Golfe de Saint-Tropez",
       "livraison locale",
       "commerçants livraison Var",
+      "livraison repas à domicile",
+      "livraison repas en ligne",
+      "livraison rapide",
+      "repas livrés rapidement",
+      "commander en ligne Sainte-Maxime",
     ],
     authors: [{ name: "Do You Geckoo" }],
     openGraph: {
@@ -137,24 +147,40 @@ const websiteJsonLd = {
   publisher: { "@id": `${SITE_URL}/#organization` },
 };
 
-// Sainte-Maxime : seule commune où le service est réellement actif
-// aujourd'hui (voir modèle Prisma ServiceCity). "Golfe de Saint-Tropez" est
-// gardé comme aire d'ambition déclarée (cohérent avec le contenu visible du
-// site : "s'étend progressivement...", voir Faq.tsx) -- mais on ne liste
-// PAS les autres communes individuellement ici tant qu'elles ne sont pas
-// actives, pour ne jamais affirmer un service disponible là où il ne l'est pas.
-const serviceJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Service",
-  serviceType: "Livraison locale de repas et commerces",
-  provider: { "@id": `${SITE_URL}/#organization` },
-  areaServed: [
-    { "@type": "City", name: "Sainte-Maxime", containedInPlace: { "@type": "Place", name: "Golfe de Saint-Tropez" } },
-    { "@type": "Place", name: "Golfe de Saint-Tropez" },
-  ],
-};
+// CORRIGÉ le 26/09/2026 (mission SEO/GEO, contrôle direct dans
+// Admin > Zones & Capacité) : ce bloc était figé sur Sainte-Maxime "seule
+// commune active" -- une hypothèse vraie au moment où ce commentaire a été
+// écrit, mais qui a dérivé du réel sans que le code ne le sache : Admin
+// liste aujourd'hui 11 villes Active + "Page SEO indexable" (Sainte-Maxime,
+// Saint-Tropez, Cogolin, Grimaud, Gassin, Ramatuelle, La Croix-Valmer,
+// Le Plan-de-la-Tour, Cavalaire-sur-Mer, La Môle, Les Issambres). Un JSON-LD
+// figé en dur revit exactement le risque qu'il était censé éviter : sous-
+// déclarer une couverture réelle. Désormais construit dynamiquement à partir
+// de fetchPublicServiceCities() (isActive && seoIndexable, même filtre que
+// Footer.tsx/sitemap.ts) -- une ville activée/désactivée depuis Admin se
+// reflète donc ici automatiquement, sans jamais nécessiter d'y retoucher.
+function buildServiceJsonLd(activeCityNames: string[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    serviceType: "Livraison locale de repas et commerces",
+    provider: { "@id": `${SITE_URL}/#organization` },
+    areaServed: [
+      ...activeCityNames.map((name) => ({
+        "@type": "City",
+        name,
+        containedInPlace: { "@type": "Place", name: "Golfe de Saint-Tropez" },
+      })),
+      { "@type": "Place", name: "Golfe de Saint-Tropez" },
+    ],
+  };
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cities = await fetchPublicServiceCities();
+  const activeCityNames = cities.filter((c) => c.isActive && c.seoIndexable).map((c) => c.name);
+  const serviceJsonLd = buildServiceJsonLd(activeCityNames);
+
   return (
     <html lang="fr" className={`${montserrat.variable} ${inter.variable}`}>
       <head>

@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { label: "Comment ça marche", href: "/comment-ca-marche" },
   { label: "Nos commerçants", href: "/commercants" },
   { label: "Colis Express", href: "/colis-express" },
+  { label: "Blog", href: "/blog" },
   { label: "Devenir livreur", href: "/devenir-livreur" },
   { label: "Devenir partenaire", href: "/devenir-partenaire" },
 ];

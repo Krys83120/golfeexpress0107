@@ -4,23 +4,26 @@
 
 **Slogan** : "Restaurant ? Geckoo it. Courses ? Geckoo it. Un colis ? Geckoo it." — Do You Geckoo livre tout ce dont vous avez besoin localement, en un geste.
 
-Do You Geckoo a été créée en réaction aux commissions élevées prélevées par les grandes plateformes de livraison (jusqu'à 30% chez Uber Eats, formule Premium avec livraison par la plateforme — source : Fooderise, comparatif des commissions plateformes 2026, consulté le 23 août 2026, https://www.fooderise.com/commission-plateformes), qui laissent aux livreurs une rémunération jugée insuffisante par rapport au service rendu. Do You Geckoo applique des commissions commerçants à partir de 12% selon la formule choisie (12 à 18%), et reverse une part plus importante de chaque course au livreur, sans augmenter le prix payé par le client.
+Do You Geckoo a été créée en réaction aux commissions élevées prélevées par les grandes plateformes de livraison (jusqu'à 30% chez Uber Eats, formule Premium avec livraison par la plateforme — source : Fooderise, comparatif des commissions plateformes 2026, consulté le 23 août 2026, https://www.fooderise.com/commission-plateformes), qui laissent aux livreurs une rémunération jugée insuffisante par rapport au service rendu. Do You Geckoo applique des commissions commerçants à partir de 15% selon la formule choisie (15 à 21%), et reverse une part plus importante de chaque course au livreur, sans augmenter le prix payé par le client.
 
 ## Zone couverte
 
-Sainte-Maxime, en extension vers Saint-Tropez, Grimaud, Cogolin et Port-Grimaud (Golfe de Saint-Tropez, Var, France).
+<!-- Corrigé le 26/09/2026 (contrôle direct dans Admin > Zones & Capacité) :
+     11 villes sont aujourd'hui Active + indexables, pas seulement
+     Sainte-Maxime -- voir Admin pour la liste à jour si elle évolue. -->
+Sainte-Maxime, Saint-Tropez, Cogolin, Grimaud (incluant Port Grimaud), Gassin, Ramatuelle, La Croix-Valmer, Le Plan-de-la-Tour, Cavalaire-sur-Mer, La Môle et Les Issambres (Golfe de Saint-Tropez, Var, France).
 
 ## Pour qui
 
 - **Clients** : commande de repas et produits locaux (restaurants, boulangeries, fleuristes, boucheries, beauté, épiceries fines), livraison en 20-30 minutes, suivi en temps réel.
-- **Commerçants** : inscription gratuite, commission à partir de 12% sur les commandes livrées, tableau de bord de gestion des commandes.
+- **Commerçants** : inscription gratuite, commission à partir de 15% sur les commandes livrées, tableau de bord de gestion des commandes.
 - **Livreurs** : inscription en ligne, activation libre (aucun horaire imposé), rémunération suivie en temps réel, retraits flexibles.
 
 ## Différence avec Uber Eats et plateformes similaires
 
 | | Plateformes classiques | Do You Geckoo |
 |---|---|---|
-| Commission commerçant | Jusqu'à 30% (Uber Eats, formule Premium) | 12 à 18% selon la formule |
+| Commission commerçant | Jusqu'à 30% (Uber Eats, formule Premium) | 15 à 21% selon la formule |
 | Rémunération livreur (course type) | ≈ 4-5€ | ≈ 5-8€ selon la distance |
 | Zone | Mondiale/générique | 100% Golfe de Saint-Tropez |
 
@@ -35,7 +38,27 @@ Source du chiffre concurrent : Fooderise, comparatif des commissions plateformes
 - Devenir livreur : https://www.doyougeckoo.fr/devenir-livreur
 - Devenir partenaire commerçant : https://www.doyougeckoo.fr/devenir-partenaire
 - Commerçants référencés : https://www.doyougeckoo.fr/commercants
+- Blog : https://www.doyougeckoo.fr/blog
 - FAQ : https://www.doyougeckoo.fr/#faq
+
+## Articles de blog (mis à jour le 26/09/2026)
+
+- Livraison de repas à domicile à Sainte-Maxime, le guide complet : https://www.doyougeckoo.fr/blog/livraison-repas-domicile-sainte-maxime
+- Livraison rapide : un repas vite prêt, vite livré à Sainte-Maxime : https://www.doyougeckoo.fr/blog/livraison-rapide-fast-food-sainte-maxime
+- Livraison rapide de vos repas : comparatif des commissions plateformes : https://www.doyougeckoo.fr/blog/livraison-rapide-repas-comparatif-commissions
+- Commander vos repas en ligne à Sainte-Maxime, mode d'emploi : https://www.doyougeckoo.fr/blog/commander-repas-en-ligne-sainte-maxime
+- Vos plats préférés livrés dans le Golfe de Saint-Tropez : https://www.doyougeckoo.fr/blog/livraison-plats-preferes-golfe-saint-tropez
+- Livraison de repas à domicile à Saint-Tropez : https://www.doyougeckoo.fr/blog/livraison-repas-domicile-saint-tropez
+- Livraison de repas à domicile à Grimaud : https://www.doyougeckoo.fr/blog/livraison-repas-domicile-grimaud
+- Livraison rapide à Cogolin : https://www.doyougeckoo.fr/blog/livraison-rapide-cogolin
+- Livraison de repas en ligne à Port Grimaud : https://www.doyougeckoo.fr/blog/livraison-repas-en-ligne-port-grimaud
+- Livraison de repas à domicile aux Issambres : https://www.doyougeckoo.fr/blog/livraison-repas-domicile-les-issambres
+- Livraison de repas à domicile à Gassin : https://www.doyougeckoo.fr/blog/livraison-repas-domicile-gassin
+- Livraison rapide à Ramatuelle : https://www.doyougeckoo.fr/blog/livraison-rapide-ramatuelle
+- Livraison de repas à domicile à La Croix-Valmer : https://www.doyougeckoo.fr/blog/livraison-repas-domicile-la-croix-valmer
+- Livraison de repas à domicile au Plan-de-la-Tour : https://www.doyougeckoo.fr/blog/livraison-repas-domicile-plan-de-la-tour
+- Livraison rapide à Cavalaire-sur-Mer : https://www.doyougeckoo.fr/blog/livraison-rapide-cavalaire-sur-mer
+- Livraison de repas à domicile à La Môle : https://www.doyougeckoo.fr/blog/livraison-repas-domicile-la-mole
 
 Les URLs corrigées le 23/08/2026 : les anciennes ancres (/#comment-ca-marche, /#devenir-livreur, /#devenir-partenaire) pointaient vers des sections inexistantes sur la page d'accueil — comment-ca-marche et devenir-partenaire sont des pages dédiées, devenir-livreur en est une depuis le 23/08/2026 (avant, ancre #livreurs sur /devenir-partenaire).
 

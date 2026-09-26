@@ -56,6 +56,7 @@ export async function Footer() {
               <li><Link href="/notre-modele" className="hover:text-white">Notre modèle économique</Link></li>
               <li><Link href="/comment-ca-marche" className="hover:text-white">Comment ça marche</Link></li>
               <li><Link href="/colis-express" className="hover:text-white">Colis Express</Link></li>
+              <li><Link href="/blog" className="hover:text-white">Blog</Link></li>
               <li><Link href="/avis" className="hover:text-white">Avis clients</Link></li>
               <li><Link href="/devenir-partenaire" className="hover:text-white">Devenir partenaire</Link></li>
               <li><Link href="/devenir-livreur" className="hover:text-white">Devenir livreur</Link></li>
