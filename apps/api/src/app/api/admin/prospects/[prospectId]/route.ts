@@ -16,6 +16,7 @@ const updateProspectSchema = z.object({
   phone: z.string().trim().optional().nullable(),
   websiteUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
   googleMapsUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
+  facebookUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
   notes: z.string().trim().optional().nullable(),
   offersTakeaway: z.boolean().optional().nullable(),
   advertisesUberEats: z.boolean().optional().nullable(),
@@ -44,7 +45,7 @@ async function patchHandler(req: NextRequest, ctx: { params: { prospectId: strin
   const data: Record<string, unknown> = { ...parsed.data };
   // Une chaîne vide envoyée depuis un champ optionnel du formulaire Admin
   // doit effacer la valeur (null), pas rester une chaîne vide en base.
-  for (const key of ["email", "phone", "websiteUrl", "googleMapsUrl", "notes"] as const) {
+  for (const key of ["email", "phone", "websiteUrl", "googleMapsUrl", "facebookUrl", "notes"] as const) {
     if (data[key] === "") data[key] = null;
   }
 

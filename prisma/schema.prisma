@@ -1529,6 +1529,13 @@ model Prospect {
   /// Lien vers la fiche Google Maps/Google Business -- Krys s'en sert pour
   /// vérifier rapidement le commerce avant d'envoyer un mail.
   googleMapsUrl String?    @map("google_maps_url")
+  /// Lien vers la page Facebook du commerce (ajout du 26/09/2026, demande de
+  /// Krys) -- retrouvé par recherche web comme offersTakeaway/
+  /// advertisesUberEats ci-dessous, jamais deviné. Permet un contact par
+  /// Messenger (en se connectant manuellement sur la page Facebook Do You
+  /// Geckoo, aucun envoi automatique) quand aucun email n'a été trouvé pour
+  /// ce prospect -- voir bouton "Contacter sur Facebook" côté Admin.
+  facebookUrl   String?    @map("facebook_url")
   notes        String?
 
   /// null = inconnu (pas encore vérifié), true/false = vérifié par recherche

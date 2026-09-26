@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   HelpCircle,
   Upload,
+  MessageCircle,
 } from "lucide-react";
 import { ProCategory } from "@golfeexpress/types";
 import type { Prospect } from "@golfeexpress/types";
@@ -144,7 +145,7 @@ export function ProspectionPage() {
   function handleExportCsv() {
     downloadCsv(
       "prospection-golfe-saint-tropez.csv",
-      ["Nom", "Ville", "Catégorie", "Email", "Téléphone", "Site web", "Fiche Google", "Envoyé le", "Ouvert le", "Cliqué le", "Inscrit le"],
+      ["Nom", "Ville", "Catégorie", "Email", "Téléphone", "Site web", "Fiche Google", "Page Facebook", "Envoyé le", "Ouvert le", "Cliqué le", "Inscrit le"],
       filtered.map((p) => [
         p.businessName,
         p.city,
@@ -153,6 +154,7 @@ export function ProspectionPage() {
         p.phone ?? "",
         p.websiteUrl ?? "",
         p.googleMapsUrl ?? "",
+        p.facebookUrl ?? "",
         formatDateShort(p.prospectingEmailSentAt),
         formatDateShort(p.prospectingEmailOpenedAt),
         formatDateShort(p.prospectingEmailClickedAt),
@@ -444,6 +446,17 @@ export function ProspectionPage() {
                             <ExternalLink size={13} />
                           </a>
                         )}
+                        {p.facebookUrl && (
+                          <a
+                            href={p.facebookUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Voir la page Facebook"
+                            className="text-[#1877F2] hover:opacity-70"
+                          >
+                            <ExternalLink size={13} />
+                          </a>
+                        )}
                       </div>
                       {p.websiteUrl && (
                         <a
@@ -490,6 +503,16 @@ export function ProspectionPage() {
                     <td className="px-4 py-3">
                       {p.email ? (
                         <span className="text-nuit">{p.email}</span>
+                      ) : p.facebookUrl ? (
+                        <a
+                          href={p.facebookUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Pas d'email connu -- contacter via Messenger, en étant connecté sur la page Facebook Do You Geckoo"
+                          className="inline-flex items-center gap-1 text-[#1877F2] hover:underline"
+                        >
+                          <MessageCircle size={13} /> Contacter sur Facebook
+                        </a>
                       ) : (
                         <span className="text-orange-600">Email manquant</span>
                       )}
@@ -647,6 +670,7 @@ function ProspectFormModal({
     phone: prospect?.phone ?? "",
     websiteUrl: prospect?.websiteUrl ?? "",
     googleMapsUrl: prospect?.googleMapsUrl ?? "",
+    facebookUrl: prospect?.facebookUrl ?? "",
     notes: prospect?.notes ?? "",
   });
   const [saving, setSaving] = useState(false);
@@ -710,6 +734,12 @@ function ProspectFormModal({
           <Field label="Téléphone" value={form.phone ?? ""} onChange={(v) => set("phone", v)} />
           <Field label="Site web" value={form.websiteUrl ?? ""} onChange={(v) => set("websiteUrl", v)} />
           <Field label="Lien fiche Google" value={form.googleMapsUrl ?? ""} onChange={(v) => set("googleMapsUrl", v)} full />
+          <Field
+            label="Page Facebook (pour Messenger si pas d'email)"
+            value={form.facebookUrl ?? ""}
+            onChange={(v) => set("facebookUrl", v)}
+            full
+          />
           <Field label="Notes" value={form.notes ?? ""} onChange={(v) => set("notes", v)} full />
         </div>
 

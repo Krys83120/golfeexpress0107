@@ -15,6 +15,7 @@ export interface CreateProspectInput {
   phone?: string | null;
   websiteUrl?: string | null;
   googleMapsUrl?: string | null;
+  facebookUrl?: string | null;
   notes?: string | null;
 }
 

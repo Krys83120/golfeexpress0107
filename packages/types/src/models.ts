@@ -651,6 +651,8 @@ export interface Prospect {
   phone: string | null;
   websiteUrl: string | null;
   googleMapsUrl: string | null;
+  /** Lien vers la page Facebook du commerce -- permet un contact Messenger (manuel, en se connectant sur la page Do You Geckoo) quand aucun email n'est connu. */
+  facebookUrl: string | null;
   notes: string | null;
   /** null = pas encore vérifié, true/false = vérifié par recherche web (jamais via Uber Eats/Deliveroo/Just Eat). */
   offersTakeaway: boolean | null;
