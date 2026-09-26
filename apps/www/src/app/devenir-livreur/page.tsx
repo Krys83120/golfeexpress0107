@@ -45,13 +45,48 @@ export default function DevenirLivreurPage() {
               .
             </p>
             <a
-              href="https://livreur.doyougeckoo.fr"
+              href="https://livreur.doyougeckoo.fr/?mode=signup"
               className="mt-8 inline-block rounded-full bg-golfe-green px-8 py-3.5 text-sm font-bold text-nuit transition hover:bg-white"
             >
               Créer mon compte livreur →
             </a>
           </div>
         </div>
+
+        {/* Démo vidéo de l'espace Livreur (26/09/2026, "c'est un +" -- demande
+            de Krys) : captures d'écran réelles de l'app (mobile), habillées
+            en vidéo de présentation. Fichier auto-hébergé dans public/. */}
+        <section className="border-t border-gris-light py-14 sm:py-20">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="grid items-center gap-8 overflow-hidden rounded-3xl border border-gris-light bg-sable p-6 sm:p-10 lg:grid-cols-2">
+              <div className="order-2 mx-auto w-full max-w-[240px] lg:order-1">
+                <video
+                  className="w-full rounded-3xl shadow-lg"
+                  src="/demo-livreur-doyougeckoo.mp4"
+                  poster="/demo-livreur-poster.jpg"
+                  controls
+                  muted
+                  loop
+                  playsInline
+                  preload="none"
+                >
+                  Votre navigateur ne prend pas en charge la vidéo. Vous pouvez{" "}
+                  <a href="/demo-livreur-doyougeckoo.mp4">la télécharger ici</a>.
+                </video>
+              </div>
+              <div className="order-1 lg:order-2">
+                <p className="text-sm font-bold uppercase tracking-widest text-golfe-green">Démo</p>
+                <h2 className="mt-2 font-heading text-xl font-extrabold text-nuit sm:text-2xl">
+                  Découvrez votre espace Livreur en vidéo
+                </h2>
+                <p className="mt-3 text-sm text-gris">
+                  Passage en ligne, choix des courses ou des Colis Express, suivi de vos gains versés via Stripe,
+                  statistiques et profil : voici à quoi ressemble l&apos;application, avant même de vous inscrire.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section className="py-14 sm:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -100,7 +135,7 @@ export default function DevenirLivreurPage() {
 
             <div className="mt-12 text-center">
               <a
-                href="https://livreur.doyougeckoo.fr"
+                href="https://livreur.doyougeckoo.fr/?mode=signup"
                 className="inline-block rounded-full bg-golfe-green px-8 py-3.5 text-sm font-bold text-nuit transition hover:bg-golfe-green-dark"
               >
                 Créer mon compte livreur →

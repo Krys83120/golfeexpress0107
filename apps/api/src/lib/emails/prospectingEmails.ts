@@ -214,7 +214,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       ${data.introText}
     </p>
 
-    ${midButton("🚀 Je m'inscris tout de suite →", `${PORTAL_URLS.pro}/inscription`)}
+    ${midButton("🚀 Je m'inscris tout de suite →", `${PORTAL_URLS.pro}/?mode=signup`)}
     <p style="text-align:center;font-size:11px;color:#9CA3AF;margin:0 0 8px;">
       (ou continuez la lecture pour tout comprendre en détail)
     </p>
@@ -241,7 +241,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       Sur une commande livrée, voici où va vraiment l'argent -- chez une plateforme classique, et chez nous :
     </p>
     ${commissionComparisonTable()}
-    ${midButton("Je veux garder ma marge →", `${PORTAL_URLS.pro}/inscription`)}
+    ${midButton("Je veux garder ma marge →", `${PORTAL_URLS.pro}/?mode=signup`)}
 
     ${sectionLabel("🛵", "Des livreurs mieux payés")}
     ${appLogoBadge(livreurLogoUrl, "🛵", "Espace Livreur")}
@@ -251,6 +251,17 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       ${DEFAULT_RIDER_PAY_MINIMUM}€</strong> par course -- affiché avant acceptation, sans surprise. Des livreurs mieux
       payés, c'est un réseau plus fiable et plus motivé pour livrer vos commandes rapidement.
     </p>
+
+    ${sectionLabel("🤝", "Gardez vos livreurs habituels")}
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Si vous travaillez déjà avec un ou plusieurs livreurs de confiance, c'est le bon moment pour leur en parler.
+      En les prévenant dès votre inscription, vous gardez une vraie <strong>continuité de service</strong> -- ce sont
+      des visages qu'ils connaissent déjà qui continuent de livrer vos commandes -- et eux découvrent une
+      rémunération minimum garantie nettement plus intéressante que sur les plateformes classiques. Vous gagnez en
+      tranquillité, eux gagnent mieux leur vie, et vos clients gagnent en fiabilité : <strong>tout le monde y gagne
+      !</strong> 🎉
+    </p>
+    ${midButton("Inviter mes livreurs habituels →", `${PORTAL_URLS.rider}/?mode=signup`)}
 
     ${sectionLabel("📦", "Nos forfaits -- sans obligation d'abonnement")}
     ${appLogoBadge(proLogoUrl, "🏪", "Espace Pro")}
@@ -262,7 +273,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
     </p>
     ${packCards()}
     <p style="font-size:11px;color:#9CA3AF;line-height:1.5;margin:8px 0 0;">Prix affichés TTC. Commission calculée uniquement sur les commandes effectivement livrées.</p>
-    ${midButton("Commencer avec le pack gratuit →", `${PORTAL_URLS.pro}/inscription`)}
+    ${midButton("Commencer avec le pack gratuit →", `${PORTAL_URLS.pro}/?mode=signup`)}
 
     ${sectionLabel("🎨", "Pas le temps de mettre votre carte en ligne ?")}
     <p style="font-size:14px;color:#374151;line-height:1.6;">
@@ -292,7 +303,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       Créez votre compte commerçant en quelques minutes, sans engagement :
     </p>
     <div style="text-align:center;">
-      ${button("Créer mon compte commerçant →", `${PORTAL_URLS.pro}/inscription`)}
+      ${button("Créer mon compte commerçant →", `${PORTAL_URLS.pro}/?mode=signup`)}
     </div>
     <p style="text-align:center;font-size:12px;color:#9CA3AF;margin-top:10px;">
       Une question avant de vous lancer ? Répondez simplement à ce mail, on vous répond personnellement.

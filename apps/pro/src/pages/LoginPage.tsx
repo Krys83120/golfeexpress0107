@@ -6,7 +6,19 @@ import { fetchBrandingLogoUrl, getCachedBrandingLogoUrl } from "@/services/brand
 type Mode = "login" | "signup" | "forgot";
 
 export function LoginPage() {
-  const [mode, setMode] = useState<Mode>("login");
+  // Permet d'arriver directement sur le formulaire d'inscription depuis un
+  // lien externe (26/09/2026 : les boutons "Créer mon compte commerçant" du
+  // mail de prospection pointaient vers .../inscription, une URL qui
+  // n'existe pas dans cette SPA -- pas de router, donc 404 ou simple retour
+  // à l'écran de connexion selon l'hébergeur -- liens "cassés" signalés par
+  // Krys). Les emails/le site pointent maintenant vers .../?mode=signup,
+  // qui fonctionne quel que soit l'hébergeur (reste sur l'URL racine) et
+  // préselectionne directement ce mode ici, plutôt que de forcer un clic
+  // supplémentaire sur "S'inscrire".
+  const [mode, setMode] = useState<Mode>(() => {
+    if (typeof window === "undefined") return "login";
+    return new URLSearchParams(window.location.search).get("mode") === "signup" ? "signup" : "login";
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(() => getCachedBrandingLogoUrl());

@@ -19,7 +19,16 @@ import { fetchBrandingLogoUrl, getCachedBrandingLogoUrl } from "@/services/brand
 type Mode = "login" | "signup" | "forgot";
 
 export function AuthScreen() {
-  const [mode, setMode] = useState<Mode>("login");
+  // Permet d'arriver directement sur le formulaire d'inscription depuis un
+  // lien externe -- voir le même commentaire dans apps/pro/src/pages/
+  // LoginPage.tsx (identique ici) : les boutons "Créer mon compte livreur"
+  // du mail de prospection pointaient vers .../inscription, une URL qui
+  // n'existe pas dans cette app (pas de router) -- liens "cassés" signalés
+  // par Krys. Les emails/le site pointent maintenant vers .../?mode=signup.
+  const [mode, setMode] = useState<Mode>(() => {
+    if (typeof window === "undefined") return "login";
+    return new URLSearchParams(window.location.search).get("mode") === "signup" ? "signup" : "login";
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");

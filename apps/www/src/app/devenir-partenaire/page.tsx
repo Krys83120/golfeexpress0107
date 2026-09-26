@@ -88,7 +88,40 @@ export default async function BecomePartnerPage() {
               livraison.
             </p>
 
-            <div className="mt-10 grid gap-10 lg:grid-cols-2">
+            {/* Démo vidéo de l'espace Pro (26/09/2026, "c'est un +" -- demande
+                de Krys) : captures d'écran réelles de l'espace commerçant
+                (tablette), habillées en vidéo de présentation. Fichier
+                auto-hébergé dans public/ -- pas de dépendance à un service
+                vidéo externe pour un asset aussi léger. */}
+            <div className="mt-10 grid items-center gap-8 overflow-hidden rounded-3xl border border-gris-light bg-sable p-6 sm:p-10 lg:grid-cols-2">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-widest text-golfe-green">Démo</p>
+                <h3 className="mt-2 font-heading text-xl font-extrabold text-nuit sm:text-2xl">
+                  Découvrez votre espace Pro en vidéo
+                </h3>
+                <p className="mt-3 text-sm text-gris">
+                  Tableau de bord, commandes, carte de produits, Colis Express, finances et abonnement : voici à quoi
+                  ressemble votre espace commerçant une fois inscrit, avant même de vous lancer.
+                </p>
+              </div>
+              <div className="mx-auto w-full max-w-[280px]">
+                <video
+                  className="w-full rounded-3xl shadow-lg"
+                  src="/demo-pro-doyougeckoo.mp4"
+                  poster="/demo-pro-poster.jpg"
+                  controls
+                  muted
+                  loop
+                  playsInline
+                  preload="none"
+                >
+                  Votre navigateur ne prend pas en charge la vidéo. Vous pouvez{" "}
+                  <a href="/demo-pro-doyougeckoo.mp4">la télécharger ici</a>.
+                </video>
+              </div>
+            </div>
+
+            <div className="mt-14 grid gap-10 lg:grid-cols-2">
               <div>
                 <h3 className="font-heading text-lg font-bold text-nuit">Comment ça se passe</h3>
                 <div className="mt-5">
@@ -139,7 +172,7 @@ export default async function BecomePartnerPage() {
 
             <div className="mt-12 text-center">
               <a
-                href="https://pro.doyougeckoo.fr"
+                href="https://pro.doyougeckoo.fr/?mode=signup"
                 className="inline-block rounded-full bg-corail px-8 py-3.5 text-sm font-bold text-white transition hover:bg-corail-light"
               >
                 Créer mon compte commerçant →
