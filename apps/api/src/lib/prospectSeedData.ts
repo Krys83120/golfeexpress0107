@@ -1,10 +1,14 @@
 /**
  * Liste de départ pour la prospection commerciale (ajout du 26/09/2026,
- * demande de Krys) -- restaurants/commerces du Golfe de Saint-Tropez
- * identifiés par recherche web (site officiel du commerce, office de
- * tourisme du Golfe de Saint-Tropez, mairies) -- PAS extraits de la base
- * Uber Eats (qui n'expose aucun email de contact public et dont les CGU
- * interdisent ce type de collecte pour un usage commercial concurrent).
+ * demande de Krys ; élargie le même jour à la demande de Krys pour mieux
+ * couvrir snacks/fast-foods/vente à emporter) -- restaurants et commerces
+ * du Golfe de Saint-Tropez identifiés par recherche web (site officiel du
+ * commerce, office de tourisme du Golfe de Saint-Tropez, mairies) -- PAS
+ * extraits de la base Uber Eats/Deliveroo (qui n'exposent aucun email de
+ * contact public et dont les CGU interdisent ce type de collecte pour un
+ * usage commercial concurrent -- Krys a explicitement validé cette limite,
+ * y compris pour la simple lecture des noms de restaurants inscrits par
+ * ville, toujours refusée pour la même raison).
  *
  * email = null quand aucune adresse n'était affichée publiquement -- ne
  * JAMAIS en inventer une, Krys complète à la main depuis la page
@@ -12,9 +16,10 @@
  * Maps (nom + adresse), pas une fiche figée -- fonctionne toujours mais
  * peut afficher plusieurs résultats pour les noms ambigus.
  *
- * Importé une seule fois via POST /api/admin/prospects/seed (bouton
- * "Charger la liste de départ" sur la page Prospection, tant que la liste
- * est vide) -- voir cette route pour la déduplication (nom+ville).
+ * Importé via POST /api/admin/prospects/seed (bouton "Charger la liste de
+ * départ" sur la page Prospection) -- idempotent, dédoublonne sur
+ * (nom, ville), donc peut être rappelé sans risque après un ajout de
+ * nouvelles entrées ici : seules les lignes pas encore en base sont créées.
  */
 
 export interface ProspectSeedEntry {
@@ -122,4 +127,58 @@ export const PROSPECT_SEED_DATA: ProspectSeedEntry[] = [
   { businessName: "L'Escale Tropézienne", city: "La Mole", category: "RESTAURANT", email: null, phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=L+Escale+Tropezienne+31+route+du+Canadel+La+Mole", notes: "La Mole est un très petit village (moins de 300 habitants), le nombre de commerces y est naturellement limité." },
   { businessName: "La Maison de Julie", city: "La Mole", category: "RESTAURANT", email: "restaurantlamaisondejulie@gmail.com", phone: "07 68 99 27 61", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=La+Maison+de+Julie+15+Place+de+l+Eglise+La+Mole" },
   { businessName: "Le Bistrot Gourmet", city: "La Mole", category: "RESTAURANT", email: "desilebenjamin@gmail.com", phone: "09 67 38 19 28", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Le+Bistrot+Gourmet+14+Grande+Rue+La+Mole" },
+  { businessName: "La Baraque Bleue", city: "Saint-Tropez", category: "RESTAURANT", email: null, phone: "06 19 17 24 98", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=La+Baraque+Bleue+2+place+des+Lices+83990+Saint-Tropez" },
+  { businessName: "Maison Marguerite", city: "Saint-Tropez", category: "RESTAURANT", email: "banmarguerite@orange.fr", phone: "04 94 97 73 93", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Maison+Marguerite+16+Place+Blanqui+83990+Saint-Tropez" },
+  { businessName: "Snack Croc A Tout Kebab & Tacos", city: "Saint-Tropez", category: "RESTAURANT", email: null, phone: "07 77 95 84 81", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Snack+Croc+A+Tout+28+Rue+Sibilli+83990+Saint-Tropez" },
+  { businessName: "Snack La Palmeraie", city: "Saint-Tropez", category: "RESTAURANT", email: null, phone: "06 19 06 50 49", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Snack+La+Palmeraie+Place+du+Petit+Marche+83990+Saint-Tropez" },
+  { businessName: "Papy Burger", city: "Saint-Tropez", category: "RESTAURANT", email: null, phone: "04 94 54 83 12", websiteUrl: "https://www.papyburger.com/", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Papy+Burger+Quartier+de+la+Bouillabaisse+83990+Saint-Tropez" },
+  { businessName: "LuLu Sandwich Shop", city: "Saint-Tropez", category: "RESTAURANT", email: "sarlromy@gmail.com", phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=LuLu+Sandwich+Shop+6+quai+Frederic+Mistral+83990+Saint-Tropez" },
+  { businessName: "Rolls Café", city: "Saint-Tropez", category: "RESTAURANT", email: "hello@rollscafe.fr", phone: "04 94 97 00 54", websiteUrl: "https://rollscafe.fr", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Rolls+Cafe+9+quai+Suffren+83990+Saint-Tropez" },
+  { businessName: "Gaby", city: "Saint-Tropez", category: "RESTAURANT", email: "saint.tropez.gaby@gmail.com", phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Gaby+9+rue+de+la+Citadelle+83990+Saint-Tropez" },
+  { businessName: "Palmito", city: "Saint-Tropez", category: "RESTAURANT", email: "palmito.sainttropez@gmail.com", phone: "07 88 61 56 77", websiteUrl: "https://palmito-saint-tropez.com/", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Palmito+34+boulevard+Vasserot+83990+Saint-Tropez", notes: "Pinsa bar / vente à emporter" },
+  { businessName: "Kaja Poke & Juice", city: "Saint-Tropez", category: "RESTAURANT", email: null, phone: "04 94 45 20 44", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Kaja+Poke+Juice+Quartier+de+la+Bouillabaisse+83990+Saint-Tropez" },
+  { businessName: "Snack Elfi's Comptoir gourmand", city: "Gassin", category: "RESTAURANT", email: null, phone: "07 78 66 40 93", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Snack+Elfis+Comptoir+gourmand+5+place+des+Pierres+Marines+83580+Gassin" },
+  { businessName: "Snack Tropical Golf", city: "Gassin", category: "RESTAURANT", email: "lunapark@wanadoo.fr", phone: "04 94 56 48 39", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Snack+Tropical+Golf+51+Rond+point+de+la+Foux+83580+Gassin", notes: "Snack du mini-golf Azur Park" },
+  { businessName: "La Tour De Pizz", city: "Gassin", category: "RESTAURANT", email: null, phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=La+Tour+De+Pizz+3+route+des+Plages+83580+Gassin" },
+  { businessName: "Snack Lou Ravi", city: "Ramatuelle", category: "RESTAURANT", email: "florencemarcoux@orange.fr", phone: "06 08 66 74 08", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Snack+Lou+Ravi+Plage+de+l%27Escalet+83350+Ramatuelle" },
+  { businessName: "La Grignote", city: "Ramatuelle", category: "RESTAURANT", email: "lagrignoteramatuelle@gmail.com", phone: "04 89 78 08 82", websiteUrl: "https://www.lagrignoteramatuelle.fr/", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=La+Grignote+15+Rue+Victor+Leon+83350+Ramatuelle" },
+  { businessName: "Café Flora", city: "Ramatuelle", category: "RESTAURANT", email: "cloelombardi@hotmail.fr", phone: "06 10 37 13 79", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Cafe+Flora+842+Chemin+des+Tamaris+83350+Ramatuelle", notes: "Pizzeria/grill situé à l'Hôtel de Plein Air La Toison d'Or" },
+  { businessName: "Chez Lolo", city: "Ramatuelle", category: "RESTAURANT", email: "l.ricolvi@gmail.com", phone: "06 11 57 06 09", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Chez+Lolo+6798+Route+des+Plages+83350+Ramatuelle", notes: "Pizzeria/cuisine traditionnelle au Camping La Croix du Sud" },
+  { businessName: "Cucina de La Forge", city: "Ramatuelle", category: "RESTAURANT", email: "info@cucinaramatuelle.fr", phone: "06 77 55 84 28", websiteUrl: "https://cucinaramatuelle.fr", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Cucina+de+La+Forge+6+Rue+Victor+Leon+83350+Ramatuelle" },
+  { businessName: "Le Petit Bain", city: "Grimaud", category: "RESTAURANT", email: "lepetitbain@icloud.com", phone: "06 15 09 04 74", websiteUrl: "https://www.petitbainprairies.com", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Le+Petit+Bain+1910+Route+du+Littoral+83310+Grimaud", notes: "Burgers/poke bowls aux Prairies de la Mer" },
+  { businessName: "Yeellow Smash Burger", city: "Grimaud", category: "RESTAURANT", email: null, phone: "04 94 49 21 41", websiteUrl: "https://www.yeellowsmashburger.com/", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Yeellow+Smash+Burger+13+Place+des+Artisans+Port+Grimaud+83310+Grimaud" },
+  { businessName: "Pohmaë Poke Bowl Port Grimaud", city: "Grimaud", category: "RESTAURANT", email: null, phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pohmae+Poke+Bowl+16+place+des+Artisans+83310+Grimaud" },
+  { businessName: "Pizza Italia", city: "Grimaud", category: "RESTAURANT", email: null, phone: "04 94 96 16 16", websiteUrl: "https://www.pizzaitaliaportgrimaud.fr/", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pizza+Italia+Vitrines+du+Soleil+RD559+83310+Port-Grimaud" },
+  { businessName: "Pizza Leone", city: "Grimaud", category: "RESTAURANT", email: "sylviepotvin7672@gmail.com", phone: "04 94 96 16 29", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pizza+Leone+Route+du+Littoral+Les+Vitrines+du+Soleil+83310+Grimaud" },
+  { businessName: "Crêperie Le Boubou", city: "Grimaud", category: "RESTAURANT", email: null, phone: "06 86 46 26 30", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Creperie+Le+Boubou+3+Place+du+Cros+83310+Grimaud" },
+  { businessName: "Pummarola", city: "Grimaud", category: "RESTAURANT", email: null, phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pummarola+1081+route+du+Littoral+83310+Grimaud", notes: "Pizza à emporter, Port Grimaud" },
+  { businessName: "La Détente Snack/Kebab", city: "Cogolin", category: "RESTAURANT", email: null, phone: "09 73 63 11 20", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=La+Detente+16+Rue+Carnot+83310+Cogolin" },
+  { businessName: "Pizz'Arte", city: "Cogolin", category: "RESTAURANT", email: null, phone: "06 68 11 79 17", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pizz%27Arte+4+Rue+de+Beausoleil+83310+Cogolin" },
+  { businessName: "Pizza Plus", city: "Cogolin", category: "RESTAURANT", email: null, phone: "04 94 54 71 30", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pizza+Plus+91+Rue+Carnot+83310+Cogolin" },
+  { businessName: "Pizza du Golfe", city: "Cogolin", category: "RESTAURANT", email: null, phone: "04 94 40 12 05", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pizza+du+Golfe+7+Square+Jean+Moulin+83310+Cogolin" },
+  { businessName: "Hot Pizza Ristorante", city: "Cogolin", category: "RESTAURANT", email: null, phone: "06 66 02 39 39", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Hot+Pizza+Ristorante+Centre+commercial+Agora+83310+Cogolin" },
+  { businessName: "Le Kotama", city: "Cogolin", category: "RESTAURANT", email: null, phone: "04 94 17 52 64", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Le+Kotama+Rue+Marceau+83310+Cogolin" },
+  { businessName: "L'orienthe", city: "Cogolin", category: "RESTAURANT", email: null, phone: "04 83 12 60 17", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=L%27orienthe+Rue+Marceau+83310+Cogolin" },
+  { businessName: "cÔcotte", city: "Cogolin", category: "RESTAURANT", email: null, phone: "04 94 40 66 36", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=cOcotte+2+Avenue+Georges+Clemenceau+83310+Cogolin" },
+  { businessName: "Speedy Pizza", city: "Cogolin", category: "RESTAURANT", email: null, phone: "04 94 54 05 81", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Speedy+Pizza+2+Avenue+Georges+Clemenceau+83310+Cogolin" },
+  { businessName: "My Snack La Nartelle", city: "Sainte-Maxime", category: "RESTAURANT", email: "mahi@mahiplage.fr", phone: "07 68 59 20 09", websiteUrl: "https://www.mahiplage.fr", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=My+Snack+La+Nartelle+53+avenue+General+Touzet+du+Vigier+83120+Sainte-Maxime" },
+  { businessName: "Pizzas Manon", city: "Sainte-Maxime", category: "RESTAURANT", email: null, phone: "04 94 54 36 96", websiteUrl: "https://www.pizzasmanon.com/", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pizzas+Manon+85+Chemin+des+Virgiles+83120+Sainte-Maxime" },
+  { businessName: "Ciao Belli", city: "Sainte-Maxime", category: "RESTAURANT", email: null, phone: "07 61 04 61 24", websiteUrl: "https://www.ciaobelli-83.fr/", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Ciao+Belli+11+Rue+d%27Alsace+83120+Sainte-Maxime", notes: "Sandwicherie italienne à emporter" },
+  { businessName: "Little Café", city: "Sainte-Maxime", category: "RESTAURANT", email: null, phone: "07 57 67 94 56", websiteUrl: "https://www.little-cafe.fr/", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Little+Cafe+28+avenue+Charles+de+Gaulle+83120+Sainte-Maxime" },
+  { businessName: "Géo Glacier", city: "Sainte-Maxime", category: "AUTRE", email: null, phone: "04 94 96 03 85", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Geo+Glacier+16+rue+Theodore+Blanc+83120+Sainte-Maxime", notes: "Glacier artisanal depuis 1946, vente à emporter" },
+  { businessName: "La Grange Crêperie", city: "Sainte-Maxime", category: "RESTAURANT", email: null, phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=La+Grange+Creperie+40+rue+Paul+Bert+83120+Sainte-Maxime" },
+  { businessName: "Coco Glaces", city: "Sainte-Maxime", category: "AUTRE", email: null, phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Coco+Glaces+13+avenue+Olympe+83120+Sainte-Maxime" },
+  { businessName: "The Pizza House", city: "La Croix-Valmer", category: "RESTAURANT", email: "info@thepizzahouse.fr", phone: "04 94 54 24 63", websiteUrl: "https://www.thepizzahouse.fr/", googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=The+Pizza+House+1023+Boulevard+de+Saint-Raphael+83420+La+Croix-Valmer", notes: "Pizza à emporter uniquement (pas de livraison)" },
+  { businessName: "Jo Pizza La Croix Valmer", city: "La Croix-Valmer", category: "RESTAURANT", email: null, phone: "06 79 37 32 30", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Jo+Pizza+710+Boulevard+de+Saint-Raphael+83420+La+Croix-Valmer", notes: "Établissement local indépendant ; adresse/téléphone confirmés via annuaires locaux" },
+  { businessName: "Pipo Pizza", city: "La Garde-Freinet", category: "RESTAURANT", email: null, phone: "06 41 45 41 00", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pipo+Pizza+Parking+Saint-Eloi+83680+La+Garde-Freinet", notes: "Pizza au feu de bois, camion/pizzeria" },
+  { businessName: "Pizza L'Escapade", city: "La Garde-Freinet", category: "RESTAURANT", email: null, phone: "07 80 98 81 77", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pizza+L%27Escapade+RD75+83680+La+Garde-Freinet" },
+  { businessName: "Le Carnotzet", city: "La Garde-Freinet", category: "RESTAURANT", email: null, phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Le+Carnotzet+7+place+du+Marche+83680+La+Garde-Freinet" },
+  { businessName: "Le Petit Freinet", city: "La Garde-Freinet", category: "RESTAURANT", email: null, phone: "04 94 97 07 68", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Le+Petit+Freinet+10+rue+Saint-Jacques+83680+La+Garde-Freinet" },
+  { businessName: "Snack Le Détour", city: "Plan-de-la-Tour", category: "RESTAURANT", email: null, phone: "06 17 94 71 98", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Snack+Le+Detour+1+rue+Jean+Jaures+83120+Le+Plan-de-la-Tour" },
+  { businessName: "O'snacking", city: "Plan-de-la-Tour", category: "RESTAURANT", email: null, phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=O%27snacking+rue+Cardenille+Parking+Foch+83120+Le+Plan-de-la-Tour", notes: "Food truck à adresse fixe (Parking Foch)" },
+  { businessName: "Pizza Bella (food truck)", city: "Plan-de-la-Tour", category: "RESTAURANT", email: null, phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pizza+Bella+food+truck+83120+Le+Plan-de-la-Tour", notes: "Camion pizza ; adresse précise non publiée en ligne" },
+  { businessName: "Pizza Pierrot", city: "Plan-de-la-Tour", category: "RESTAURANT", email: null, phone: "04 94 96 13 51", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pizza+Pierrot+1+rue+Jean+Jaures+83120+Le+Plan-de-la-Tour" },
+  { businessName: "Le Café", city: "La Mole", category: "RESTAURANT", email: null, phone: null, websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Le+Cafe+4+place+de+la+Mairie+83310+La+Mole" },
+  { businessName: "Yoka", city: "La Mole", category: "RESTAURANT", email: null, phone: "04 83 73 85 97", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Yoka+14+avenue+du+Petit+Prince+Parc+d%27activites+Saint-Exupery+83310+La+Mole" },
+  { businessName: "Pacha Café", city: "La Mole", category: "RESTAURANT", email: null, phone: "04 94 49 56 18", websiteUrl: null, googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Pacha+Cafe+Route+du+Canadel+83310+La+Mole", notes: "Restaurant du camping Capfun Pachacaid, pizzas et snacking" },
 ];
