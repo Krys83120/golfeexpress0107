@@ -1,7 +1,15 @@
 import { create } from "zustand";
 import type { PendingValidation } from "@/services/pendingValidationMapper";
 import { proToPendingValidation, riderToPendingValidation } from "@/services/pendingValidationMapper";
-import { fetchPendingValidations, validatePro, validateRider, type PendingPro, type PendingRider } from "@/services/validationsApi";
+import {
+  fetchPendingValidations,
+  validatePro,
+  validateRider,
+  sendProDossierReminder,
+  sendRiderDossierReminder,
+  type PendingPro,
+  type PendingRider,
+} from "@/services/validationsApi";
 
 interface AdminDashboardState {
   pendingValidations: PendingValidation[];
@@ -17,6 +25,15 @@ interface AdminDashboardState {
   loadPendingValidations: () => Promise<void>;
   approve: (id: string, kind: "PRO" | "RIDER") => Promise<void>;
   reject: (id: string, kind: "PRO" | "RIDER", reason: string) => Promise<void>;
+  /**
+   * Relance "complétez votre dossier" (ajout du 26/09/2026, demande de
+   * Krys) -- contrairement à approve/reject, ne retire PAS l'entrée de la
+   * liste (le compte reste PENDING) : on met juste à jour lastReminderAt
+   * localement, en remappant via proToPendingValidation/
+   * riderToPendingValidation pour rester cohérent avec loadPendingValidations
+   * plutôt que de dupliquer la logique de mapping ici.
+   */
+  remind: (id: string, kind: "PRO" | "RIDER") => Promise<void>;
 }
 
 export const useAdminDashboardStore = create<AdminDashboardState>((set, get) => ({
@@ -58,5 +75,33 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set, get) => 
       pendingProsRaw: state.pendingProsRaw.filter((p) => p.id !== id),
       pendingRidersRaw: state.pendingRidersRaw.filter((r) => r.id !== id),
     }));
+  },
+
+  remind: async (id, kind) => {
+    const { sentAt } = kind === "PRO" ? await sendProDossierReminder(id) : await sendRiderDossierReminder(id);
+    set((state) => {
+      if (kind === "PRO") {
+        const pendingProsRaw = state.pendingProsRaw.map((p) =>
+          p.id === id ? { ...p, lastDossierReminderAt: sentAt } : p
+        );
+        return {
+          pendingProsRaw,
+          pendingValidations: [
+            ...pendingProsRaw.map(proToPendingValidation),
+            ...state.pendingRidersRaw.map(riderToPendingValidation),
+          ],
+        };
+      }
+      const pendingRidersRaw = state.pendingRidersRaw.map((r) =>
+        r.id === id ? { ...r, lastDossierReminderAt: sentAt } : r
+      );
+      return {
+        pendingRidersRaw,
+        pendingValidations: [
+          ...state.pendingProsRaw.map(proToPendingValidation),
+          ...pendingRidersRaw.map(riderToPendingValidation),
+        ],
+      };
+    });
   },
 }));

@@ -78,6 +78,8 @@ export interface Pro {
   subscriptionExpiry?: string | null;
   /** Date du dernier email d'incitation Premium envoyé par un Admin (25/09/2026). Voir prisma/schema.prisma. */
   lastPremiumUpsellEmailAt?: string | null;
+  /** Date de la dernière relance "dossier incomplet" envoyée par un Admin (26/09/2026). Voir prisma/schema.prisma. */
+  lastDossierReminderAt?: string | null;
   rating?: number | null;
   ratingCount: number;
   instagramUrl?: string | null;
@@ -175,6 +177,8 @@ export interface Rider {
   idCardBack: string;
   iban: string;
   status: RiderStatus;
+  /** Date de la dernière relance "dossier incomplet" envoyée par un Admin (26/09/2026). Voir prisma/schema.prisma. */
+  lastDossierReminderAt?: string | null;
   isOnline: boolean;
   currentLat?: number | null;
   currentLng?: number | null;

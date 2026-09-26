@@ -17,11 +17,26 @@ export function ValidationsPage() {
   const loadPendingValidations = useAdminDashboardStore((s) => s.loadPendingValidations);
   const approve = useAdminDashboardStore((s) => s.approve);
   const reject = useAdminDashboardStore((s) => s.reject);
+  const remind = useAdminDashboardStore((s) => s.remind);
   const [filter, setFilter] = useState<FilterKind>("ALL");
   const [selectedProId, setSelectedProId] = useState<string | null>(null);
   const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  // Un seul en vol à la fois : évite un double-clic accidentel qui
+  // enverrait deux mails de relance en quelques secondes.
+  const [remindingId, setRemindingId] = useState<string | null>(null);
+
+  async function handleRemind(id: string, kind: "PRO" | "RIDER") {
+    setRemindingId(id);
+    try {
+      await remind(id, kind);
+    } catch (err) {
+      console.error("[ValidationsPage] Échec de la relance dossier:", err);
+    } finally {
+      setRemindingId(null);
+    }
+  }
 
   useEffect(() => {
     loadPendingValidations();
@@ -66,6 +81,8 @@ export function ValidationsPage() {
                   validation={validation}
                   onApprove={() => approve(validation.id, validation.kind)}
                   onReject={() => setRejectingId(validation.id)}
+                  onRemind={() => handleRemind(validation.id, validation.kind)}
+                  reminding={remindingId === validation.id}
                 />
                 {rejectingId === validation.id && (
                   <div className="mx-4 mb-3 rounded-sm bg-red-50 p-3">

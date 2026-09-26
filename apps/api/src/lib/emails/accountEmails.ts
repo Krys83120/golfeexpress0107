@@ -140,3 +140,61 @@ export async function sendKbisReminderEmail(email: string, businessName: string,
   `);
   await sendEmail(email, "Votre Kbis Do You Geckoo arrive à expiration", html);
 }
+
+// ==================== RELANCE DOSSIER INCOMPLET ====================
+
+/**
+ * Relance manuelle (bouton "Relancer" depuis Admin > Validations KYC,
+ * ajout du 26/09/2026, demande de Krys) pour un Pro inscrit qui n'a jamais
+ * complété son dossier (SIRET encore au format "PENDING-xxx" et/ou pas de
+ * Kbis uploadé, voir isProDossierIncomplete côté admin) -- tant que ce
+ * dossier reste incomplet, l'équipe ne peut pas le valider, la boutique
+ * n'est jamais visible et ne peut recevoir aucune commande.
+ */
+export async function sendProDossierIncompleteReminderEmail(email: string, businessName: string): Promise<void> {
+  const html = await emailShell(`
+    <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">📋 Votre dossier commerçant n'est pas terminé</h1>
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Bonjour,<br><br>
+      Nous avons remarqué que le dossier de <strong>${businessName}</strong> n'est pas encore complet. Il manque au
+      moins l'une des informations suivantes : votre <strong>numéro de SIRET</strong> et/ou votre
+      <strong>extrait Kbis</strong>.
+    </p>
+    ${infoBox(
+      "Tant que ces informations ne sont pas renseignées, notre équipe ne peut pas valider votre compte : votre boutique reste invisible pour les clients et ne peut recevoir aucune commande.",
+      "orange"
+    )}
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Complétez votre dossier depuis votre espace commerçant — ça ne prend que quelques minutes, et nous validons
+      généralement les comptes complets rapidement.
+    </p>
+    ${button("Compléter mon dossier", `${PORTAL_URLS.pro}/parametres`)}
+  `);
+  await sendEmail(email, "Complétez votre dossier pour activer votre boutique Do You Geckoo", html);
+}
+
+/**
+ * Équivalent pour un Livreur — voir sendProDossierIncompleteReminderEmail
+ * ci-dessus. Dossier incomplet ici = pièce d'identité (recto/verso) et/ou
+ * IBAN encore vides (voir isRiderDossierIncomplete côté admin).
+ */
+export async function sendRiderDossierIncompleteReminderEmail(email: string, firstName: string): Promise<void> {
+  const html = await emailShell(`
+    <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;">📋 Votre dossier livreur n'est pas terminé</h1>
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Bonjour ${firstName},<br><br>
+      Nous avons remarqué que votre dossier livreur n'est pas encore complet. Il manque au moins l'une des
+      informations suivantes : votre <strong>pièce d'identité</strong> (recto/verso) et/ou votre <strong>IBAN</strong>.
+    </p>
+    ${infoBox(
+      "Tant que ces informations ne sont pas renseignées, notre équipe ne peut pas valider votre compte : vous ne pouvez pas recevoir de commandes à livrer.",
+      "orange"
+    )}
+    <p style="font-size:14px;color:#374151;line-height:1.6;">
+      Ouvrez l'application Do You Geckoo Livreur et rendez-vous dans "Mon dossier" pour terminer votre inscription
+      — ça ne prend que quelques minutes, et nous validons généralement les comptes complets rapidement.
+    </p>
+    ${button("Compléter mon dossier", PORTAL_URLS.rider)}
+  `);
+  await sendEmail(email, "Complétez votre dossier pour commencer à livrer avec Do You Geckoo", html);
+}

@@ -296,6 +296,13 @@ model Pro {
   /// demande de Krys) -- affiché sur la fiche pour éviter de relancer deux
   /// fois le même commerçant sans s'en rendre compte. null = jamais envoyé.
   lastPremiumUpsellEmailAt DateTime? @map("last_premium_upsell_email_at")
+  /// Date de la dernière relance "complétez votre dossier" envoyée
+  /// manuellement par un Admin depuis Validations KYC (ajout du 26/09/2026,
+  /// demande de Krys) -- pour les Pro inscrits mais qui n'ont jamais fini
+  /// leur dossier (SIRET encore au format "PENDING-xxx" et/ou Kbis non
+  /// uploadé, voir kbisUrl), donc jamais validables en l'état. null = jamais
+  /// relancé.
+  lastDossierReminderAt DateTime? @map("last_dossier_reminder_at")
   rating            Decimal?    @db.Decimal(2,1)
   ratingCount     Int      @default(0) @map("rating_count")
 
@@ -474,6 +481,12 @@ model Rider {
   licenseNumber   String?      @map("license_number")
   idCardFront     String       @map("id_card_front")
   idCardBack      String       @map("id_card_back")
+  /// Date de la dernière relance "complétez votre dossier" envoyée
+  /// manuellement par un Admin depuis Validations KYC (ajout du 26/09/2026,
+  /// demande de Krys) -- pour les Livreurs inscrits mais qui n'ont jamais
+  /// fini leur dossier (idCardFront/idCardBack/iban encore vides, voir
+  /// signup/route.ts). null = jamais relancé.
+  lastDossierReminderAt DateTime? @map("last_dossier_reminder_at")
   /// @deprecated Conservé pour compatibilité avec l'ancien système de
   /// retrait manuel (voir Withdrawal), mais plus utilisé pour les nouveaux
   /// virements dès que stripePayoutsEnabled est true — voir stripeAccountId

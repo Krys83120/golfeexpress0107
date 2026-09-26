@@ -1,5 +1,6 @@
 import { ProCategory, VehicleType } from "@golfeexpress/types";
 import type { PendingPro, PendingRider } from "@/services/validationsApi";
+import { isProDossierIncomplete, isRiderDossierIncomplete } from "@/services/validationsApi";
 
 export type ValidationKind = "PRO" | "RIDER";
 
@@ -10,6 +11,10 @@ export interface PendingValidation {
   subtitle: string;
   emoji: string;
   submittedAtLabel: string;
+  /** true si SIRET/Kbis (Pro) ou pièce d'identité/IBAN (Livreur) manquent encore -- voir validationsApi.ts. */
+  isDossierIncomplete: boolean;
+  /** Dernière relance "dossier incomplet" envoyée par un Admin, null si jamais. */
+  lastReminderAt: string | null;
 }
 
 const CATEGORY_EMOJIS: Record<ProCategory, string> = {
@@ -46,6 +51,8 @@ export function proToPendingValidation(pro: PendingPro): PendingValidation {
     subtitle: `${pro.user.firstName} ${pro.user.lastName} · SIRET ${pro.siret}`,
     emoji: CATEGORY_EMOJIS[pro.category] ?? "📦",
     submittedAtLabel: formatSubmittedAt(pro.createdAt),
+    isDossierIncomplete: isProDossierIncomplete(pro),
+    lastReminderAt: pro.lastDossierReminderAt ?? null,
   };
 }
 
@@ -57,5 +64,7 @@ export function riderToPendingValidation(rider: PendingRider): PendingValidation
     subtitle: `${rider.user.phone} · Pièce d'identité soumise`,
     emoji: VEHICLE_EMOJIS[rider.vehicleType] ?? "🛵",
     submittedAtLabel: formatSubmittedAt(rider.createdAt),
+    isDossierIncomplete: isRiderDossierIncomplete(rider),
+    lastReminderAt: rider.lastDossierReminderAt ?? null,
   };
 }
