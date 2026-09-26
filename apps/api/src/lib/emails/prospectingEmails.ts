@@ -36,7 +36,6 @@ import {
   infoBox,
   PORTAL_URLS,
   sendTrackedEmail,
-  getWwwLogoUrl,
   getProLogoUrl,
   getLivreurLogoUrl,
 } from "./shared";
@@ -107,37 +106,6 @@ function appLogoBadge(logoUrl: string | null, emojiFallback: string, label: stri
   </div>`;
 }
 
-/**
- * Bandeau où la mascotte traverse l'écran de gauche à droite, en écho au
- * loader affiché au démarrage de nos applications (voir SplashLoader.tsx,
- * même durée d'animation -- RUNNER_ANIM_MS=3500 -- reprise ici pour rester
- * fidèle) -- demande de Krys du 26/09/2026 ("voir même le logo furtif qui
- * traverse l'écran au chargement de l'application"). Progressive
- * enhancement assumé : les clients mail qui exécutent les animations CSS
- * (Apple Mail, iOS Mail, Gmail app...) la voient bouger ; les autres
- * (Outlook desktop notamment) affichent simplement le logo immobile au
- * point de départ -- jamais cassé, juste moins amusant.
- */
-const RUNNER_ANIM_MS = 3500;
-
-function runnerStripHeadCss(): string {
-  return `<style>
-@keyframes dygRunner {
-  0% { left: -12%; }
-  100% { left: 104%; }
-}
-.dyg-runner-track { position: relative; height: 64px; overflow: hidden; background: #F3F4F6; border-radius: 12px; }
-.dyg-runner-img { position: absolute; top: 50%; left: -12%; width: 44px; height: 44px; margin-top: -22px; animation: dygRunner ${RUNNER_ANIM_MS}ms ease-in-out infinite; }
-</style>`;
-}
-
-function runnerStripHtml(logoUrl: string | null): string {
-  const visual = logoUrl
-    ? `<img src="${logoUrl}" alt="Do You Geckoo" class="dyg-runner-img" />`
-    : `<span class="dyg-runner-img" style="font-size:32px;line-height:44px;">🦎</span>`;
-  return `<div class="dyg-runner-track">${visual}</div>`;
-}
-
 /** Table 2 colonnes (compatible Outlook) comparant Uber Eats & co. à Do You Geckoo. */
 function commissionComparisonTable(): string {
   return `
@@ -196,11 +164,7 @@ function packCards(): string {
 }
 
 export async function buildProspectingEmailHtml(data: ProspectingEmailData): Promise<string> {
-  const [wwwLogoUrl, proLogoUrl, livreurLogoUrl] = await Promise.all([
-    getWwwLogoUrl(),
-    getProLogoUrl(),
-    getLivreurLogoUrl(),
-  ]);
+  const [proLogoUrl, livreurLogoUrl] = await Promise.all([getProLogoUrl(), getLivreurLogoUrl()]);
 
   return emailShell(
     `
@@ -208,13 +172,11 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       🦎 ${data.businessName}, et si vous proposiez la livraison à ${data.city} avec Do You Geckoo ?
     </h1>
 
-    ${runnerStripHtml(wwwLogoUrl)}
-
     <p style="font-size:14px;color:#374151;line-height:1.6;white-space:pre-line;margin-top:16px;">
       ${data.introText}
     </p>
 
-    ${midButton("🚀 Je m'inscris tout de suite →", `${PORTAL_URLS.pro}/?mode=signup`)}
+    ${midButton("🚀 Je m'inscris tout de suite →", `${PORTAL_URLS.www}/devenir-partenaire`)}
     <p style="text-align:center;font-size:11px;color:#9CA3AF;margin:0 0 8px;">
       (ou continuez la lecture pour tout comprendre en détail)
     </p>
@@ -241,7 +203,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       Sur une commande livrée, voici où va vraiment l'argent -- chez une plateforme classique, et chez nous :
     </p>
     ${commissionComparisonTable()}
-    ${midButton("Je veux garder ma marge →", `${PORTAL_URLS.pro}/?mode=signup`)}
+    ${midButton("Je veux garder ma marge →", `${PORTAL_URLS.www}/devenir-partenaire`)}
 
     ${sectionLabel("🛵", "Des livreurs mieux payés")}
     ${appLogoBadge(livreurLogoUrl, "🛵", "Espace Livreur")}
@@ -261,7 +223,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       tranquillité, eux gagnent mieux leur vie, et vos clients gagnent en fiabilité : <strong>tout le monde y gagne
       !</strong> 🎉
     </p>
-    ${midButton("Inviter mes livreurs habituels →", `${PORTAL_URLS.rider}/?mode=signup`)}
+    ${midButton("Inviter mes livreurs habituels →", `${PORTAL_URLS.www}/devenir-livreur`)}
 
     ${sectionLabel("📦", "Nos forfaits -- sans obligation d'abonnement")}
     ${appLogoBadge(proLogoUrl, "🏪", "Espace Pro")}
@@ -273,7 +235,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
     </p>
     ${packCards()}
     <p style="font-size:11px;color:#9CA3AF;line-height:1.5;margin:8px 0 0;">Prix affichés TTC. Commission calculée uniquement sur les commandes effectivement livrées.</p>
-    ${midButton("Commencer avec le pack gratuit →", `${PORTAL_URLS.pro}/?mode=signup`)}
+    ${midButton("Commencer avec le pack gratuit →", `${PORTAL_URLS.www}/devenir-partenaire`)}
 
     ${sectionLabel("🎨", "Pas le temps de mettre votre carte en ligne ?")}
     <p style="font-size:14px;color:#374151;line-height:1.6;">
@@ -303,7 +265,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       Créez votre compte commerçant en quelques minutes, sans engagement :
     </p>
     <div style="text-align:center;">
-      ${button("Créer mon compte commerçant →", `${PORTAL_URLS.pro}/?mode=signup`)}
+      ${button("Créer mon compte commerçant →", `${PORTAL_URLS.www}/devenir-partenaire`)}
     </div>
     <p style="text-align:center;font-size:12px;color:#9CA3AF;margin-top:10px;">
       Une question avant de vous lancer ? Répondez simplement à ce mail, on vous répond personnellement.
@@ -314,8 +276,7 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       livraison dans le Golfe de Saint-Tropez. Si ce n'est pas le cas ou que vous ne souhaitez plus être contacté,
       répondez simplement à ce mail.
     </p>
-  `,
-    runnerStripHeadCss()
+  `
   );
 }
 
