@@ -134,6 +134,11 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 validation={validation}
                 onApprove={() => approve(validation.id, validation.kind)}
                 onReject={() => onNavigate?.("validations")}
+                /* Aperçu tableau de bord : comme onReject ci-dessus, on renvoie
+                   vers la page complète plutôt que de dupliquer ici l'état
+                   "reminding" en vol (voir ValidationsPage.tsx pour le
+                   vrai bouton "Relancer" avec suivi de l'envoi). */
+                onRemind={() => onNavigate?.("validations")}
               />
             ))}
           </div>
