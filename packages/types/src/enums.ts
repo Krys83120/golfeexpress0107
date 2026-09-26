@@ -37,6 +37,14 @@ export enum ProStatus {
   CLOSED = "CLOSED",
 }
 
+/** Voir Pro.orderIntegrationMode dans prisma/schema.prisma -- MANUAL est la seule valeur câblée aujourd'hui. */
+export enum OrderIntegrationMode {
+  MANUAL = "MANUAL",
+  TABLET = "TABLET",
+  API = "API",
+  POS = "POS",
+}
+
 /** Voir Pro.isManuallyClosed dans prisma/schema.prisma pour le détail. */
 export enum ManualClosureReason {
   VACATION = "VACATION",

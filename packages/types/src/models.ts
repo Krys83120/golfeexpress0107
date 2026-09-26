@@ -18,6 +18,7 @@ import {
   AppSource,
   ParcelOrderStatus,
   ParcelSize,
+  OrderIntegrationMode,
 } from "./enums";
 
 /**
@@ -92,6 +93,10 @@ export interface Pro {
   googleRatingSyncedAt?: string | null;
   /** Temps de préparation habituel (min), affiché sur la fiche commerçant. Voir prisma/schema.prisma. */
   defaultPrepTimeMinutes?: number | null;
+  /** MANUAL = comportement actuel (partout). TABLET/API/POS réservés, non implémentés -- voir prisma/schema.prisma. */
+  orderIntegrationMode: OrderIntegrationMode;
+  posProvider?: string | null;
+  posIntegrationNotes?: string | null;
   pickupAddressId?: string | null;
   stripeAccountId?: string | null;
   stripeChargesEnabled: boolean;

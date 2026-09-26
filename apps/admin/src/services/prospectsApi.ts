@@ -60,3 +60,21 @@ export async function seedProspects(): Promise<{ imported: number; skipped: numb
 export async function annotateProspects(): Promise<{ updated: number; deleted: number; notFound: number }> {
   return apiFetch("/api/admin/prospects/annotate", { method: "POST" });
 }
+
+export interface ImportProspectRow {
+  businessName: string;
+  city: string;
+  category?: string;
+  email?: string;
+  phone?: string;
+  websiteUrl?: string;
+  googleMapsUrl?: string;
+  notes?: string;
+}
+
+/** POST /api/admin/prospects/import -- import CSV (parsing déjà fait côté client). */
+export async function importProspectsRows(
+  rows: ImportProspectRow[]
+): Promise<{ imported: number; skipped: number; errors: { row: number; message: string }[] }> {
+  return apiFetch("/api/admin/prospects/import", { method: "POST", body: { rows } });
+}

@@ -32,6 +32,7 @@ export const PRO_FAQ: FaqItem[] = [
   { q: "Ai-je besoin d'un SIRET pour vendre ?", a: "Oui, la vente de produits doit être déclarée. Un numéro SIRET valide et un extrait Kbis à jour sont nécessaires pour activer votre compte." },
   { q: "Puis-je changer de pack ou résilier ?", a: "Oui, à tout moment, directement depuis votre espace Pro, sans engagement de durée." },
   { q: "Comment suis-je payé ?", a: "Les sommes dues sont reversées via Stripe Connect, déduction faite de la commission de votre pack. Vos factures restent consultables à tout moment." },
+  { q: "Vous êtes une enseigne avec plusieurs établissements et votre propre système de caisse ?", a: "Nous étudions au cas par cas une intégration directe avec votre système de caisse (POS), en plus de l'application Pro classique. Contactez-nous pour en discuter avec notre équipe." },
 ];
 
 export const RIDER_STEPS: Step[] = [

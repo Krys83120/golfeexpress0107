@@ -50,6 +50,23 @@ enum ProStatus {
   CLOSED
 }
 
+/// Voir Pro.orderIntegrationMode -- MANUAL est la seule valeur réellement
+/// câblée aujourd'hui, les 3 autres sont réservées pour une future grande
+/// enseigne (ajout du 26/09/2026).
+enum OrderIntegrationMode {
+  /// Le Pro accepte chaque commande depuis l'app Pro (comportement actuel, tout le monde).
+  MANUAL
+  /// Tablette dédiée fournie à l'enseigne (pas de développement supplémentaire,
+  /// juste un mode d'usage différent de MANUAL -- réservé, non implémenté).
+  TABLET
+  /// Connecteur API générique à développer au cas par cas (réservé, non implémenté).
+  API
+  /// Intégration directe avec le système de caisse (POS) de l'enseigne,
+  /// nécessite un connecteur spécifique à leur fournisseur de caisse
+  /// (réservé, non implémenté -- voir note sur Pro.orderIntegrationMode).
+  POS
+}
+
 /// Motif de fermeture manuelle temporaire d'un Pro — distinct de ProStatus
 /// (qui reflète la validation/modération du compte). Une fermeture manuelle
 /// n'affecte jamais ProStatus ni les horaires enregistrés (OpeningHours) :
@@ -331,6 +348,27 @@ model Pro {
   /// que de valeur par défaut/indicative, jamais lu pour calculer le
   /// timing réel d'une commande en cours.
   defaultPrepTimeMinutes Int?   @default(15) @map("default_prep_time_minutes")
+
+  /// Comment les commandes arrivent chez ce Pro (ajout du 26/09/2026,
+  /// préparation en vue d'une éventuelle grande enseigne type McDonald's/
+  /// Burger King). MANUAL = valeur par défaut actuelle pour tout le monde,
+  /// le Pro accepte chaque commande depuis l'app Pro (voir ProOrderCard.tsx),
+  /// aucun changement de comportement. TABLET/API/POS ne sont PAS encore
+  /// câblés à quoi que ce soit -- ce sont des valeurs réservées pour le jour
+  /// où une enseigne demande une vraie intégration caisse, qui nécessitera
+  /// un connecteur spécifique à SON système de caisse (chaque fournisseur a
+  /// sa propre API) et un accord commercial avec l'enseigne/le franchisé.
+  /// Ne pas construire de webhook/connecteur générique "POS" tant qu'aucune
+  /// enseigne précise n'est identifiée -- le format réel dépendra entièrement
+  /// du système utilisé (ex: NCR Aloha, Oracle Micros...), impossible à
+  /// deviner à l'avance sans risquer de construire la mauvaise abstraction.
+  orderIntegrationMode OrderIntegrationMode @default(MANUAL) @map("order_integration_mode")
+  /// Nom du système de caisse utilisé par l'enseigne, si connu (ex: "NCR
+  /// Aloha", "Oracle Micros Simphony") -- renseigné manuellement par Krys
+  /// une fois l'info obtenue auprès du commerçant/franchisé, sert juste de
+  /// mémo pour le jour où un vrai connecteur serait développé.
+  posProvider          String?              @map("pos_provider")
+  posIntegrationNotes  String?              @map("pos_integration_notes")
 
   /// Preuve de consentement CGU/CGV — date, version acceptée, et IP au
   /// moment de l'acceptation (utile en cas de litige).

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   ExternalLink,
@@ -14,6 +14,7 @@ import {
   X,
   ShoppingBag,
   HelpCircle,
+  Upload,
 } from "lucide-react";
 import { ProCategory } from "@golfeexpress/types";
 import type { Prospect } from "@golfeexpress/types";
@@ -24,9 +25,11 @@ import {
   deleteProspect,
   seedProspects,
   annotateProspects,
+  importProspectsRows,
   type CreateProspectInput,
 } from "@/services/prospectsApi";
 import { downloadCsv } from "@/services/csvExport";
+import { parseCsv, mapCsvRowsToProspects } from "@/services/csvImport";
 import { ProspectEmailModal } from "@/components/ProspectEmailModal";
 
 const CATEGORY_LABELS: Record<ProCategory, string> = {
@@ -65,6 +68,8 @@ export function ProspectionPage() {
   const [seeding, setSeeding] = useState(false);
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
   const [annotating, setAnnotating] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState<string>("all");
@@ -195,6 +200,35 @@ export function ProspectionPage() {
     }
   }
 
+  async function handleCsvFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permet de resélectionner le même fichier après correction
+    if (!file) return;
+    setImporting(true);
+    setError(null);
+    setSeedMessage(null);
+    try {
+      const text = await file.text();
+      const rows = mapCsvRowsToProspects(parseCsv(text));
+      if (rows.length === 0) {
+        setError(
+          "Aucune ligne exploitable dans ce fichier -- vérifie que la première ligne contient bien les en-têtes (Nom, Ville, Catégorie, Email, Téléphone, Site web, Fiche Google, Notes)."
+        );
+        return;
+      }
+      const result = await importProspectsRows(rows);
+      load();
+      const parts: string[] = [`${result.imported} importé${result.imported > 1 ? "s" : ""}`];
+      if (result.skipped > 0) parts.push(`${result.skipped} déjà présent${result.skipped > 1 ? "s" : ""} (ignoré${result.skipped > 1 ? "s" : ""})`);
+      if (result.errors.length > 0) parts.push(`${result.errors.length} ligne${result.errors.length > 1 ? "s" : ""} ignorée${result.errors.length > 1 ? "s" : ""} (erreur : ${result.errors[0].message})`);
+      setSeedMessage(parts.join(", ") + ".");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de la lecture du fichier CSV.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function handleDelete(p: Prospect) {
     if (!window.confirm(`Supprimer ${p.businessName} de la liste de prospection ?`)) return;
     try {
@@ -240,6 +274,22 @@ export function ProspectionPage() {
           >
             <Download size={16} />
             Exporter CSV
+          </button>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleCsvFileSelected}
+            className="hidden"
+          />
+          <button
+            onClick={() => csvInputRef.current?.click()}
+            disabled={importing}
+            title="Colonnes reconnues : Nom, Ville, Catégorie, Email, Téléphone, Site web, Fiche Google, Notes"
+            className="flex items-center gap-1.5 rounded-sm border border-gris-light bg-white px-3 py-2 text-sm font-semibold text-nuit hover:bg-gris-light disabled:opacity-50"
+          >
+            <Upload size={16} className={importing ? "animate-pulse" : ""} />
+            {importing ? "Import..." : "Importer un CSV"}
           </button>
           <button
             onClick={() => setFormModalProspect("new")}
