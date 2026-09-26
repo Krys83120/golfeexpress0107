@@ -60,6 +60,7 @@ export function ProspectionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
+  const [seedMessage, setSeedMessage] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState<string>("all");
@@ -151,12 +152,15 @@ export function ProspectionPage() {
   async function handleSeed() {
     setSeeding(true);
     setError(null);
+    setSeedMessage(null);
     try {
       const result = await seedProspects();
       load();
-      if (result.imported === 0) {
-        setError(null);
-      }
+      setSeedMessage(
+        result.imported > 0
+          ? `${result.imported} nouveau${result.imported > 1 ? "x" : ""} prospect${result.imported > 1 ? "s" : ""} importé${result.imported > 1 ? "s" : ""} (${result.skipped} déjà présent${result.skipped > 1 ? "s" : ""}).`
+          : "Aucun nouveau prospect à importer -- la liste de départ est déjà entièrement chargée."
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de l'import.");
     } finally {
@@ -185,6 +189,15 @@ export function ProspectionPage() {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={handleSeed}
+            disabled={seeding}
+            title="Réimporte la liste de départ (recherche web) -- sans jamais créer de doublon, n'ajoute que les nouveaux établissements"
+            className="flex items-center gap-1.5 rounded-sm border border-gris-light bg-white px-3 py-2 text-sm font-semibold text-nuit hover:bg-gris-light disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={seeding ? "animate-spin" : ""} />
+            {seeding ? "Import..." : "Importer la liste de départ"}
+          </button>
+          <button
             onClick={handleExportCsv}
             disabled={filtered.length === 0}
             className="flex items-center gap-1.5 rounded-sm border border-gris-light bg-white px-3 py-2 text-sm font-semibold text-nuit hover:bg-gris-light disabled:opacity-50"
@@ -203,6 +216,14 @@ export function ProspectionPage() {
       </div>
 
       {error && <div className="mb-4 rounded-sm bg-red-50 p-4 text-sm text-red-500">{error}</div>}
+      {seedMessage && (
+        <div className="mb-4 flex items-center justify-between rounded-sm bg-blue-50 p-4 text-sm text-blue-700">
+          <span>{seedMessage}</span>
+          <button onClick={() => setSeedMessage(null)} className="text-blue-700 hover:opacity-70">
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* STATS */}
       <div className="mb-6 grid grid-cols-5 gap-4">
