@@ -107,37 +107,61 @@ export async function sendAdminAlert(subject: string, html: string, replyTo?: st
   await sendEmail(ADMIN_EMAIL, subject, html, undefined, replyTo);
 }
 
-// Cache mémoire très court (30s) du logo du site vitrine (www), utilisé
-// comme en-tête de TOUS les emails transactionnels -- demande de Krys du
-// 25/09/2026 ("le logo dans le mail c'est celui principal du site www").
-// Même GlobalSetting (clé "branding.www_logo_url") que celui lu par
-// apps/www/src/lib/brandingApi.ts pour le bandeau du site vitrine — un
-// seul logo à gérer depuis Admin > Branding, qui se propage à la fois au
-// site et aux emails. Le cache évite une requête DB à chaque email (utile
-// pour un envoi groupé, ex. rapports), sans jamais afficher un logo
-// périmé plus de 30s après un changement dans Admin > Branding.
-let cachedWwwLogoUrl: { url: string | null; fetchedAt: number } | null = null;
-const WWW_LOGO_CACHE_TTL_MS = 30_000;
+// Cache mémoire très court (30s) des logos par app, utilisés dans les
+// emails -- demande de Krys du 25/09/2026 ("le logo dans le mail c'est
+// celui principal du site www"), étendue le 26/09/2026 pour pouvoir aussi
+// afficher le logo Pro et le logo Livreur dans les sections correspondantes
+// du mail de prospection (voir prospectingEmails.ts). Mêmes GlobalSetting
+// que ceux gérés depuis Admin > Branding (un logo par app -- voir
+// apps/admin/src/services/brandingApi.ts, APP_LOGO_SETTING_KEY) : aucune
+// nouvelle donnée à saisir, on relit simplement ce que Krys y a déjà
+// configuré. Le cache évite une requête DB à chaque email (utile pour un
+// envoi groupé, ex. rapports), sans jamais afficher un logo périmé plus de
+// 30s après un changement dans Admin > Branding.
+const LOGO_SETTING_KEYS = {
+  www: "branding.www_logo_url",
+  pro: "branding.logo_url_pro",
+  livreur: "branding.logo_url_livreur",
+} as const;
 
-async function getWwwLogoUrl(): Promise<string | null> {
-  if (cachedWwwLogoUrl && Date.now() - cachedWwwLogoUrl.fetchedAt < WWW_LOGO_CACHE_TTL_MS) {
-    return cachedWwwLogoUrl.url;
+const logoUrlCache = new Map<string, { url: string | null; fetchedAt: number }>();
+const LOGO_CACHE_TTL_MS = 30_000;
+
+async function getAppLogoUrl(settingKey: string): Promise<string | null> {
+  const cached = logoUrlCache.get(settingKey);
+  if (cached && Date.now() - cached.fetchedAt < LOGO_CACHE_TTL_MS) {
+    return cached.url;
   }
   try {
-    const setting = await prisma.globalSetting.findUnique({ where: { key: "branding.www_logo_url" } });
+    const setting = await prisma.globalSetting.findUnique({ where: { key: settingKey } });
     const url =
       setting && typeof setting.value === "object" && setting.value !== null && "url" in (setting.value as any)
         ? (setting.value as { url: string }).url
         : null;
-    cachedWwwLogoUrl = { url, fetchedAt: Date.now() };
+    logoUrlCache.set(settingKey, { url, fetchedAt: Date.now() });
     return url;
   } catch (err) {
     // Un logo manquant ne doit jamais empêcher l'envoi d'un email — on
     // journalise et on retombe sur le repli émoji, comme le fait déjà
-    // NavClient.tsx côté site vitrine quand wwwLogoUrl est absent.
-    console.error("[email] Impossible de récupérer le logo du site vitrine:", err);
+    // NavClient.tsx côté site vitrine quand un logo d'app est absent.
+    console.error(`[email] Impossible de récupérer le logo (${settingKey}):`, err);
     return null;
   }
+}
+
+/** Logo du site vitrine (Admin > Branding) -- utilisé en en-tête de tous les emails, exporté aussi pour les emails qui veulent le réutiliser dans leur propre corps (ex. l'animation "mascotte" du mail de prospection). */
+export async function getWwwLogoUrl(): Promise<string | null> {
+  return getAppLogoUrl(LOGO_SETTING_KEYS.www);
+}
+
+/** Logo de l'app Pro (Admin > Branding) -- null si jamais configuré, à gérer côté appelant (repli emoji). */
+export async function getProLogoUrl(): Promise<string | null> {
+  return getAppLogoUrl(LOGO_SETTING_KEYS.pro);
+}
+
+/** Logo de l'app Livreur (Admin > Branding) -- null si jamais configuré, à gérer côté appelant (repli emoji). */
+export async function getLivreurLogoUrl(): Promise<string | null> {
+  return getAppLogoUrl(LOGO_SETTING_KEYS.livreur);
 }
 
 /**
@@ -148,8 +172,14 @@ async function getWwwLogoUrl(): Promise<string | null> {
  * particulier pour le mail de prospection, puisque c'est un comportement
  * standard et sans risque pour n'importe quel email transactionnel (le clic
  * ramène simplement vers doyougeckoo.fr).
+ *
+ * `headExtra` (optionnel, ajouté le 26/09/2026) : bloc <style> additionnel
+ * injecté dans un <head>, réservé aux emails qui en ont besoin (ex. la
+ * petite animation CSS "mascotte qui traverse l'écran" du mail de
+ * prospection -- voir prospectingEmails.ts). Absent par défaut : les
+ * appelants existants n'ont rien à changer.
  */
-export async function emailShell(bodyHtml: string): Promise<string> {
+export async function emailShell(bodyHtml: string, headExtra?: string): Promise<string> {
   const logoUrl = await getWwwLogoUrl();
   const logoContent = logoUrl
     ? `<img src="${logoUrl}" alt="Do You Geckoo" style="max-width:220px;max-height:80px;width:auto;height:auto;" />`
@@ -159,6 +189,10 @@ export async function emailShell(bodyHtml: string): Promise<string> {
   return `
 <!DOCTYPE html>
 <html>
+<head>
+<meta charset="utf-8" />
+${headExtra ?? ""}
+</head>
 <body style="margin:0;padding:0;background:#F3F4F6;font-family:'Helvetica Neue',Arial,sans-serif;">
   <div style="max-width:520px;margin:0 auto;padding:32px 20px;">
     <div style="text-align:center;margin-bottom:24px;">

@@ -30,7 +30,16 @@
  */
 
 import { SubscriptionType } from "@golfeexpress/types";
-import { emailShell, button, infoBox, PORTAL_URLS, sendTrackedEmail } from "./shared";
+import {
+  emailShell,
+  button,
+  infoBox,
+  PORTAL_URLS,
+  sendTrackedEmail,
+  getWwwLogoUrl,
+  getProLogoUrl,
+  getLivreurLogoUrl,
+} from "./shared";
 import { DEFAULT_PACKS } from "@/lib/partnerPacks";
 import { DEFAULT_RIDER_PAY_BASE, DEFAULT_RIDER_PAY_PER_KM, DEFAULT_RIDER_PAY_MINIMUM } from "@/lib/pricingSettings";
 
@@ -77,6 +86,56 @@ function midButton(label: string, url: string): string {
   <div style="text-align:center;margin:18px 0 8px;">
     <a href="${url}" style="display:inline-block;background:#FFFFFF;color:#1A1A2E;font-weight:700;font-size:13px;padding:11px 24px;border-radius:999px;text-decoration:none;border:2px solid #1A1A2E;">${label}</a>
   </div>`;
+}
+
+/**
+ * Petit badge "logo d'app" (26/09/2026, demande de Krys : "rajouter logo pro
+ * et logo livreur dans les sections correspondantes") -- affiche le logo
+ * configuré depuis Admin > Branding pour l'app concernée (apps/admin/src/
+ * services/brandingApi.ts, APP_LOGO_SETTING_KEY), avec repli sur un badge
+ * emoji si Krys n'a pas encore uploadé de logo distinct pour cette app
+ * (jamais d'image cassée dans le mail).
+ */
+function appLogoBadge(logoUrl: string | null, emojiFallback: string, label: string): string {
+  const visual = logoUrl
+    ? `<img src="${logoUrl}" alt="${label}" width="40" height="40" style="width:40px;height:40px;border-radius:10px;object-fit:contain;background:#F3F4F6;" />`
+    : `<span style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:#F3F4F6;font-size:20px;">${emojiFallback}</span>`;
+  return `
+  <div style="display:inline-block;text-align:center;margin:4px 10px 0 0;">
+    ${visual}
+    <p style="margin:4px 0 0;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.03em;">${label}</p>
+  </div>`;
+}
+
+/**
+ * Bandeau où la mascotte traverse l'écran de gauche à droite, en écho au
+ * loader affiché au démarrage de nos applications (voir SplashLoader.tsx,
+ * même durée d'animation -- RUNNER_ANIM_MS=3500 -- reprise ici pour rester
+ * fidèle) -- demande de Krys du 26/09/2026 ("voir même le logo furtif qui
+ * traverse l'écran au chargement de l'application"). Progressive
+ * enhancement assumé : les clients mail qui exécutent les animations CSS
+ * (Apple Mail, iOS Mail, Gmail app...) la voient bouger ; les autres
+ * (Outlook desktop notamment) affichent simplement le logo immobile au
+ * point de départ -- jamais cassé, juste moins amusant.
+ */
+const RUNNER_ANIM_MS = 3500;
+
+function runnerStripHeadCss(): string {
+  return `<style>
+@keyframes dygRunner {
+  0% { left: -12%; }
+  100% { left: 104%; }
+}
+.dyg-runner-track { position: relative; height: 64px; overflow: hidden; background: #F3F4F6; border-radius: 12px; }
+.dyg-runner-img { position: absolute; top: 50%; left: -12%; width: 44px; height: 44px; margin-top: -22px; animation: dygRunner ${RUNNER_ANIM_MS}ms ease-in-out infinite; }
+</style>`;
+}
+
+function runnerStripHtml(logoUrl: string | null): string {
+  const visual = logoUrl
+    ? `<img src="${logoUrl}" alt="Do You Geckoo" class="dyg-runner-img" />`
+    : `<span class="dyg-runner-img" style="font-size:32px;line-height:44px;">🦎</span>`;
+  return `<div class="dyg-runner-track">${visual}</div>`;
 }
 
 /** Table 2 colonnes (compatible Outlook) comparant Uber Eats & co. à Do You Geckoo. */
@@ -137,11 +196,21 @@ function packCards(): string {
 }
 
 export async function buildProspectingEmailHtml(data: ProspectingEmailData): Promise<string> {
-  return emailShell(`
+  const [wwwLogoUrl, proLogoUrl, livreurLogoUrl] = await Promise.all([
+    getWwwLogoUrl(),
+    getProLogoUrl(),
+    getLivreurLogoUrl(),
+  ]);
+
+  return emailShell(
+    `
     <h1 style="font-size:20px;color:#1A1A2E;margin:0 0 12px;line-height:1.3;">
       🦎 ${data.businessName}, et si vous proposiez la livraison à ${data.city} avec Do You Geckoo ?
     </h1>
-    <p style="font-size:14px;color:#374151;line-height:1.6;white-space:pre-line;">
+
+    ${runnerStripHtml(wwwLogoUrl)}
+
+    <p style="font-size:14px;color:#374151;line-height:1.6;white-space:pre-line;margin-top:16px;">
       ${data.introText}
     </p>
 
@@ -175,7 +244,8 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
     ${midButton("Je veux garder ma marge →", `${PORTAL_URLS.pro}/inscription`)}
 
     ${sectionLabel("🛵", "Des livreurs mieux payés")}
-    <p style="font-size:14px;color:#374151;line-height:1.6;">
+    ${appLogoBadge(livreurLogoUrl, "🛵", "Espace Livreur")}
+    <p style="font-size:14px;color:#374151;line-height:1.6;margin-top:10px;">
       Chaque course est calculée simplement : ${DEFAULT_RIDER_PAY_BASE.toFixed(2).replace(".00", "")}€ de base, plus
       ${DEFAULT_RIDER_PAY_PER_KM.toFixed(2)}€ par kilomètre parcouru, avec un <strong>minimum garanti de
       ${DEFAULT_RIDER_PAY_MINIMUM}€</strong> par course -- affiché avant acceptation, sans surprise. Des livreurs mieux
@@ -183,7 +253,8 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
     </p>
 
     ${sectionLabel("📦", "Nos forfaits -- sans obligation d'abonnement")}
-    <p style="font-size:14px;color:#374151;line-height:1.6;margin-bottom:10px;">
+    ${appLogoBadge(proLogoUrl, "🏪", "Espace Pro")}
+    <p style="font-size:14px;color:#374151;line-height:1.6;margin-top:10px;margin-bottom:10px;">
       L'inscription est gratuite et le pack Découverte est <strong>disponible sans engagement, à vie</strong> -- vous
       n'êtes jamais obligé de souscrire à un abonnement payant pour vendre sur la plateforme. Deux formules payantes
       existent si vous voulez réduire encore votre commission et gagner en visibilité, mais rien n'est imposé :
@@ -232,7 +303,9 @@ export async function buildProspectingEmailHtml(data: ProspectingEmailData): Pro
       livraison dans le Golfe de Saint-Tropez. Si ce n'est pas le cas ou que vous ne souhaitez plus être contacté,
       répondez simplement à ce mail.
     </p>
-  `);
+  `,
+    runnerStripHeadCss()
+  );
 }
 
 /**
