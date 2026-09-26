@@ -10,7 +10,7 @@ interface ProspectEmailModalProps {
 }
 
 const defaultIntro = (businessName: string, city: string) =>
-  `Bonjour,\n\nNous avons remarqué que ${businessName} propose déjà (ou pourrait proposer) la livraison à ${city}. Do You Geckoo est la plateforme de livraison locale du Golfe de Saint-Tropez, et nous serions ravis de vous compter parmi nos commerçants partenaires.`;
+  `Bonjour,\n\nNous avons remarqué que ${businessName} propose déjà (ou pourrait proposer) la livraison à ${city}. Do You Geckoo est une nouvelle plateforme de livraison 100% locale, créée dans le Golfe de Saint-Tropez -- et nous serions ravis de vous compter parmi nos commerçants partenaires.`;
 
 /**
  * Modale d'envoi du mail de prospection (ajout du 26/09/2026, demande de
@@ -160,7 +160,7 @@ export function ProspectEmailModal({ prospect, onClose, onSent }: ProspectEmailM
 
         {previewHtml && (
           <div className="mb-5 overflow-hidden rounded-sm border border-gris-light">
-            <iframe title="Aperçu du mail" srcDoc={previewHtml} sandbox="" className="h-[420px] w-full bg-gris-light" />
+            <iframe title="Aperçu du mail" srcDoc={previewHtml} sandbox="" className="h-[1100px] w-full bg-gris-light" />
           </div>
         )}
 
