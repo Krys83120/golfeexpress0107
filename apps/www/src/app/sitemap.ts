@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { fetchPublicPros, fetchPublicServiceCities, buildProSlug } from "@/lib/publicApi";
+import { fetchPublicPros, fetchPublicServiceCities, buildProSlug, CATEGORY_SLUGS } from "@/lib/publicApi";
 import { getSortedBlogPosts } from "@/lib/blogPosts";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -28,6 +28,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: c.isActive ? 0.8 : 0.5,
     }));
+
+  // Une entrée par combinaison catégorie x ville qui a réellement au moins
+  // un commerçant (même filtre que
+  // /commercants/[categorie]/[ville]/generateStaticParams) -- deuxième
+  // levier SEO programmatique du 27/09/2026, sur le même principe que les
+  // villes ci-dessus : jamais de combinaison sans contenu réel.
+  const indexableCities = cities.filter((c) => c.seoIndexable && c.seoSlug);
+  const categorieVilleSeen = new Set<string>();
+  const categorieVilleUrls: MetadataRoute.Sitemap = [];
+  for (const pro of pros) {
+    const proCity = pro.addresses?.[0]?.city;
+    if (!proCity) continue;
+    const city = indexableCities.find((c) => c.name.toLowerCase() === proCity.toLowerCase());
+    if (!city || !city.seoSlug) continue;
+    const categorieSlug = CATEGORY_SLUGS[pro.category];
+    if (!categorieSlug) continue;
+    const key = `${categorieSlug}/${city.seoSlug}`;
+    if (categorieVilleSeen.has(key)) continue;
+    categorieVilleSeen.add(key);
+    categorieVilleUrls.push({
+      url: `${baseUrl}/commercants/${key}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.65,
+    });
+  }
 
   // Blog SEO/GEO (26/09/2026, demande de Krys) -- contenu statique connu au
   // build (voir lib/blogPosts.ts), donc lastModified = date de publication
@@ -109,6 +135,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.3,
     },
     ...cityUrls,
+    ...categorieVilleUrls,
     ...blogUrls,
     ...proUrls,
   ];

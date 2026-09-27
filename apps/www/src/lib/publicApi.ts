@@ -302,6 +302,36 @@ export const CATEGORY_SCHEMA_TYPE: Record<string, string> = {
   AUTRE: "Store",
 };
 
+/**
+ * Slug URL pour chaque catégorie Pro -- utilisé par les pages
+ * /commercants/[categorie]/[ville] (SEO programmatique catégorie x ville,
+ * ex: /commercants/restaurant/sainte-maxime). Mapping explicite plutôt
+ * qu'un slugify(CATEGORY_LABELS_PLAIN[cat]) à la volée : "AUTRE" doit
+ * donner "commerce" (comme son libellé plain "Commerce"), pas "autre",
+ * et un mapping figé évite qu'un futur changement de libellé affichable
+ * casse silencieusement des URLs déjà indexées par Google.
+ */
+export const CATEGORY_SLUGS: Record<string, string> = {
+  RESTAURANT: "restaurant",
+  BOULANGERIE: "boulangerie",
+  BOUCHERIE: "boucherie",
+  EPICERIE: "epicerie",
+  PHARMACIE: "pharmacie",
+  FLEURISTE: "fleuriste",
+  LIBRAIRIE: "librairie",
+  PARFUMERIE: "parfumerie",
+  AUTRE: "commerce",
+};
+
+/** Résolution inverse de CATEGORY_SLUGS -- construite une fois, pas à chaque appel. */
+const SLUG_TO_CATEGORY: Record<string, string> = Object.fromEntries(
+  Object.entries(CATEGORY_SLUGS).map(([key, slug]) => [slug, key])
+);
+
+export function resolveCategoryFromSlug(slug: string): string | null {
+  return SLUG_TO_CATEGORY[slug] ?? null;
+}
+
 function slugify(text: string): string {
   return text
     .normalize("NFD")

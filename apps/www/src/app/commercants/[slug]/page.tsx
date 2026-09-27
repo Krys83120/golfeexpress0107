@@ -8,10 +8,12 @@ import {
   fetchPublicProBySlug,
   fetchPublicProProducts,
   fetchPublicProReviews,
+  fetchPublicServiceCities,
   buildProSlug,
   CATEGORY_LABELS,
   CATEGORY_LABELS_PLAIN,
   CATEGORY_SCHEMA_TYPE,
+  CATEGORY_SLUGS,
 } from "@/lib/publicApi";
 import { SITE_URL } from "@/lib/seo";
 
@@ -83,6 +85,17 @@ export default async function CommercantDetailPage({ params }: PageProps) {
   const slug = buildProSlug(pro);
   const pageUrl = `${SITE_URL}/commercants/${slug}`;
   const address = pro.addresses?.[0];
+  const categorieSlug = CATEGORY_SLUGS[pro.category];
+
+  // Ville "SEO" correspondante (voir /livraison/[ville] et
+  // /commercants/[categorie]/[ville]) -- distincte du simple nom de ville
+  // sur l'adresse, car il faut son seoSlug pour construire un vrai lien.
+  // Permet enfin le maillage interne texte -> catégorie/ville que le
+  // fil d'Ariane visait déjà sans jamais le faire (commentaire d'origine).
+  const cities = await fetchPublicServiceCities();
+  const cityRecord = city ? cities.find((c) => c.name.toLowerCase() === city.toLowerCase() && c.seoIndexable && c.seoSlug) : undefined;
+  const cityPageUrl = cityRecord ? `${SITE_URL}/livraison/${cityRecord.seoSlug}` : null;
+  const categoryPageUrl = cityRecord && categorieSlug ? `${SITE_URL}/commercants/${categorieSlug}/${cityRecord.seoSlug}` : null;
 
   // JSON-LD commerçant -- type le plus précis disponible (voir
   // CATEGORY_SCHEMA_TYPE), uniquement les champs réellement connus.
@@ -121,15 +134,29 @@ export default async function CommercantDetailPage({ params }: PageProps) {
       : {}),
   };
 
+  // Fil d'Ariane JSON-LD -- pointe désormais vers les vraies pages
+  // ville (/livraison/[ville]) et catégorie x ville
+  // (/commercants/[categorie]/[ville]) quand elles existent, au lieu de
+  // l'ancienne URL /commercants?city=... qui ne correspondait à aucune
+  // page réelle. Repli sur le nom seul (sans lien) si la ville n'est pas
+  // encore seoIndexable.
+  const breadcrumbItems: { "@type": "ListItem"; position: number; name: string; item?: string }[] = [
+    { "@type": "ListItem", position: 1, name: "Accueil", item: SITE_URL },
+    { "@type": "ListItem", position: 2, name: "Commerçants", item: `${SITE_URL}/commercants` },
+  ];
+  if (city) breadcrumbItems.push({ "@type": "ListItem", position: 3, name: city, ...(cityPageUrl ? { item: cityPageUrl } : {}) });
+  breadcrumbItems.push({
+    "@type": "ListItem",
+    position: breadcrumbItems.length + 1,
+    name: categoryLabel,
+    ...(categoryPageUrl ? { item: categoryPageUrl } : {}),
+  });
+  breadcrumbItems.push({ "@type": "ListItem", position: breadcrumbItems.length + 1, name: pro.businessName, item: pageUrl });
+
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Accueil", item: SITE_URL },
-      { "@type": "ListItem", position: 2, name: "Commerçants", item: `${SITE_URL}/commercants` },
-      ...(city ? [{ "@type": "ListItem", position: 3, name: city, item: `${SITE_URL}/commercants?city=${encodeURIComponent(city)}` }] : []),
-      { "@type": "ListItem", position: city ? 4 : 3, name: pro.businessName, item: pageUrl },
-    ],
+    itemListElement: breadcrumbItems,
   };
 
   return (
@@ -154,11 +181,23 @@ export default async function CommercantDetailPage({ params }: PageProps) {
             {city && (
               <>
                 <span>/</span>
-                <span>{city}</span>
+                {cityPageUrl ? (
+                  <Link href={cityPageUrl.replace(SITE_URL, "")} className="hover:text-golfe-green hover:underline">
+                    {city}
+                  </Link>
+                ) : (
+                  <span>{city}</span>
+                )}
               </>
             )}
             <span>/</span>
-            <span>{categoryLabel}</span>
+            {categoryPageUrl ? (
+              <Link href={categoryPageUrl.replace(SITE_URL, "")} className="hover:text-golfe-green hover:underline">
+                {categoryLabel}
+              </Link>
+            ) : (
+              <span>{categoryLabel}</span>
+            )}
             <span>/</span>
             <span className="font-semibold text-nuit">{pro.businessName}</span>
           </nav>
