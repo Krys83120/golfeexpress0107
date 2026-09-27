@@ -10,9 +10,12 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 // toujours : l'écran de chargement (SplashLoader) reste alors figé à 92%
 // indéfiniment, sans jamais céder la place à l'app — seul un rechargement
 // manuel de la page "débloquait" la situation. On borne donc chaque appel
-// à 15s pour que l'échec soit détecté et géré normalement (retry via
-// refreshSession, ou passage en "unauthenticated").
-const FETCH_TIMEOUT_MS = 15000;
+// à 8s pour que l'échec soit détecté et géré normalement (retry via
+// refreshSession, ou passage en "unauthenticated"). Ramené de 15s à 8s le
+// 27/09/2026 -- couplé à la correction ci-dessous dans restoreSession()
+// (plus de retry automatique sur un simple timeout), le pire cas passe de
+// 30s à ~8s.
+const FETCH_TIMEOUT_MS = 8000;
 
 function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
@@ -88,10 +91,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (!res.ok) throw new Error("Session invalide");
       const data = await res.json();
       set({ status: "authenticated", user: data.user, profile: data.profile });
-    } catch {
+    } catch (err) {
       // Le token a peut-être juste expiré (l'app a été fermée longtemps) :
-      // on tente un refresh avant d'abandonner complètement.
-      const refreshed = await get().refreshSession();
+      // on tente un refresh avant d'abandonner complètement. Mais si
+      // l'échec vient d'un timeout réseau (fetchWithTimeout qui abandonne
+      // après FETCH_TIMEOUT_MS) plutôt que d'un rejet explicite du
+      // serveur, refaire un second appel réseau de la même durée ne fait
+      // que doubler l'attente pour rien (jusqu'à 30s au total avant ce
+      // correctif du 27/09/2026, suite au signalement d'écrans de
+      // chargement bloqués) : on passe directement en "unauthenticated".
+      const isTimeout = err instanceof Error && err.name === "AbortError";
+      const refreshed = isTimeout ? false : await get().refreshSession();
       if (!refreshed) {
         await persistSession(null);
         set({ status: "unauthenticated", accessToken: null, refreshToken: null, user: null, profile: null });

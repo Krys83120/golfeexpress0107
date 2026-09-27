@@ -12,11 +12,13 @@ import { View, Text, Image, Animated, Dimensions, Easing } from "react-native";
  *    réseau, donc pas de risque de 404 comme avec @expo/vector-icons.
  *  - La barre de progression est une FAUSSE progression simulée (comme
  *    Atlas Earth, GTA Online, etc.) : elle suit une courbe programmée sur
- *    ~5 secondes (ease-out) jusqu'à 92%, MÊME SI le vrai chargement
+ *    ~1,5 seconde (ease-out) jusqu'à 92%, MÊME SI le vrai chargement
  *    (`ready`) est déjà terminé avant — l'animation doit toujours donner
- *    l'impression d'un vrai chargement, pas d'un flash. Une fois les 5
- *    secondes écoulées ET `ready` devenu vrai, la barre termine rapidement
- *    jusqu'à 100%.
+ *    l'impression d'un vrai chargement, pas d'un flash. Une fois ce délai
+ *    écoulé ET `ready` devenu vrai, la barre termine rapidement jusqu'à
+ *    100%. Ramenée de 5s/3,5s à 1,5s/0,8s le 27/09/2026 (signalement écran
+ *    de chargement trop long/parfois bloqué) -- voir aussi useAuthStore.ts
+ *    qui borne désormais le pire cas réseau à ~8s au lieu de 30s.
  *  - Une fois à 100% : le contenu du splash s'efface en fondu, puis la
  *    mascotte (assets/splash-runner.png) traverse l'écran de gauche à
  *    droite à la même taille que le badge, avant que l'app réelle
@@ -29,19 +31,20 @@ import { View, Text, Image, Animated, Dimensions, Easing } from "react-native";
  *    natif.
  */
 
-const MIN_DURATION_MS = 5000;
+const MIN_DURATION_MS = 1500;
 const CAP = 92;
 // Taille de base x2.6 (demande explicite), plafonnée à la largeur d'écran
 // disponible pour ne jamais déborder sur un petit téléphone.
 const BASE_BADGE_SIZE = 220;
 const BADGE_SCALE = 2.6;
 const H_MARGIN = 20;
-const RUNNER_ANIM_MS = 3500;
+const RUNNER_ANIM_MS = 800;
 const FADE_MS = 200;
 // Voir le commentaire sur le garde-fou anti-blocage plus bas dans ce
 // fichier. Ne s'applique qu'à l'export web (Vercel) — pas d'effet sur
-// mobile natif où `window` n'existe pas.
-const WATCHDOG_MS = 25000;
+// mobile natif où `window` n'existe pas. Ramené de 25s à 12s le 27/09/2026,
+// cohérent avec le nouveau pire cas réseau de ~8s (voir useAuthStore.ts).
+const WATCHDOG_MS = 12000;
 const RELOAD_WATCHDOG_KEY = "dyg_splash_watchdog_reloaded_at";
 
 const STARS = [

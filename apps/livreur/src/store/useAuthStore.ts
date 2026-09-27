@@ -9,10 +9,12 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 // mobile capricieux...) laisse `restoreSession` bloquée en "loading" pour
 // toujours : l'écran de chargement reste alors figé indéfiniment, sans
 // jamais céder la place à l'app — seul un rechargement manuel "débloquait"
-// la situation. On borne donc chaque appel à 15s pour que l'échec soit
+// la situation. On borne donc chaque appel à 8s pour que l'échec soit
 // détecté et géré normalement (retry via refreshSession, ou passage en
-// "unauthenticated").
-const FETCH_TIMEOUT_MS = 15000;
+// "unauthenticated"). Ramené de 15s à 8s le 27/09/2026 -- couplé à la
+// correction ci-dessous dans restoreSession() (plus de retry automatique
+// sur un simple timeout), le pire cas passe de 30s à ~8s.
+const FETCH_TIMEOUT_MS = 8000;
 
 function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
@@ -86,8 +88,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (!res.ok) throw new Error("Session invalide");
       const data = await res.json();
       set({ status: "authenticated", user: data.user, profile: data.profile });
-    } catch {
-      const refreshed = await get().refreshSession();
+    } catch (err) {
+      // On ne retente un refresh que si le serveur a explicitement rejeté
+      // le token (401/session invalide). Si l'échec vient d'un timeout
+      // réseau (fetchWithTimeout qui abandonne après FETCH_TIMEOUT_MS),
+      // refaire un second appel réseau de la même durée ne fait que
+      // doubler l'attente pour rien (jusqu'à 30s au total avant ce
+      // correctif du 27/09/2026, suite au signalement d'écrans de
+      // chargement bloqués) : on passe directement en "unauthenticated".
+      const isTimeout = err instanceof Error && err.name === "AbortError";
+      const refreshed = isTimeout ? false : await get().refreshSession();
       if (!refreshed) {
         await persistSession(null);
         set({ status: "unauthenticated", accessToken: null, refreshToken: null, user: null, profile: null });

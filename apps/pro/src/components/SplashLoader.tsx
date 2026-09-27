@@ -7,23 +7,30 @@ import React, { useEffect, useRef, useState } from "react";
  *
  *  - Le badge est la vraie illustration de la mascotte (fichier statique
  *    /splash-badge.png servi depuis public/), affiché en grand.
- *  - La barre suit une courbe programmée sur ~5 secondes (ease-out,
+ *  - La barre suit une courbe programmée sur ~1,5 seconde (ease-out,
  *    plafonnée à 92%) MÊME SI le vrai chargement (`ready`) est déjà
- *    terminé avant.
+ *    terminé avant. Ramenée de 5s à 1,5s le 27/09/2026 (signalement écran
+ *    de chargement trop long/parfois bloqué) -- voir aussi useAuthStore.ts
+ *    qui borne désormais le pire cas réseau à ~8s au lieu de 30s.
  *  - Une fois à 100% : le contenu s'efface en fondu, puis la mascotte
  *    (/splash-runner.png) traverse l'écran de gauche à droite à la même
  *    taille que le badge, avant de céder la place au vrai contenu.
  */
 
-const MIN_DURATION_MS = 5000;
+const MIN_DURATION_MS = 1500;
 const CAP = 92;
 // Taille x2.6 (demande explicite), fluide selon la largeur de fenêtre
 // (clamp) pour rester cohérent sur mobile comme sur grand écran desktop.
 const BADGE_CSS_SIZE = "clamp(340px, 42vw, 620px)";
-const RUNNER_ANIM_MS = 3500;
+// Ramenée de 3,5s à 0,8s le 27/09/2026, même raison que MIN_DURATION_MS
+// ci-dessus -- l'objectif est un écran de chargement total de 2-3s dans le
+// cas normal (voir le détail dans le commentaire au-dessus de ce bloc).
+const RUNNER_ANIM_MS = 800;
 const FADE_MS = 200;
-// Voir le commentaire sur le garde-fou anti-blocage plus bas dans ce fichier.
-const WATCHDOG_MS = 25000;
+// Voir le commentaire sur le garde-fou anti-blocage plus bas dans ce
+// fichier. Ramené de 25s à 12s le 27/09/2026, cohérent avec le nouveau
+// pire cas réseau de ~8s (voir useAuthStore.ts).
+const WATCHDOG_MS = 12000;
 const RELOAD_WATCHDOG_KEY = "dyg_splash_watchdog_reloaded_at";
 
 const STARS = [

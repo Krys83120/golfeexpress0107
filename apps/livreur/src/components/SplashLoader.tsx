@@ -9,21 +9,26 @@ import { View, Text, Image, Animated, Dimensions, Easing, StyleSheet } from "rea
  * transition finale avec la mascotte qui traverse l'écran).
  * Repris ici en StyleSheet plutôt qu'en className NativeWind, pour rester
  * cohérent avec le reste de App.tsx qui n'utilise pas className.
+ *
+ * Durées ramenées de 5s/3,5s à 1,5s/0,8s le 27/09/2026 (signalement écran
+ * de chargement trop long/parfois bloqué) -- voir aussi useAuthStore.ts qui
+ * borne désormais le pire cas réseau à ~8s au lieu de 30s.
  */
 
-const MIN_DURATION_MS = 5000;
+const MIN_DURATION_MS = 1500;
 const CAP = 92;
 // Taille de base x2.6 (demande explicite), plafonnée à la largeur d'écran
 // disponible pour ne jamais déborder sur un petit téléphone.
 const BASE_BADGE_SIZE = 220;
 const BADGE_SCALE = 2.6;
 const H_MARGIN = 20;
-const RUNNER_ANIM_MS = 3500;
+const RUNNER_ANIM_MS = 800;
 const FADE_MS = 200;
 // Voir le commentaire sur le garde-fou anti-blocage plus bas dans ce
 // fichier. Ne s'applique qu'à l'export web (Vercel) — pas d'effet sur
-// mobile natif où `window` n'existe pas.
-const WATCHDOG_MS = 25000;
+// mobile natif où `window` n'existe pas. Ramené de 25s à 12s le 27/09/2026,
+// cohérent avec le nouveau pire cas réseau de ~8s (voir useAuthStore.ts).
+const WATCHDOG_MS = 12000;
 const RELOAD_WATCHDOG_KEY = "dyg_splash_watchdog_reloaded_at";
 
 const STARS = [
