@@ -11,7 +11,10 @@ import React, { useEffect, useRef, useState } from "react";
  *    plafonnée à 92%) MÊME SI le vrai chargement (`ready`) est déjà
  *    terminé avant. Ramenée de 5s à 1,5s le 27/09/2026 (signalement écran
  *    de chargement trop long/parfois bloqué) -- voir aussi useAuthStore.ts
- *    qui borne désormais le pire cas réseau à ~8s au lieu de 30s.
+ *    qui borne désormais le pire cas réseau à ~8s au lieu de 30s. La
+ *    traversée finale de la mascotte (RUNNER_ANIM_MS), elle, reste à 3,5s
+ *    -- ramenée à 0,8s le même jour puis rétablie à 3,5s le 27/09/2026
+ *    (trop rapide à l'usage, 3,5s jugé plus juste).
  *  - Une fois à 100% : le contenu s'efface en fondu, puis la mascotte
  *    (/splash-runner.png) traverse l'écran de gauche à droite à la même
  *    taille que le badge, avant de céder la place au vrai contenu.
@@ -22,10 +25,8 @@ const CAP = 92;
 // Taille x2.6 (demande explicite), fluide selon la largeur de fenêtre
 // (clamp) pour rester cohérent sur mobile comme sur grand écran desktop.
 const BADGE_CSS_SIZE = "clamp(340px, 42vw, 620px)";
-// Ramenée de 3,5s à 0,8s le 27/09/2026, même raison que MIN_DURATION_MS
-// ci-dessus -- l'objectif est un écran de chargement total de 2-3s dans le
-// cas normal (voir le détail dans le commentaire au-dessus de ce bloc).
-const RUNNER_ANIM_MS = 800;
+// Voir le commentaire au-dessus de ce bloc -- rétabli à 3,5s.
+const RUNNER_ANIM_MS = 3500;
 const FADE_MS = 200;
 // Voir le commentaire sur le garde-fou anti-blocage plus bas dans ce
 // fichier. Ramené de 25s à 12s le 27/09/2026, cohérent avec le nouveau

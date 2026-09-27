@@ -5,10 +5,11 @@ import React, { useEffect, useRef, useState } from "react";
  * (restauration de session) — équivalent Admin du composant du même nom
  * côté Pro (apps/pro/src/components/SplashLoader.tsx). Même raisonnement :
  * badge = vraie illustration, fausse progression sur ~1,5s, transition
- * finale avec la mascotte qui traverse l'écran. Durées ramenées de 5s/3,5s
- * à 1,5s/0,8s le 27/09/2026 (signalement écran de chargement trop
+ * finale avec la mascotte qui traverse l'écran (3,5s). MIN_DURATION_MS
+ * ramenée de 5s à 1,5s le 27/09/2026 (signalement écran de chargement trop
  * long/parfois bloqué) -- voir aussi useAuthStore.ts qui borne désormais le
- * pire cas réseau à ~8s au lieu de 30s.
+ * pire cas réseau à ~8s au lieu de 30s. RUNNER_ANIM_MS ramenée à 0,8s le
+ * même jour puis rétablie à 3,5s (trop rapide à l'usage).
  */
 
 const MIN_DURATION_MS = 1500;
@@ -16,7 +17,7 @@ const CAP = 92;
 // Taille x2.6 (demande explicite), fluide selon la largeur de fenêtre
 // (clamp) pour rester cohérent sur mobile comme sur grand écran desktop.
 const BADGE_CSS_SIZE = "clamp(340px, 42vw, 620px)";
-const RUNNER_ANIM_MS = 800;
+const RUNNER_ANIM_MS = 3500;
 const FADE_MS = 200;
 // Voir le commentaire sur le garde-fou anti-blocage plus bas dans ce
 // fichier. Ramené de 25s à 12s le 27/09/2026, cohérent avec le nouveau
