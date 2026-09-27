@@ -8,7 +8,7 @@ import React, { useEffect, useRef, useState } from "react";
  * finale avec la mascotte qui traverse l'écran (3,5s). MIN_DURATION_MS
  * ramenée de 5s à 1,5s le 27/09/2026 (signalement écran de chargement trop
  * long/parfois bloqué) -- voir aussi useAuthStore.ts qui borne désormais le
- * pire cas réseau à ~8s au lieu de 30s. RUNNER_ANIM_MS ramenée à 0,8s le
+ * pire cas réseau à ~3s au lieu de 30s. RUNNER_ANIM_MS ramenée à 0,8s le
  * même jour puis rétablie à 3,5s (trop rapide à l'usage).
  */
 
@@ -20,9 +20,12 @@ const BADGE_CSS_SIZE = "clamp(340px, 42vw, 620px)";
 const RUNNER_ANIM_MS = 3500;
 const FADE_MS = 200;
 // Voir le commentaire sur le garde-fou anti-blocage plus bas dans ce
-// fichier. Ramené de 25s à 12s le 27/09/2026, cohérent avec le nouveau
-// pire cas réseau de ~8s (voir useAuthStore.ts).
-const WATCHDOG_MS = 12000;
+// fichier. Ramené de 25s à 12s puis à 4s le 27/09/2026 (demande
+// explicite). Le timeout réseau de useAuthStore.ts a été aligné à 3s (donc
+// toujours en-dessous) le même jour, pour que `status` ait le temps de se
+// résoudre normalement (vers "unauthenticated") avant que ce garde-fou ne
+// force un rechargement de page.
+const WATCHDOG_MS = 4000;
 const RELOAD_WATCHDOG_KEY = "dyg_splash_watchdog_reloaded_at";
 
 const STARS = [

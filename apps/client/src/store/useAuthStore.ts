@@ -10,12 +10,16 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 // toujours : l'écran de chargement (SplashLoader) reste alors figé à 92%
 // indéfiniment, sans jamais céder la place à l'app — seul un rechargement
 // manuel de la page "débloquait" la situation. On borne donc chaque appel
-// à 8s pour que l'échec soit détecté et géré normalement (retry via
-// refreshSession, ou passage en "unauthenticated"). Ramené de 15s à 8s le
-// 27/09/2026 -- couplé à la correction ci-dessous dans restoreSession()
-// (plus de retry automatique sur un simple timeout), le pire cas passe de
-// 30s à ~8s.
-const FETCH_TIMEOUT_MS = 8000;
+// pour que l'échec soit détecté et géré normalement (retry via
+// refreshSession, ou passage en "unauthenticated"). Ramené de 15s à 8s
+// puis à 3s le 27/09/2026 -- couplé à la correction ci-dessous dans
+// restoreSession() (plus de retry automatique sur un simple timeout), le
+// pire cas passe de 30s à ~3s. Volontairement gardé sous les 4s du
+// garde-fou de SplashLoader.tsx (WATCHDOG_MS) : ce timeout doit résoudre
+// `status` (vers "unauthenticated") AVANT que le garde-fou ne force un
+// rechargement de page, sinon ce dernier se déclenche pour rien sur une
+// simple lenteur réseau qui aurait fini par répondre.
+const FETCH_TIMEOUT_MS = 3000;
 
 function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
