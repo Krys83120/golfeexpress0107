@@ -86,7 +86,7 @@ export function Hero() {
         </div>
 
         <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-white/50 sm:mt-16 sm:gap-x-10 sm:text-sm">
-          <span>🛵 Livraison en 20-30 min</span>
+          <span>🛵 Livraison généralement en 20-30 min</span>
           <span>🏪 Commerçants {PLATFORM_COMMISSION.fromLabel} de commission</span>
           <span>💚 Livreurs mieux rémunérés</span>
         </div>

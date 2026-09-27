@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OrderStatus, UserRole, RiderStatus } from "@golfeexpress/types";
+import { OrderStatus, UserRole, RiderStatus, RiderVerificationStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { isWithinRiderSearchWindow } from "@/lib/riderSearchWindow";
@@ -28,6 +28,13 @@ async function postHandler(req: NextRequest, ctx: { params: { orderId: string } 
   }
   if (rider.status !== RiderStatus.ACTIVE) {
     throw new ApiError(403, "Votre compte livreur n'est pas encore activé.");
+  }
+  // Vérification KYC/immatriculation (ajout du 27/09/2026) -- voir
+  // riders/me/online/route.ts pour le détail, même règle ici en garde-fou
+  // serveur (même si l'app ne devrait normalement jamais permettre à un
+  // livreur non VERIFIED d'être isOnline=true en premier lieu).
+  if (rider.verificationStatus !== RiderVerificationStatus.VERIFIED) {
+    throw new ApiError(403, "Votre vérification SIRET/identité/documents doit être validée pour accepter une commande.");
   }
   if (!rider.isOnline) {
     throw new ApiError(400, "Vous devez être en ligne pour accepter une commande.");

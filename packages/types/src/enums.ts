@@ -71,6 +71,37 @@ export enum RiderStatus {
   BANNED = "BANNED",
 }
 
+/**
+ * Statut de vérification KYC/immatriculation -- distinct de RiderStatus (qui
+ * gère le cycle de vie du compte). Voir prisma/schema.prisma pour le détail.
+ */
+export enum RiderVerificationStatus {
+  UNVERIFIED = "UNVERIFIED",
+  PENDING_REGISTRATION = "PENDING_REGISTRATION",
+  VERIFIED = "VERIFIED",
+}
+
+/**
+ * Les 14 allergènes à déclaration obligatoire (réglementation UE INCO
+ * 1169/2011, annexe II) -- voir Product.allergens, prisma/schema.prisma.
+ */
+export enum Allergen {
+  GLUTEN = "GLUTEN",
+  CRUSTACES = "CRUSTACES",
+  OEUFS = "OEUFS",
+  POISSON = "POISSON",
+  ARACHIDES = "ARACHIDES",
+  SOJA = "SOJA",
+  LAIT = "LAIT",
+  FRUITS_A_COQUE = "FRUITS_A_COQUE",
+  CELERI = "CELERI",
+  MOUTARDE = "MOUTARDE",
+  SESAME = "SESAME",
+  SULFITES = "SULFITES",
+  LUPIN = "LUPIN",
+  MOLLUSQUES = "MOLLUSQUES",
+}
+
 export enum OrderStatus {
   PENDING = "PENDING",
   CONFIRMED = "CONFIRMED",

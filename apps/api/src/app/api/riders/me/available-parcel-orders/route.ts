@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ParcelOrderStatus, UserRole, RiderStatus } from "@golfeexpress/types";
+import { ParcelOrderStatus, UserRole, RiderStatus, RiderVerificationStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { notifyNearbyRidersForParcelOrder } from "@/lib/riderNotifications";
@@ -33,6 +33,11 @@ async function getHandler(req: NextRequest) {
   }
   if (rider.status !== RiderStatus.ACTIVE) {
     throw new ApiError(403, "Votre compte livreur n'est pas encore activé.");
+  }
+  // Vérification KYC/immatriculation (ajout du 27/09/2026) -- même règle que
+  // riders/me/available-orders/route.ts.
+  if (rider.verificationStatus !== RiderVerificationStatus.VERIFIED) {
+    throw new ApiError(403, "Votre vérification SIRET/identité/documents doit être validée pour voir les colis disponibles.");
   }
 
   const parcelOrders = await prisma.parcelOrder.findMany({

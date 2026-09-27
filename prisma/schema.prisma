@@ -492,6 +492,27 @@ enum RiderProfessionalStatus {
   AUTRE
 }
 
+/// Statut de vérification KYC/immatriculation du livreur (ajout du
+/// 27/09/2026, demande de Krys) -- DISTINCT de RiderStatus (qui gère le
+/// cycle de vie du compte : en attente d'approbation / actif / suspendu /
+/// banni). Ce champ suit uniquement l'avancement du contrôle SIRET/
+/// identité/documents, et se combine à RiderStatus pour autoriser le
+/// passage en ligne et l'acceptation d'une course (voir riders/me/online,
+/// orders/[orderId]/accept, parcel-orders/accept, riders/me/available-orders
+/// -- exigent RiderStatus.ACTIVE ET RiderVerificationStatus.VERIFIED) :
+///   UNVERIFIED (🔴 Non vérifié) : valeur par défaut à l'inscription.
+///   PENDING_REGISTRATION (🟠 En attente d'immatriculation) : documents
+///     déposés, compte éventuellement préparé, mais SIRET/immatriculation
+///     pas encore confirmés -- positionné manuellement par un Admin.
+///   VERIFIED (🟢 Vérifié) : SIREN/SIRET + identité + documents validés --
+///     positionné automatiquement en même temps que l'approbation KYC
+///     complète (voir admin/riders/[riderId]/validate, approve=true).
+enum RiderVerificationStatus {
+  UNVERIFIED
+  PENDING_REGISTRATION
+  VERIFIED
+}
+
 model Rider {
   id              String       @id @default(uuid())
   userId          String       @unique @map("user_id")
@@ -531,6 +552,8 @@ model Rider {
   /// ci-dessous, qui est désormais la vraie source de vérité bancaire.
   iban            String
   status          RiderStatus  @default(PENDING)
+  /// Voir RiderVerificationStatus ci-dessus -- champ séparé de `status`.
+  verificationStatus RiderVerificationStatus @default(UNVERIFIED) @map("verification_status")
 
   /// Stripe Connect (compte "Express") — voir Pro.stripeAccountId pour le
   /// détail du fonctionnement, identique ici pour les livreurs.
@@ -727,11 +750,39 @@ model Product {
   /// sur la fiche produit (ProductOptionsModal cote app Client).
   rating      Decimal? @db.Decimal(2,1)
   ratingCount Int      @default(0) @map("rating_count")
+  /// Allergènes à déclaration obligatoire présents dans ce produit (ajout du
+  /// 27/09/2026, suite à l'audit du même jour : les CGU imposaient déjà
+  /// cette obligation au commerçant, mais aucun champ ni affichage
+  /// n'existait -- voir apps/pro (ProductFormModal) pour la saisie et
+  /// apps/client (ProductOptionsModal) pour l'affichage obligatoire avant
+  /// achat). Tableau vide = aucun allergène déclaré par le commerçant (PAS
+  /// une garantie d'absence -- reste sous sa responsabilité, voir CGU).
+  allergens   Allergen[] @default([])
   options     ProductOption[]
 
   pro            Pro             @relation(fields: [proId], references: [id])
   orderItems     OrderItem[]
   productReviews ProductReview[]
+}
+
+/// Les 14 allergènes à déclaration obligatoire (réglementation UE
+/// INCO 1169/2011, annexe II) -- liste fixe plutôt que texte libre, pour un
+/// affichage cohérent et filtrable côté Client (voir Product.allergens).
+enum Allergen {
+  GLUTEN
+  CRUSTACES
+  OEUFS
+  POISSON
+  ARACHIDES
+  SOJA
+  LAIT
+  FRUITS_A_COQUE
+  CELERI
+  MOUTARDE
+  SESAME
+  SULFITES
+  LUPIN
+  MOLLUSQUES
 }
 
 /// Métadonnées d'affichage d'une catégorie de menu (vignette catégorie côté

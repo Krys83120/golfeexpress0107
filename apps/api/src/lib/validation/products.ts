@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Allergen } from "@golfeexpress/types";
 
 export const createProductSchema = z.object({
   name: z.string().min(1, "Le nom est requis."),
@@ -14,6 +15,11 @@ export const createProductSchema = z.object({
   // indisponible, ou null (indisponibilité manuelle sans date, ou produit
   // disponible). Remis à null automatiquement par le Cron une fois dépassée.
   unavailableUntil: z.string().datetime().nullable().optional(),
+  // Allergènes à déclaration obligatoire (ajout du 27/09/2026, suite à
+  // l'audit du même jour) -- voir Allergen dans prisma/schema.prisma,
+  // ProductFormModal.tsx pour la saisie, ProductOptionsModal.tsx (client)
+  // pour l'affichage obligatoire avant achat.
+  allergens: z.array(z.nativeEnum(Allergen)).default([]),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;

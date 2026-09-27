@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { UserRole, RiderStatus, VehicleType } from "@golfeexpress/types";
+import { UserRole, RiderStatus, RiderVerificationStatus, VehicleType } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { sendAccountSuspendedEmail, sendAccountReactivatedEmail } from "@/lib/emails/accountEmails";
@@ -25,6 +25,7 @@ async function patchHandler(req: NextRequest, ctx: { params: { riderId: string }
     vehicleType?: VehicleType;
     vehiclePlate?: string | null;
     status?: RiderStatus;
+    verificationStatus?: RiderVerificationStatus;
   } = {};
 
   if (body.vehicleType && Object.values(VehicleType).includes(body.vehicleType)) {
@@ -35,6 +36,11 @@ async function patchHandler(req: NextRequest, ctx: { params: { riderId: string }
   }
   if (body.status && Object.values(RiderStatus).includes(body.status)) {
     data.status = body.status;
+  }
+  // Vérification KYC/immatriculation (ajout du 27/09/2026) -- distincte de
+  // `status` ci-dessus, voir prisma/schema.prisma (RiderVerificationStatus).
+  if (body.verificationStatus && Object.values(RiderVerificationStatus).includes(body.verificationStatus)) {
+    data.verificationStatus = body.verificationStatus;
   }
 
   if (Object.keys(data).length === 0) {

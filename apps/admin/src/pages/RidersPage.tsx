@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Search, MoreVertical, Star } from "lucide-react";
-import { RIDER_STATUS_LABELS, ADMIN_VEHICLE_LABELS } from "@/services/riderLabels";
+import { RIDER_STATUS_LABELS, RIDER_VERIFICATION_STATUS_LABELS, ADMIN_VEHICLE_LABELS } from "@/services/riderLabels";
 import { fetchAdminRiders, type AdminRiderRow } from "@/services/adminEntitiesApi";
 import { MapView, type MapPin } from "@/components/MapView";
 import { RiderDetailModal } from "@/components/RiderDetailModal";
@@ -104,12 +104,14 @@ export function RidersPage() {
                 <th className="py-2 pr-4 font-medium">Livraisons</th>
                 <th className="py-2 pr-4 font-medium">Gains totaux</th>
                 <th className="py-2 pr-4 font-medium">Statut</th>
+                <th className="py-2 pr-4 font-medium">Vérification</th>
                 <th className="py-2 pr-4 font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((rider) => {
                 const statusMeta = RIDER_STATUS_LABELS[rider.status];
+                const verificationMeta = RIDER_VERIFICATION_STATUS_LABELS[rider.verificationStatus];
                 const vehicleMeta = ADMIN_VEHICLE_LABELS[rider.vehicleType];
                 const rating = rider.rating ? Number(rider.rating) : null;
                 return (
@@ -166,6 +168,14 @@ export function RidersPage() {
                         style={{ backgroundColor: statusMeta.bg, color: statusMeta.text }}
                       >
                         {statusMeta.label}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span
+                        className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                        style={{ backgroundColor: verificationMeta.bg, color: verificationMeta.text }}
+                      >
+                        {verificationMeta.emoji} {verificationMeta.label}
                       </span>
                     </td>
                     <td className="relative py-3 pr-4 text-right">

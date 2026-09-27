@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OrderStatus, UserRole, RiderStatus } from "@golfeexpress/types";
+import { OrderStatus, UserRole, RiderStatus, RiderVerificationStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { isWithinRiderSearchWindow } from "@/lib/riderSearchWindow";
@@ -44,6 +44,12 @@ async function getHandler(req: NextRequest) {
   }
   if (rider.status !== RiderStatus.ACTIVE) {
     throw new ApiError(403, "Votre compte livreur n'est pas encore activé.");
+  }
+  // Vérification KYC/immatriculation (ajout du 27/09/2026) -- inutile de
+  // renvoyer des commandes disponibles à un livreur qui ne pourra jamais les
+  // accepter (voir orders/[orderId]/accept/route.ts pour le blocage final).
+  if (rider.verificationStatus !== RiderVerificationStatus.VERIFIED) {
+    throw new ApiError(403, "Votre vérification SIRET/identité/documents doit être validée pour voir les commandes disponibles.");
   }
 
   const candidates = await prisma.order.findMany({

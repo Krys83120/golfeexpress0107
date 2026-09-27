@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { UserRole, RiderStatus } from "@golfeexpress/types";
+import { UserRole, RiderStatus, RiderVerificationStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { sendRiderValidatedEmail, sendRiderRejectedEmail } from "@/lib/emails/accountEmails";
@@ -52,6 +52,12 @@ async function postHandler(req: NextRequest, ctx: { params: { riderId: string } 
     data: {
       status: parsed.data.approve ? RiderStatus.ACTIVE : RiderStatus.BANNED,
       rejectionReason: parsed.data.approve ? null : parsed.data.reason,
+      // Approuver ici = confirmer SIREN/SIRET + identité + documents (voir
+      // RiderVerificationStatus) : les deux statuts avancent ensemble pour
+      // qu'un livreur ACTIVE ne reste jamais bloqué en ligne parce que
+      // personne n'a pensé à positionner la vérification séparément. Un
+      // refus repasse à UNVERIFIED (le dossier est rejeté, pas "en cours").
+      verificationStatus: parsed.data.approve ? RiderVerificationStatus.VERIFIED : RiderVerificationStatus.UNVERIFIED,
     },
   });
 

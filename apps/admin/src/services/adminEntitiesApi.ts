@@ -267,6 +267,7 @@ export interface UpdateAdminRiderPayload {
   vehicleType?: Rider["vehicleType"];
   vehiclePlate?: string | null;
   status?: Rider["status"];
+  verificationStatus?: Rider["verificationStatus"];
 }
 
 /** PATCH /api/admin/riders/:riderId */

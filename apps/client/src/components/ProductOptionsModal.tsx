@@ -2,7 +2,31 @@ import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView, Image, StyleSheet, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Product, ProductOption, ProductReview } from "@golfeexpress/types";
+import { Allergen } from "@golfeexpress/types";
 import { fetchProductReviews } from "@/services/prosApi";
+
+/**
+ * Libellés FR des 14 allergènes réglementaires (ajout du 27/09/2026, suite à
+ * l'audit du même jour -- voir Allergen dans prisma/schema.prisma). Dupliqué
+ * côté apps/pro (ProductFormModal, ALLERGEN_LABELS) -- même convention que
+ * les autres libellés par app dans ce repo.
+ */
+const ALLERGEN_LABELS: Record<Allergen, string> = {
+  [Allergen.GLUTEN]: "Gluten",
+  [Allergen.CRUSTACES]: "Crustacés",
+  [Allergen.OEUFS]: "Œufs",
+  [Allergen.POISSON]: "Poisson",
+  [Allergen.ARACHIDES]: "Arachides",
+  [Allergen.SOJA]: "Soja",
+  [Allergen.LAIT]: "Lait",
+  [Allergen.FRUITS_A_COQUE]: "Fruits à coque",
+  [Allergen.CELERI]: "Céleri",
+  [Allergen.MOUTARDE]: "Moutarde",
+  [Allergen.SESAME]: "Graines de sésame",
+  [Allergen.SULFITES]: "Anhydride sulfureux et sulfites",
+  [Allergen.LUPIN]: "Lupin",
+  [Allergen.MOLLUSQUES]: "Mollusques",
+};
 
 interface ProductOptionsModalProps {
   product: Product;
@@ -307,6 +331,21 @@ export function ProductOptionsModal({ product, canOrder = true, onClose, onConfi
             <Text style={styles.price}>{basePrice.toFixed(2).replace(".", ",")} €</Text>
             {product.description && <Text style={styles.description}>{product.description}</Text>}
 
+            {/* Allergènes à déclaration obligatoire (ajout du 27/09/2026, suite
+                à l'audit du même jour) -- affiché AVANT le bouton de
+                confirmation, jamais masqué derrière un accordéon, puisque
+                c'est une information de sécurité et non une simple précision.
+                Tableau vide/absent = aucun allergène déclaré par le
+                commerçant (pas une garantie d'absence). */}
+            {(product.allergens?.length ?? 0) > 0 && (
+              <View style={styles.allergenNotice}>
+                <Text style={styles.allergenTitle}>⚠️ Allergènes présents</Text>
+                <Text style={styles.allergenList}>
+                  {product.allergens!.map((a) => ALLERGEN_LABELS[a]).join(" · ")}
+                </Text>
+              </View>
+            )}
+
             {product.hasExtraFeeNotice && (
               <View style={styles.feeNotice}>
                 <Text style={styles.feeNoticeText}>
@@ -540,6 +579,17 @@ const styles = StyleSheet.create({
   productReviewCard: { marginTop: 10, borderRadius: 8, backgroundColor: "#F9FAFB", padding: 12 },
   price: { marginTop: 4, fontSize: 15, color: "#6B7280" },
   description: { marginTop: 8, fontSize: 13, lineHeight: 19, color: "#6B7280" },
+  allergenNotice: {
+    marginTop: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    backgroundColor: "#FFEBEE",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  allergenTitle: { fontSize: 12, fontWeight: "700", color: "#B91C1C" },
+  allergenList: { marginTop: 2, fontSize: 12, color: "#B91C1C", lineHeight: 17 },
   feeNotice: {
     marginTop: 12,
     borderRadius: 8,

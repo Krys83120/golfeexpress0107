@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, StyleSheet, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Rider, RiderProfessionalStatus } from "@golfeexpress/types";
-import { VehicleType } from "@golfeexpress/types";
+import { VehicleType, RiderVerificationStatus } from "@golfeexpress/types";
 import { fetchMyRiderProfile, updateMyRiderProfile } from "@/services/riderProfileApi";
 import { uploadKycDocument, uploadRiderProfilePhoto } from "@/services/uploadsApi";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -21,6 +21,37 @@ const PROFESSIONAL_STATUS_LABELS: Record<RiderProfessionalStatus, string> = {
 };
 
 const TERMS_VERSION = "1.0";
+
+/**
+ * Vérification KYC/immatriculation (ajout du 27/09/2026, demande de Krys) --
+ * distincte du statut de compte (PENDING/ACTIVE/...), voir
+ * prisma/schema.prisma (RiderVerificationStatus). Affichée ici pour que le
+ * livreur comprenne pourquoi il ne peut pas encore passer en ligne, même
+ * une fois son dossier envoyé.
+ */
+const VERIFICATION_STATUS_META: Record<RiderVerificationStatus, { emoji: string; label: string; bg: string; text: string; hint: string }> = {
+  [RiderVerificationStatus.UNVERIFIED]: {
+    emoji: "🔴",
+    label: "Non vérifié",
+    bg: "#FFEBEE",
+    text: "#F44336",
+    hint: "Complétez votre dossier ci-dessous et envoyez-le pour vérification.",
+  },
+  [RiderVerificationStatus.PENDING_REGISTRATION]: {
+    emoji: "🟠",
+    label: "En attente d'immatriculation",
+    bg: "#FFF3E0",
+    text: "#FF6B35",
+    hint: "Vos documents ont été reçus, votre SIRET est en cours de contrôle par notre équipe.",
+  },
+  [RiderVerificationStatus.VERIFIED]: {
+    emoji: "🟢",
+    label: "Vérifié",
+    bg: "#E8F5E9",
+    text: "#2ECC71",
+    hint: "Votre dossier est validé, vous pouvez passer en ligne dès que votre compte est activé.",
+  },
+};
 
 /**
  * Le champ "Date de naissance" ci-dessous est un texte libre (pas de
@@ -190,6 +221,25 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
+        {rider && (
+          <View
+            style={{
+              marginBottom: 20,
+              borderRadius: 12,
+              padding: 14,
+              backgroundColor: VERIFICATION_STATUS_META[rider.verificationStatus].bg,
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: "700", color: VERIFICATION_STATUS_META[rider.verificationStatus].text }}>
+              {VERIFICATION_STATUS_META[rider.verificationStatus].emoji}{" "}
+              {VERIFICATION_STATUS_META[rider.verificationStatus].label}
+            </Text>
+            <Text style={{ marginTop: 3, fontSize: 12, color: "#1A1A2E" }}>
+              {VERIFICATION_STATUS_META[rider.verificationStatus].hint}
+            </Text>
+          </View>
+        )}
+
         <Section title="État civil">
           <Field label="Date de naissance (JJ-MM-AAAA)">
             <TextInput value={birthDate} onChangeText={setBirthDate} placeholder="12-04-1995" style={styles.input} />

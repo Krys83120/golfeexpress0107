@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { UserRole, RiderStatus } from "@golfeexpress/types";
+import { UserRole, RiderStatus, RiderVerificationStatus } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -25,6 +25,16 @@ async function patchHandler(req: NextRequest) {
   }
   if (parsed.data.isOnline && rider.status !== RiderStatus.ACTIVE) {
     throw new ApiError(403, "Votre compte doit être validé avant de pouvoir passer en ligne.");
+  }
+  // Vérification KYC/immatriculation (ajout du 27/09/2026) -- distincte du
+  // statut de compte ci-dessus : 🔴 Non vérifié ET 🟠 En attente
+  // d'immatriculation bloquent tous les deux le passage en ligne, seul 🟢
+  // Vérifié le permet (voir RiderVerificationStatus, prisma/schema.prisma).
+  if (parsed.data.isOnline && rider.verificationStatus !== RiderVerificationStatus.VERIFIED) {
+    throw new ApiError(
+      403,
+      "Votre vérification SIRET/identité/documents doit être validée avant de pouvoir passer en ligne."
+    );
   }
 
   const updated = await prisma.rider.update({

@@ -6,6 +6,8 @@ import {
   SubscriptionType,
   VehicleType,
   RiderStatus,
+  RiderVerificationStatus,
+  Allergen,
   OrderStatus,
   PaymentStatus,
   EarningType,
@@ -182,6 +184,8 @@ export interface Rider {
   idCardBack: string;
   iban: string;
   status: RiderStatus;
+  /** Vérification KYC/immatriculation -- distinct de `status`, voir prisma/schema.prisma. */
+  verificationStatus: RiderVerificationStatus;
   /** Date de la dernière relance "dossier incomplet" envoyée par un Admin (26/09/2026). Voir prisma/schema.prisma. */
   lastDossierReminderAt?: string | null;
   isOnline: boolean;
@@ -283,6 +287,8 @@ export interface Product {
   /** Moyenne des avis clients sur ce produit précis (voir ProductReview) -- affichée sur sa fiche produit. Calculés côté serveur, jamais fournis à la création (voir ProductFormModal côté Pro). */
   rating?: number | null;
   ratingCount?: number;
+  /** Allergènes à déclaration obligatoire présents dans ce produit -- voir prisma/schema.prisma, enum Allergen. Tableau vide = aucun déclaré. */
+  allergens?: Allergen[];
   options?: ProductOption[];
 }
 

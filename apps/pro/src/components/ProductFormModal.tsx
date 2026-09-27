@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { X, Plus, Trash2, Ban, Zap, ListPlus } from "lucide-react";
 import type { Product, ProductOption } from "@golfeexpress/types";
+import { Allergen } from "@golfeexpress/types";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { uploadProductImage, uploadProductGalleryImage, withCacheBust } from "@/services/uploadsApi";
 import { updateProductOptions, type OptionGroupInput } from "@/services/productsApi";
@@ -25,6 +26,29 @@ interface ProductFormModalProps {
 function isLikelyPhotoUrl(value: string): boolean {
   return value.startsWith("http://") || value.startsWith("https://");
 }
+
+/**
+ * Libellés FR des 14 allergènes réglementaires (ajout du 27/09/2026, suite à
+ * l'audit du même jour -- voir Allergen dans prisma/schema.prisma). Dupliqué
+ * côté apps/client (ProductOptionsModal) pour l'affichage client, même
+ * convention que les autres libellés par app dans ce repo (ex: VEHICLE_LABELS).
+ */
+export const ALLERGEN_LABELS: Record<Allergen, string> = {
+  [Allergen.GLUTEN]: "Gluten",
+  [Allergen.CRUSTACES]: "Crustacés",
+  [Allergen.OEUFS]: "Œufs",
+  [Allergen.POISSON]: "Poisson",
+  [Allergen.ARACHIDES]: "Arachides",
+  [Allergen.SOJA]: "Soja",
+  [Allergen.LAIT]: "Lait",
+  [Allergen.FRUITS_A_COQUE]: "Fruits à coque",
+  [Allergen.CELERI]: "Céleri",
+  [Allergen.MOUTARDE]: "Moutarde",
+  [Allergen.SESAME]: "Graines de sésame",
+  [Allergen.SULFITES]: "Anhydride sulfureux et sulfites",
+  [Allergen.LUPIN]: "Lupin",
+  [Allergen.MOLLUSQUES]: "Mollusques",
+};
 
 /**
  * Minuit (heure locale du navigateur, donc du Pro) au tout début de demain,
@@ -170,6 +194,13 @@ export function ProductFormModal({ product, proId, existingCategories, allProduc
   const [unavailabilityMode, setUnavailabilityMode] = useState<"today" | "indefinite">(
     product?.unavailableUntil ? "today" : "indefinite"
   );
+  // Allergènes à déclaration obligatoire (ajout du 27/09/2026) -- obligation
+  // déjà posée par les CGU, cette case à cocher est ce qui la rend
+  // effective : voir Allergen dans prisma/schema.prisma.
+  const [allergens, setAllergens] = useState<Allergen[]>(product?.allergens ?? []);
+  function toggleAllergen(a: Allergen) {
+    setAllergens((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
+  }
 
   const [optionGroups, setOptionGroups] = useState<OptionGroupInput[]>(
     product?.options?.map((o) => toOptionGroupInput(o, product.options!)) ?? []
@@ -271,6 +302,7 @@ export function ProductFormModal({ product, proId, existingCategories, allProduc
       isAvailable,
       isFeatured,
       unavailableUntil,
+      allergens,
     });
   }
 
@@ -607,6 +639,32 @@ export function ProductFormModal({ product, proId, existingCategories, allProduc
                 rows={2}
                 className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
               />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-gris">
+                Allergènes présents ⚠️ <span className="font-normal text-gris">(obligatoire si concerné)</span>
+              </label>
+              <p className="mb-2 text-[11px] text-gris">
+                Cochez tous les allergènes à déclaration obligatoire présents dans ce produit — affiché au client
+                avant l'achat. Vous êtes seul responsable de l'exactitude de cette déclaration.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(ALLERGEN_LABELS) as Allergen[]).map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => toggleAllergen(a)}
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
+                      allergens.includes(a)
+                        ? "border-corail bg-corail/10 text-corail"
+                        : "border-gris-light text-gris hover:bg-gris-light"
+                    }`}
+                  >
+                    {ALLERGEN_LABELS[a]}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="flex gap-3">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { X, Star, CheckCircle2, XCircle } from "lucide-react";
-import type { VehicleType, RiderStatus, Review } from "@golfeexpress/types";
-import { RIDER_STATUS_LABELS, ADMIN_VEHICLE_LABELS } from "@/services/riderLabels";
+import type { VehicleType, RiderStatus, RiderVerificationStatus, Review } from "@golfeexpress/types";
+import { RIDER_STATUS_LABELS, RIDER_VERIFICATION_STATUS_LABELS, ADMIN_VEHICLE_LABELS } from "@/services/riderLabels";
 import { updateAdminRider, fetchAdminRiderReviews, type AdminRiderRow } from "@/services/adminEntitiesApi";
 import { validateRider } from "@/services/validationsApi";
 import { MapView, type MapPin } from "@/components/MapView";
@@ -16,6 +16,7 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
   const [vehicleType, setVehicleType] = useState<VehicleType>(rider.vehicleType);
   const [vehiclePlate, setVehiclePlate] = useState(rider.vehiclePlate ?? "");
   const [status, setStatus] = useState<RiderStatus>(rider.status);
+  const [verificationStatus, setVerificationStatus] = useState<RiderVerificationStatus>(rider.verificationStatus);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRejectReason, setShowRejectReason] = useState(false);
@@ -68,6 +69,7 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
     try {
       const updated = await validateRider(rider.id, true);
       setStatus(updated.status);
+      setVerificationStatus(updated.verificationStatus);
       onUpdated(updated as AdminRiderRow);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de valider ce dossier.");
@@ -82,6 +84,7 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
     try {
       const updated = await validateRider(rider.id, false, rejectReason.trim());
       setStatus(updated.status);
+      setVerificationStatus(updated.verificationStatus);
       setShowRejectReason(false);
       onUpdated(updated as AdminRiderRow);
     } catch (err) {
@@ -115,6 +118,7 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
         vehicleType,
         vehiclePlate: vehiclePlate.trim() || null,
         status,
+        verificationStatus,
       });
       onUpdated(updated);
       onClose();
@@ -231,6 +235,16 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
         )}
 
         <div className="mb-5 flex items-center gap-4 text-sm">
+          <span
+            className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+            style={{
+              backgroundColor: RIDER_VERIFICATION_STATUS_LABELS[rider.verificationStatus].bg,
+              color: RIDER_VERIFICATION_STATUS_LABELS[rider.verificationStatus].text,
+            }}
+          >
+            {RIDER_VERIFICATION_STATUS_LABELS[rider.verificationStatus].emoji}{" "}
+            {RIDER_VERIFICATION_STATUS_LABELS[rider.verificationStatus].label}
+          </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: rider.isOnline ? "#2ECC71" : "#D1D5DB" }} />
             {rider.isOnline ? "En ligne" : "Hors ligne"}
@@ -384,20 +398,42 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
           </div>
         </div>
 
-        <div className="mb-6">
-          <label className="mb-1 block text-xs font-semibold text-gris">Statut</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as RiderStatus)}
-            className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
-          >
-            {Object.entries(RIDER_STATUS_LABELS).map(([key, meta]) => (
-              <option key={key} value={key}>
-                {meta.label}
-              </option>
-            ))}
-          </select>
+        <div className="mb-4 grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">Statut</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as RiderStatus)}
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            >
+              {Object.entries(RIDER_STATUS_LABELS).map(([key, meta]) => (
+                <option key={key} value={key}>
+                  {meta.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gris">
+              Vérification KYC/immatriculation
+            </label>
+            <select
+              value={verificationStatus}
+              onChange={(e) => setVerificationStatus(e.target.value as RiderVerificationStatus)}
+              className="w-full rounded-sm border border-gris-light px-3 py-2 text-sm"
+            >
+              {Object.entries(RIDER_VERIFICATION_STATUS_LABELS).map(([key, meta]) => (
+                <option key={key} value={key}>
+                  {meta.emoji} {meta.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+        <p className="mb-6 text-[11px] text-gris">
+          Tant que la vérification n'est pas 🟢 Vérifié, ce livreur ne peut pas passer en ligne ni accepter de
+          course, quel que soit son statut de compte.
+        </p>
 
         {error && <div className="mb-4 rounded-sm bg-red-50 p-3 text-sm text-red-500">{error}</div>}
 

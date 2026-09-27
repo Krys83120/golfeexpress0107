@@ -57,8 +57,8 @@ export default function AProposPage() {
               <div>
                 <p className="text-sm font-bold text-corail">Pour les clients</p>
                 <p className="mt-1.5 text-sm text-gris">
-                  Vos commerces du quotidien, livrés en 20 à 30 minutes, sans changer le prix que vous auriez payé en
-                  magasin.
+                  Vos commerces du quotidien, livrés en 20 à 30 minutes, au prix fixé par le commerçant — nous ne
+                  rajoutons aucune marge sur le prix des produits.
                 </p>
               </div>
               <div>

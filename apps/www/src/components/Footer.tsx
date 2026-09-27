@@ -36,7 +36,7 @@ export async function Footer() {
             </div>
             <p className="mt-4 max-w-sm text-sm">
               La livraison locale du Golfe de Saint-Tropez. Créée pour que les commerçants gardent plus de marge et
-              que les livreurs soient mieux payés — sans rien changer au prix pour le client.
+              que les livreurs soient mieux payés — les commerçants restent seuls maîtres de leurs prix.
             </p>
           </div>
 
