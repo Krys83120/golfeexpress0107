@@ -62,6 +62,30 @@ function groupHoursByDay(hours: { dayOfWeek: number; openTime: string; closeTime
       ranges: rows.filter((r) => !r.isClosed).sort((a, b) => a.openTime.localeCompare(b.openTime)),
     }));
 }
+
+// Affichage lisible = semaine commençant lundi (usage FR), alors que
+// dayOfWeek suit la convention JS/schema.org (0 = dimanche) utilisée
+// partout ailleurs dans ce fichier -- on ne réordonne QUE pour le rendu.
+const MONDAY_FIRST_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+function orderMondayFirst<T extends { dayOfWeek: number }>(days: T[]): T[] {
+  return [...days].sort((a, b) => MONDAY_FIRST_ORDER.indexOf(a.dayOfWeek) - MONDAY_FIRST_ORDER.indexOf(b.dayOfWeek));
+}
+
+/**
+ * Jour "aujourd'hui" dans le fuseau Europe/Paris -- le serveur Vercel
+ * tourne en UTC, donc new Date().getDay() peut désigner un jour différent
+ * de celui vécu par le client (surtout autour de minuit). Sert uniquement
+ * à surligner la ligne du jour courant dans le bloc horaires ci-dessous,
+ * jamais pour un statut ouvert/fermé (qui demanderait aussi l'heure, pas
+ * seulement le jour).
+ */
+function getTodayDayOfWeekParis(): number {
+  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Paris", weekday: "short" }).format(new Date());
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return map[weekday] ?? new Date().getDay();
+}
+
 const SCHEMA_DAY_NAMES = [
   "Sunday",
   "Monday",
@@ -86,6 +110,14 @@ export default async function CommercantDetailPage({ params }: PageProps) {
   const pageUrl = `${SITE_URL}/commercants/${slug}`;
   const address = pro.addresses?.[0];
   const categorieSlug = CATEGORY_SLUGS[pro.category];
+
+  // Horaires réordonnés lundi -> dimanche puis coupés en 2 colonnes pour
+  // le rendu (voir bloc "Horaires d'ouverture" plus bas) -- calculé une
+  // fois ici plutôt qu'inline dans le JSX pour rester lisible.
+  const orderedHours = pro.openingHours ? orderMondayFirst(groupHoursByDay(pro.openingHours)) : [];
+  const todayDayOfWeek = getTodayDayOfWeekParis();
+  const hoursHalf = Math.ceil(orderedHours.length / 2);
+  const hoursColumns = [orderedHours.slice(0, hoursHalf), orderedHours.slice(hoursHalf)];
 
   // Ville "SEO" correspondante (voir /livraison/[ville] et
   // /commercants/[categorie]/[ville]) -- distincte du simple nom de ville
@@ -223,18 +255,46 @@ export default async function CommercantDetailPage({ params }: PageProps) {
             </a>
           </div>
 
-          {pro.openingHours && pro.openingHours.length > 0 && (
-            <div className="mt-8 rounded-2xl bg-sable p-5">
-              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gris">Horaires d'ouverture</p>
-              <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
-                {groupHoursByDay(pro.openingHours).map((day) => (
-                  <div key={day.dayOfWeek} className="flex justify-between gap-2">
-                    <span className="text-gris">{DAY_LABELS[day.dayOfWeek]}</span>
-                    <span className="font-medium text-nuit">
-                      {day.isClosed ? "Fermé" : day.ranges.map((r) => `${r.openTime}–${r.closeTime}`).join(", ")}
-                    </span>
-                  </div>
-                ))}
+          {orderedHours.length > 0 && (
+            <div className="mt-8 rounded-2xl bg-sable p-5 sm:p-6">
+              <p className="mb-4 text-xs font-bold uppercase tracking-wide text-gris">Horaires d'ouverture</p>
+              <div className="grid gap-x-10 sm:grid-cols-2">
+                {hoursColumns.map(
+                  (column, colIndex) =>
+                    column.length > 0 && (
+                      <div key={colIndex} className="divide-y divide-gris-light/70">
+                        {column.map((day) => {
+                          const isToday = day.dayOfWeek === todayDayOfWeek;
+                          return (
+                            <div
+                              key={day.dayOfWeek}
+                              className="flex items-start justify-between gap-4 py-2 text-sm"
+                            >
+                              <span className={`flex items-center gap-1.5 ${isToday ? "font-bold text-golfe-green" : "text-gris"}`}>
+                                {DAY_LABELS[day.dayOfWeek]}
+                                {isToday && (
+                                  <span className="rounded-full bg-golfe-green/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-golfe-green">
+                                    Aujourd'hui
+                                  </span>
+                                )}
+                              </span>
+                              {day.isClosed ? (
+                                <span className={`text-right ${isToday ? "font-semibold text-corail" : "text-gris"}`}>Fermé</span>
+                              ) : (
+                                <span className={`flex flex-col items-end gap-0.5 text-right ${isToday ? "font-bold" : "font-medium"} text-nuit`}>
+                                  {day.ranges.map((r, i) => (
+                                    <span key={i}>
+                                      {r.openTime}–{r.closeTime}
+                                    </span>
+                                  ))}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                )}
               </div>
             </div>
           )}
