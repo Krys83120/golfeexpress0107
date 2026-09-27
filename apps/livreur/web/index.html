@@ -4,6 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no,viewport-fit=cover" />
     <meta name="theme-color" content="#FF6B35" />
+    <!-- iOS Safari (Ajouter à l'écran d'accueil) ignore les icônes du
+         manifest.json et affiche le favicon par défaut si aucune balise
+         apple-touch-icon n'est présente -- d'où l'icône "Do You Geckoo"
+         générique (favicon.png, partagé avec l'app Client) qui s'affichait
+         à la place de la mascotte livreur. Ajouté le 27/09/2026, même
+         correctif que apps/pro/index.html (voir son commentaire). -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
     <!-- Application fonctionnelle réservée aux livreurs connectés, pas de
          contenu éditorial -- ne doit pas être indexée. Voir aussi
          public/robots.txt (LOT 1, audit SEO/GEO du 24/08/2026). -->
