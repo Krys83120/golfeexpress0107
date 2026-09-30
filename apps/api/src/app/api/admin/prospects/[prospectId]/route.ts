@@ -17,16 +17,20 @@ const updateProspectSchema = z.object({
   websiteUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
   googleMapsUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
   facebookUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
+  logoUrl: z.string().trim().url("URL invalide.").or(z.literal("")).optional().nullable(),
   notes: z.string().trim().optional().nullable(),
   offersTakeaway: z.boolean().optional().nullable(),
   advertisesUberEats: z.boolean().optional().nullable(),
+  showOnDirectory: z.boolean().optional(),
 });
 
 /**
  * PATCH /api/admin/prospects/[prospectId]
  *
  * Édition d'une ligne -- Krys s'en sert surtout pour compléter un email
- * laissé vide par la recherche web initiale, ou corriger une coquille.
+ * laissé vide par la recherche web initiale, corriger une coquille, ou
+ * (30/09/2026) coller le logo affiché sur /decouvrir/[ville] et
+ * activer/désactiver l'apparition sur cette page annuaire.
  */
 async function patchHandler(req: NextRequest, ctx: { params: { prospectId: string } }) {
   await requireAuth(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN]);
@@ -45,7 +49,7 @@ async function patchHandler(req: NextRequest, ctx: { params: { prospectId: strin
   const data: Record<string, unknown> = { ...parsed.data };
   // Une chaîne vide envoyée depuis un champ optionnel du formulaire Admin
   // doit effacer la valeur (null), pas rester une chaîne vide en base.
-  for (const key of ["email", "phone", "websiteUrl", "googleMapsUrl", "facebookUrl", "notes"] as const) {
+  for (const key of ["email", "phone", "websiteUrl", "googleMapsUrl", "facebookUrl", "logoUrl", "notes"] as const) {
     if (data[key] === "") data[key] = null;
   }
 
