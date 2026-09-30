@@ -22,6 +22,19 @@ const updateProspectSchema = z.object({
   offersTakeaway: z.boolean().optional().nullable(),
   advertisesUberEats: z.boolean().optional().nullable(),
   showOnDirectory: z.boolean().optional(),
+  /**
+   * Marque manuellement ce prospect comme converti (true) ou annule ce
+   * marquage par erreur (false) -- ajout du 30/09/2026. convertedAt se
+   * remplit normalement tout seul au signup d'un Pro avec le même email
+   * (voir app/api/auth/signup/route.ts), mais ça suppose que ce prospect a
+   * bien un email ET que le Pro s'est inscrit avec exactement cet email :
+   * un partenaire déjà inscrit avant l'ajout de la Prospection, ou inscrit
+   * avec une autre adresse, reste donc "pas encore partenaire" pour
+   * toujours sans ce rattrapage manuel -- exactement le cas de Times food
+   * qui a fait remonter le problème. Champ virtuel : jamais stocké tel
+   * quel, traduit en convertedAt ci-dessous.
+   */
+  markConverted: z.boolean().optional(),
 });
 
 /**
@@ -51,6 +64,13 @@ async function patchHandler(req: NextRequest, ctx: { params: { prospectId: strin
   // doit effacer la valeur (null), pas rester une chaîne vide en base.
   for (const key of ["email", "phone", "websiteUrl", "googleMapsUrl", "facebookUrl", "logoUrl", "notes"] as const) {
     if (data[key] === "") data[key] = null;
+  }
+
+  // markConverted n'est pas une vraie colonne -- traduit en convertedAt
+  // juste avant l'update (voir le commentaire sur le schéma ci-dessus).
+  if ("markConverted" in data) {
+    data.convertedAt = data.markConverted ? new Date() : null;
+    delete data.markConverted;
   }
 
   const prospect = await prisma.prospect.update({ where: { id: existing.id }, data });

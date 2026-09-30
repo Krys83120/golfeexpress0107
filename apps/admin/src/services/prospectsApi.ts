@@ -46,6 +46,20 @@ export async function deleteProspect(prospectId: string): Promise<void> {
   await apiFetch(`/api/admin/prospects/${prospectId}`, { method: "DELETE" });
 }
 
+/**
+ * PATCH /api/admin/prospects/[prospectId] avec markConverted -- rattrapage
+ * manuel pour un commerce déjà partenaire dont le signup n'a pas rempli
+ * convertedAt automatiquement (email différent, ou inscrit avant l'ajout
+ * de la Prospection). Voir schema.prisma / [prospectId]/route.ts.
+ */
+export async function setProspectConverted(prospectId: string, converted: boolean): Promise<Prospect> {
+  const data = await apiFetch<{ prospect: Prospect }>(`/api/admin/prospects/${prospectId}`, {
+    method: "PATCH",
+    body: { markConverted: converted },
+  });
+  return data.prospect;
+}
+
 export type ProspectingEmailMode = "preview" | "test" | "send";
 
 /** POST /api/admin/prospects/[prospectId]/send-email */

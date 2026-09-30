@@ -28,6 +28,7 @@ import {
   seedProspects,
   annotateProspects,
   fetchLogosForProspects,
+  setProspectConverted,
   importProspectsRows,
   type CreateProspectInput,
 } from "@/services/prospectsApi";
@@ -250,6 +251,24 @@ export function ProspectionPage() {
       setError(err instanceof Error ? err.message : "Échec de la lecture du fichier CSV.");
     } finally {
       setImporting(false);
+    }
+  }
+
+  /**
+   * Rattrapage manuel : commerce déjà partenaire dont convertedAt ne s'est
+   * jamais rempli tout seul (email différent de celui du compte Pro, ou
+   * inscrit avant l'ajout de la Prospection -- cas de Times food, qui a
+   * fait remonter le problème le 30/09/2026). Marquer converti retire
+   * aussitôt le prospect de l'annuaire public /decouvrir/[ville] -- il y a
+   * déjà sa vraie fiche via /livraison/[ville] et /commercants.
+   */
+  async function handleToggleConverted(p: Prospect) {
+    const next = !p.convertedAt;
+    try {
+      const updated = await setProspectConverted(p.id, next);
+      setProspects((prev) => prev.map((x) => (x.id === p.id ? updated : x)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de la mise à jour.");
     }
   }
 
@@ -554,6 +573,21 @@ export function ProspectionPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1.5">
+                        <button
+                          onClick={() => handleToggleConverted(p)}
+                          title={
+                            p.convertedAt
+                              ? "Déjà partenaire -- cliquer pour annuler ce marquage"
+                              : "Commerce déjà partenaire (converti manuellement, ex: inscrit avant la Prospection ou avec un autre email) -- le retire aussitôt de l'annuaire public"
+                          }
+                          className={
+                            p.convertedAt
+                              ? "flex h-8 w-8 items-center justify-center rounded-sm border border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+                              : "flex h-8 w-8 items-center justify-center rounded-sm border border-gris-light text-nuit hover:bg-gris-light"
+                          }
+                        >
+                          <CheckCircle2 size={14} />
+                        </button>
                         <button
                           onClick={() => setEmailModalProspect(p)}
                           title="Envoyer un mail de prospection"
