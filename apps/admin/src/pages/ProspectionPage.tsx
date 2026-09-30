@@ -16,7 +16,6 @@ import {
   HelpCircle,
   Upload,
   MessageCircle,
-  MapPin,
   Image as ImageIcon,
 } from "lucide-react";
 import { ProCategory } from "@golfeexpress/types";
@@ -29,7 +28,6 @@ import {
   seedProspects,
   annotateProspects,
   fetchLogosForProspects,
-  reclassifyPortGrimaud,
   setProspectConverted,
   importProspectsRows,
   type CreateProspectInput,
@@ -75,7 +73,6 @@ export function ProspectionPage() {
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
   const [annotating, setAnnotating] = useState(false);
   const [fetchingLogos, setFetchingLogos] = useState(false);
-  const [reclassifying, setReclassifying] = useState(false);
   const [importing, setImporting] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
@@ -228,31 +225,6 @@ export function ProspectionPage() {
     }
   }
 
-  /**
-   * Rattrapage ponctuel du 30/09/2026 -- corrige les commerces déjà en base
-   * sous city="Grimaud" mais physiquement à Port Grimaud (ajoutés avant que
-   * Port-Grimaud devienne une ville indépendante de Grimaud). Sans effet si
-   * rejoué : peut rester ici sans risque, à retirer un jour si on veut.
-   */
-  async function handleReclassifyPortGrimaud() {
-    setReclassifying(true);
-    setError(null);
-    setSeedMessage(null);
-    try {
-      const result = await reclassifyPortGrimaud();
-      load();
-      setSeedMessage(
-        result.reclassified === 0
-          ? "Rien à corriger -- déjà fait précédemment."
-          : `${result.reclassified} commerce${result.reclassified > 1 ? "s" : ""} déplacé${result.reclassified > 1 ? "s" : ""} de Grimaud vers Port-Grimaud.`
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Échec de la correction.");
-    } finally {
-      setReclassifying(false);
-    }
-  }
-
   async function handleCsvFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // permet de resélectionner le même fichier après correction
@@ -346,15 +318,6 @@ export function ProspectionPage() {
           >
             <ImageIcon size={16} className={fetchingLogos ? "animate-pulse" : ""} />
             {fetchingLogos ? "Recherche..." : "Rechercher les logos"}
-          </button>
-          <button
-            onClick={handleReclassifyPortGrimaud}
-            disabled={reclassifying}
-            title="Corrige les commerces déjà en base sous Grimaud mais physiquement à Port Grimaud (rattrapage ponctuel du 30/09/2026, sans effet si déjà fait)"
-            className="flex items-center gap-1.5 rounded-sm border border-gris-light bg-white px-3 py-2 text-sm font-semibold text-nuit hover:bg-gris-light disabled:opacity-50"
-          >
-            <MapPin size={16} className={reclassifying ? "animate-pulse" : ""} />
-            {reclassifying ? "Correction..." : "Corriger Port-Grimaud"}
           </button>
           <button
             onClick={handleExportCsv}
