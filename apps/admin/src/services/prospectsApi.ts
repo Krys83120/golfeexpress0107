@@ -89,6 +89,16 @@ export async function fetchLogosForProspects(): Promise<{ checked: number; found
   return apiFetch("/api/admin/prospects/fetch-logos", { method: "POST" });
 }
 
+/**
+ * POST /api/admin/prospects/reclassify-port-grimaud -- corrige les
+ * commerces déjà en base sous city="Grimaud" mais physiquement à Port
+ * Grimaud (ajoutés avant que Port-Grimaud devienne une ville indépendante).
+ * Rattrapage ponctuel du 30/09/2026, sans effet si rejoué.
+ */
+export async function reclassifyPortGrimaud(): Promise<{ reclassified: number }> {
+  return apiFetch("/api/admin/prospects/reclassify-port-grimaud", { method: "POST" });
+}
+
 export interface ImportProspectRow {
   businessName: string;
   city: string;
