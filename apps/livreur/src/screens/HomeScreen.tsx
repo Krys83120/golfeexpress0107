@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { OnlineToggleHeader } from "@/components/OnlineToggleHeader";
@@ -10,7 +10,17 @@ import { CurrentParcelDeliveryCard } from "@/components/CurrentParcelDeliveryCar
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
 import { useAuthStore } from "@/store/useAuthStore";
 
+// Vue affichée sous la carte Gains quand aucune livraison n'est en cours --
+// "home" = les 2 vignettes Commandes / Colis Express (30/09/2026, retour
+// demandé par Krys à ce format après un passage temporaire par 2 sections
+// texte empilées -- "les vignettes c'était mieux"), "orders"/"parcels" =
+// écran plein détaillant la liste correspondante, ouvert en tapant sa
+// vignette.
+type HomeView = "home" | "orders" | "parcels";
+
 export function HomeScreen() {
+  const [view, setView] = useState<HomeView>("home");
+
   const isOnline = useRiderSessionStore((s) => s.isOnline);
   const activeDelivery = useRiderSessionStore((s) => s.activeDelivery);
   const availableOrders = useRiderSessionStore((s) => s.availableOrders);
@@ -77,6 +87,13 @@ export function HomeScreen() {
     ]);
   }, [cancelledDeliveryNotice]);
 
+  // Dès qu'une livraison démarre (acceptée depuis la liste ou reçue en
+  // arrière-plan), on revient sur la vue vignettes -- sinon le livreur
+  // resterait bloqué sur un écran de liste vide en repassant sur l'accueil.
+  useEffect(() => {
+    if (activeDelivery || activeParcelDelivery) setView("home");
+  }, [Boolean(activeDelivery), Boolean(activeParcelDelivery)]);
+
   async function handleAccept(orderId: string) {
     try {
       await handleAcceptOrder(orderId);
@@ -119,6 +136,74 @@ export function HomeScreen() {
     );
   }
 
+  const ordersCount = isOnline && availableOrdersStatus === "loaded" ? availableOrders.length : 0;
+  const parcelsCount = isOnline && availableParcelOrdersStatus === "loaded" ? availableParcelOrders.length : 0;
+
+  function renderOrdersList() {
+    return (
+      <View style={styles.ordersSection}>
+        {!isOnline ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>😴</Text>
+            <Text style={styles.emptyText}>Vous êtes hors ligne</Text>
+          </View>
+        ) : availableOrdersStatus === "loading" ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator color="#2ECC71" />
+          </View>
+        ) : availableOrdersStatus === "error" ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>Impossible de charger les commandes disponibles.</Text>
+            <Pressable onPress={loadAvailableOrders} style={{ marginTop: 8 }}>
+              <Text style={styles.retryText}>Réessayer</Text>
+            </Pressable>
+          </View>
+        ) : availableOrders.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>🔍</Text>
+            <Text style={styles.emptyText}>Aucune commande disponible pour le moment</Text>
+          </View>
+        ) : (
+          availableOrders.map((order) => (
+            <OrderCard key={order.id} order={order} onAccept={() => handleAccept(order.id)} onDecline={() => {}} />
+          ))
+        )}
+      </View>
+    );
+  }
+
+  function renderParcelsList() {
+    return (
+      <View style={styles.ordersSection}>
+        {availableParcelOrdersStatus === "loading" ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator color="#2196F3" />
+          </View>
+        ) : availableParcelOrdersStatus === "error" ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>Impossible de charger les colis disponibles.</Text>
+            <Pressable onPress={loadAvailableParcelOrders} style={{ marginTop: 8 }}>
+              <Text style={styles.retryText}>Réessayer</Text>
+            </Pressable>
+          </View>
+        ) : availableParcelOrders.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>📦</Text>
+            <Text style={styles.emptyText}>Aucun Colis Express disponible pour le moment</Text>
+          </View>
+        ) : (
+          availableParcelOrders.map((parcelOrder) => (
+            <ParcelOrderCard
+              key={parcelOrder.id}
+              parcelOrder={parcelOrder}
+              onAccept={() => handleAcceptParcel(parcelOrder.id)}
+            />
+          ))
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
@@ -132,6 +217,28 @@ export function HomeScreen() {
           <CurrentDeliveryCard />
         ) : activeParcelDelivery ? (
           <CurrentParcelDeliveryCard />
+        ) : view === "orders" ? (
+          <>
+            <View style={styles.listHeader}>
+              <Pressable onPress={() => setView("home")} style={styles.backBtn} hitSlop={8}>
+                <Text style={styles.backText}>← Retour</Text>
+              </Pressable>
+              <Text style={styles.listTitle}>📋 Commandes disponibles {ordersCount > 0 ? `(${ordersCount})` : ""}</Text>
+            </View>
+            {renderOrdersList()}
+          </>
+        ) : view === "parcels" ? (
+          <>
+            <View style={styles.listHeader}>
+              <Pressable onPress={() => setView("home")} style={styles.backBtn} hitSlop={8}>
+                <Text style={styles.backText}>← Retour</Text>
+              </Pressable>
+              <Text style={styles.listTitle}>
+                📦 Colis Express disponibles {parcelsCount > 0 ? `(${parcelsCount})` : ""}
+              </Text>
+            </View>
+            {renderParcelsList()}
+          </>
         ) : (
           <>
             <View style={styles.mapPlaceholder}>
@@ -141,82 +248,26 @@ export function HomeScreen() {
               </Text>
             </View>
 
-            <View style={styles.ordersSection}>
-              <Text style={styles.ordersTitle}>
-                📋 Commandes disponibles {isOnline && availableOrdersStatus === "loaded" ? `(${availableOrders.length})` : ""}
-              </Text>
-
-              {!isOnline ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyEmoji}>😴</Text>
-                  <Text style={styles.emptyText}>Vous êtes hors ligne</Text>
-                </View>
-              ) : availableOrdersStatus === "loading" ? (
-                <View style={styles.emptyState}>
-                  <ActivityIndicator color="#2ECC71" />
-                </View>
-              ) : availableOrdersStatus === "error" ? (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>Impossible de charger les commandes disponibles.</Text>
-                  <Pressable onPress={loadAvailableOrders} style={{ marginTop: 8 }}>
-                    <Text style={styles.retryText}>Réessayer</Text>
-                  </Pressable>
-                </View>
-              ) : availableOrders.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyEmoji}>🔍</Text>
-                  <Text style={styles.emptyText}>Aucune commande disponible pour le moment</Text>
-                </View>
-              ) : (
-                availableOrders.map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    onAccept={() => handleAccept(order.id)}
-                    onDecline={() => {}}
-                  />
-                ))
-              )}
+            <View style={styles.tilesRow}>
+              <Pressable
+                style={[styles.tile, styles.tileOrders]}
+                onPress={() => setView("orders")}
+                accessibilityRole="button"
+              >
+                <Text style={styles.tileEmoji}>📋</Text>
+                <Text style={styles.tileLabel}>Commandes</Text>
+                <Text style={[styles.tileCount, styles.tileCountOrders]}>{ordersCount} dispo</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.tile, styles.tileParcels]}
+                onPress={() => setView("parcels")}
+                accessibilityRole="button"
+              >
+                <Text style={styles.tileEmoji}>📦</Text>
+                <Text style={styles.tileLabel}>Colis Express</Text>
+                <Text style={[styles.tileCount, styles.tileCountParcels]}>{parcelsCount} dispo</Text>
+              </Pressable>
             </View>
-
-            {/* Colis Express (23/09/2026) -- section séparée sous les
-                commandes classiques : table distincte (ParcelOrder), volume
-                plus faible pour l'instant, pas de raison de mélanger les
-                deux listes. */}
-            {isOnline && (
-              <View style={styles.ordersSection}>
-                <Text style={styles.ordersTitle}>
-                  📦 Colis Express disponibles{" "}
-                  {availableParcelOrdersStatus === "loaded" ? `(${availableParcelOrders.length})` : ""}
-                </Text>
-
-                {availableParcelOrdersStatus === "loading" ? (
-                  <View style={styles.emptyState}>
-                    <ActivityIndicator color="#2196F3" />
-                  </View>
-                ) : availableParcelOrdersStatus === "error" ? (
-                  <View style={styles.errorBox}>
-                    <Text style={styles.errorText}>Impossible de charger les colis disponibles.</Text>
-                    <Pressable onPress={loadAvailableParcelOrders} style={{ marginTop: 8 }}>
-                      <Text style={styles.retryText}>Réessayer</Text>
-                    </Pressable>
-                  </View>
-                ) : availableParcelOrders.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyEmoji}>📦</Text>
-                    <Text style={styles.emptyText}>Aucun Colis Express disponible pour le moment</Text>
-                  </View>
-                ) : (
-                  availableParcelOrders.map((parcelOrder) => (
-                    <ParcelOrderCard
-                      key={parcelOrder.id}
-                      parcelOrder={parcelOrder}
-                      onAccept={() => handleAcceptParcel(parcelOrder.id)}
-                    />
-                  ))
-                )}
-              </View>
-            )}
           </>
         )}
       </ScrollView>
@@ -243,8 +294,23 @@ const styles = StyleSheet.create({
   },
   mapEmoji: { fontSize: 32 },
   mapCaption: { marginTop: 4, fontSize: 13, color: "#6B7280" },
-  ordersSection: { marginTop: 24, paddingHorizontal: 20 },
-  ordersTitle: { marginBottom: 12, fontSize: 18, fontWeight: "700", color: "#1A1A2E" },
+  // Vignettes Commandes / Colis Express (30/09/2026) -- remplacent les 2
+  // sections texte empilées, tapables pour ouvrir la liste complète
+  // correspondante (voir HomeView / renderOrdersList / renderParcelsList).
+  tilesRow: { flexDirection: "row", gap: 16, marginHorizontal: 20, marginTop: 20 },
+  tile: { flex: 1, borderRadius: 16, paddingVertical: 20, alignItems: "center" },
+  tileOrders: { backgroundColor: "#FBEAD3" },
+  tileParcels: { backgroundColor: "#DCEAFB" },
+  tileEmoji: { fontSize: 28 },
+  tileLabel: { marginTop: 8, fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+  tileCount: { marginTop: 4, fontSize: 13, fontWeight: "700" },
+  tileCountOrders: { color: "#C2760B" },
+  tileCountParcels: { color: "#1D6FC2" },
+  listHeader: { marginTop: 20, paddingHorizontal: 20 },
+  backBtn: { alignSelf: "flex-start" },
+  backText: { fontSize: 14, fontWeight: "600", color: "#2ECC71" },
+  listTitle: { marginTop: 12, fontSize: 18, fontWeight: "700", color: "#1A1A2E" },
+  ordersSection: { marginTop: 16, paddingHorizontal: 20 },
   emptyState: { alignItems: "center", paddingVertical: 48 },
   emptyEmoji: { fontSize: 40 },
   emptyText: { marginTop: 8, color: "#6B7280" },
