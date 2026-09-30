@@ -66,6 +66,15 @@ export async function annotateProspects(): Promise<{ updated: number; deleted: n
   return apiFetch("/api/admin/prospects/annotate", { method: "POST" });
 }
 
+/**
+ * POST /api/admin/prospects/fetch-logos -- recherche un logo (icône du
+ * site web) pour chaque prospect sans logoUrl qui apparaîtrait sur
+ * /decouvrir/[ville], et l'enregistre directement.
+ */
+export async function fetchLogosForProspects(): Promise<{ checked: number; found: number; notFound: number }> {
+  return apiFetch("/api/admin/prospects/fetch-logos", { method: "POST" });
+}
+
 export interface ImportProspectRow {
   businessName: string;
   city: string;

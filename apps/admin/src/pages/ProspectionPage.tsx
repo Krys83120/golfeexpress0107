@@ -16,6 +16,7 @@ import {
   HelpCircle,
   Upload,
   MessageCircle,
+  Image as ImageIcon,
 } from "lucide-react";
 import { ProCategory } from "@golfeexpress/types";
 import type { Prospect } from "@golfeexpress/types";
@@ -26,6 +27,7 @@ import {
   deleteProspect,
   seedProspects,
   annotateProspects,
+  fetchLogosForProspects,
   importProspectsRows,
   type CreateProspectInput,
 } from "@/services/prospectsApi";
@@ -69,6 +71,7 @@ export function ProspectionPage() {
   const [seeding, setSeeding] = useState(false);
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
   const [annotating, setAnnotating] = useState(false);
+  const [fetchingLogos, setFetchingLogos] = useState(false);
   const [importing, setImporting] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
@@ -202,6 +205,25 @@ export function ProspectionPage() {
     }
   }
 
+  async function handleFetchLogos() {
+    setFetchingLogos(true);
+    setError(null);
+    setSeedMessage(null);
+    try {
+      const result = await fetchLogosForProspects();
+      load();
+      setSeedMessage(
+        result.checked === 0
+          ? "Aucun prospect à traiter -- soit ils ont déjà un logo, soit aucun n'a de site web renseigné."
+          : `${result.found} logo${result.found > 1 ? "s" : ""} trouvé${result.found > 1 ? "s" : ""} et enregistré${result.found > 1 ? "s" : ""} sur ${result.checked} site${result.checked > 1 ? "s" : ""} vérifié${result.checked > 1 ? "s" : ""} (${result.notFound} sans résultat, badge générique conservé).`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de la recherche de logos.");
+    } finally {
+      setFetchingLogos(false);
+    }
+  }
+
   async function handleCsvFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // permet de resélectionner le même fichier après correction
@@ -268,6 +290,15 @@ export function ProspectionPage() {
           >
             <ShoppingBag size={16} className={annotating ? "animate-pulse" : ""} />
             {annotating ? "Vérification..." : "Vérifier vente à emporter / Uber Eats"}
+          </button>
+          <button
+            onClick={handleFetchLogos}
+            disabled={fetchingLogos}
+            title="Cherche une icône sur le site web de chaque prospect sans logo (qui apparaîtrait sur /decouvrir) et l'enregistre -- jamais Facebook ni Google Maps (peu fiable en scraping), et le badge générique reste affiché si rien n'est trouvé"
+            className="flex items-center gap-1.5 rounded-sm border border-gris-light bg-white px-3 py-2 text-sm font-semibold text-nuit hover:bg-gris-light disabled:opacity-50"
+          >
+            <ImageIcon size={16} className={fetchingLogos ? "animate-pulse" : ""} />
+            {fetchingLogos ? "Recherche..." : "Rechercher les logos"}
           </button>
           <button
             onClick={handleExportCsv}
