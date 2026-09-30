@@ -1587,6 +1587,13 @@ model Prospect {
   /// Geckoo, aucun envoi automatique) quand aucun email n'a été trouvé pour
   /// ce prospect -- voir bouton "Contacter sur Facebook" côté Admin.
   facebookUrl   String?    @map("facebook_url")
+  /// URL du logo affiché sur les pages annuaire publiques
+  /// (/decouvrir/[ville], ajout du 30/09/2026) -- collée à la main par Krys
+  /// depuis la fiche Facebook/Google Maps/le site du commerce, jamais
+  /// récupérée automatiquement pour l'instant (voir ProspectFormModal côté
+  /// Admin). null = repli sur le badge générique Do You Geckoo, même
+  /// principe que Pro.logo sur les fiches commerçant.
+  logoUrl      String?    @map("logo_url")
   notes        String?
 
   /// null = inconnu (pas encore vérifié), true/false = vérifié par recherche
@@ -1601,6 +1608,13 @@ model Prospect {
   /// consultation de la plateforme Uber Eats elle-même. null/false = aucune
   /// mention trouvée, pas une confirmation d'absence.
   advertisesUberEats Boolean? @map("advertises_uber_eats")
+  /// Contrôle l'apparition de ce prospect sur les pages annuaire publiques
+  /// /decouvrir/[ville] (ajout du 30/09/2026) -- indépendant de
+  /// offersTakeaway/advertisesUberEats (qui restent le critère "propose la
+  /// livraison/à emporter"). Sert de bouton retrait immédiat si un commerce
+  /// demande à ne pas apparaître, sans toucher au reste de sa fiche de
+  /// prospection interne ni la supprimer.
+  showOnDirectory Boolean  @default(true) @map("show_on_directory")
 
   /// D'où vient cette ligne : "recherche_web" (import initial du
   /// 26/09/2026) ou "manuel" (ajoutée/corrigée à la main depuis Admin).

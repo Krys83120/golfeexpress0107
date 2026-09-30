@@ -671,7 +671,9 @@ function ProspectFormModal({
     websiteUrl: prospect?.websiteUrl ?? "",
     googleMapsUrl: prospect?.googleMapsUrl ?? "",
     facebookUrl: prospect?.facebookUrl ?? "",
+    logoUrl: prospect?.logoUrl ?? "",
     notes: prospect?.notes ?? "",
+    showOnDirectory: prospect?.showOnDirectory ?? true,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -740,7 +742,22 @@ function ProspectFormModal({
             onChange={(v) => set("facebookUrl", v)}
             full
           />
+          <Field
+            label="Logo (URL image, pour l'annuaire /decouvrir)"
+            value={form.logoUrl ?? ""}
+            onChange={(v) => set("logoUrl", v)}
+            full
+          />
           <Field label="Notes" value={form.notes ?? ""} onChange={(v) => set("notes", v)} full />
+          <label className="col-span-2 flex items-center gap-2 text-sm text-nuit">
+            <input
+              type="checkbox"
+              checked={form.showOnDirectory ?? true}
+              onChange={(e) => set("showOnDirectory", e.target.checked)}
+              className="h-4 w-4 rounded-sm border-gris-light"
+            />
+            Afficher sur l'annuaire public (/decouvrir) si à emporter ou déjà en livraison
+          </label>
         </div>
 
         <div className="mt-5 flex items-center justify-end gap-2 border-t border-gris-light pt-4">

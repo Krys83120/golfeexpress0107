@@ -4,7 +4,13 @@ import { notFound } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { buildMetadata, SITE_URL } from "@/lib/seo";
-import { fetchPublicServiceCities, fetchPublicPros, buildProSlug, CATEGORY_LABELS_PLAIN } from "@/lib/publicApi";
+import {
+  fetchPublicServiceCities,
+  fetchPublicPros,
+  fetchPublicProspects,
+  buildProSlug,
+  CATEGORY_LABELS_PLAIN,
+} from "@/lib/publicApi";
 import type { PublicServiceCity } from "@/lib/publicApi";
 
 interface PageProps {
@@ -52,6 +58,13 @@ export default async function VillePage({ params }: PageProps) {
 
   const pros = await fetchPublicPros();
   const cityPros = pros.filter((p) => p.addresses?.some((a) => a.city.toLowerCase() === city.name.toLowerCase()));
+
+  // Lien vers l'annuaire /decouvrir/[ville] (partenaires + prospects, voir
+  // ce fichier) -- affiché seulement si cette page existe vraiment, càd au
+  // moins un prospect qualifié dans cette ville (même filtre que
+  // GET /api/prospects), jamais un lien mort vers une page non générée.
+  const prospects = await fetchPublicProspects();
+  const hasDirectoryPage = prospects.some((p) => p.city.toLowerCase() === city.name.toLowerCase());
 
   const pageUrl = `${SITE_URL}/livraison/${city.seoSlug}`;
 
@@ -109,6 +122,16 @@ export default async function VillePage({ params }: PageProps) {
               >
                 Voir les commerçants déjà livrés →
               </Link>
+            )}
+            {hasDirectoryPage && (
+              <p className="mt-5">
+                <Link
+                  href={`/decouvrir/${city.seoSlug}`}
+                  className="text-sm font-semibold text-golfe-green hover:underline"
+                >
+                  Voir tous les commerces de {city.name} →
+                </Link>
+              </p>
             )}
           </div>
         </div>

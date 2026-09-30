@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { fetchPublicPros, fetchPublicServiceCities, buildProSlug, CATEGORY_SLUGS } from "@/lib/publicApi";
+import { fetchPublicPros, fetchPublicServiceCities, fetchPublicProspects, buildProSlug, CATEGORY_SLUGS } from "@/lib/publicApi";
 import { getSortedBlogPosts } from "@/lib/blogPosts";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -54,6 +54,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.65,
     });
   }
+
+  // Une entrée par ville annuaire /decouvrir/[ville] -- même filtre que
+  // /decouvrir/[ville]/generateStaticParams : au moins un prospect qualifié
+  // (à emporter/livraison, non retiré, pas encore converti -- voir
+  // GET /api/prospects) dans cette ville. Troisième et dernier levier SEO
+  // programmatique de cette famille de pages (villes, catégorie x ville,
+  // annuaire), 30/09/2026.
+  const prospects = await fetchPublicProspects();
+  const decouvrirUrls: MetadataRoute.Sitemap = indexableCities
+    .filter((c) => prospects.some((p) => p.city.toLowerCase() === c.name.toLowerCase()))
+    .map((c) => ({
+      url: `${baseUrl}/decouvrir/${c.seoSlug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.6,
+    }));
 
   // Blog SEO/GEO (26/09/2026, demande de Krys) -- contenu statique connu au
   // build (voir lib/blogPosts.ts), donc lastModified = date de publication
@@ -136,6 +152,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     ...cityUrls,
     ...categorieVilleUrls,
+    ...decouvrirUrls,
     ...blogUrls,
     ...proUrls,
   ];

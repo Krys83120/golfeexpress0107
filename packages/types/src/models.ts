@@ -659,11 +659,15 @@ export interface Prospect {
   googleMapsUrl: string | null;
   /** Lien vers la page Facebook du commerce -- permet un contact Messenger (manuel, en se connectant sur la page Do You Geckoo) quand aucun email n'est connu. */
   facebookUrl: string | null;
+  /** Logo affiché sur les pages annuaire publiques /decouvrir/[ville] (30/09/2026) -- collé à la main depuis Facebook/Google Maps/le site du commerce, null = badge générique. */
+  logoUrl: string | null;
   notes: string | null;
   /** null = pas encore vérifié, true/false = vérifié par recherche web (jamais via Uber Eats/Deliveroo/Just Eat). */
   offersTakeaway: boolean | null;
   /** true seulement si le commerce affiche lui-même Uber Eats sur ses propres canaux. */
   advertisesUberEats: boolean | null;
+  /** Contrôle l'apparition sur /decouvrir/[ville] (30/09/2026) -- true par défaut, à désactiver si un commerce demande à ne pas apparaître. */
+  showOnDirectory: boolean;
   /** "recherche_web" (import initial) ou "manuel" (ajouté/corrigé depuis Admin). */
   source: string;
   /** ISO, null si jamais envoyé. */

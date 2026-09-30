@@ -248,6 +248,37 @@ export async function fetchPublicServiceCities(): Promise<PublicServiceCity[]> {
   }
 }
 
+/**
+ * Commerce repéré par Krys pendant sa prospection (Admin > Prospection)
+ * mais pas encore partenaire Do You Geckoo -- sous-ensemble public de
+ * Prospect exposé par GET /api/prospects (voir ce fichier pour le détail
+ * du filtre : à emporter/livraison + non retiré + pas encore converti).
+ * Consommé uniquement par les pages annuaire /decouvrir/[ville] (jamais
+ * de fiche détail dédiée : contrairement à PublicPro, il n'y a pas assez
+ * d'informations vérifiées pour justifier une page à part).
+ */
+export interface PublicProspect {
+  id: string;
+  businessName: string;
+  city: string;
+  category: string;
+  logoUrl?: string | null;
+  websiteUrl?: string | null;
+  googleMapsUrl?: string | null;
+  facebookUrl?: string | null;
+}
+
+export async function fetchPublicProspects(): Promise<PublicProspect[]> {
+  try {
+    const res = await fetchWithTimeout(`${API_URL}/api/prospects`, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.prospects ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /** Distance à vol d'oiseau en km (formule haversine) — suffisante pour trier/afficher une estimation. */
 export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;

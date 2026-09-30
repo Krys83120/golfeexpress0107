@@ -16,7 +16,11 @@ export interface CreateProspectInput {
   websiteUrl?: string | null;
   googleMapsUrl?: string | null;
   facebookUrl?: string | null;
+  /** Logo affiché sur /decouvrir/[ville] (voir schema.prisma) -- null = badge générique. */
+  logoUrl?: string | null;
   notes?: string | null;
+  /** Apparition sur /decouvrir/[ville] -- true par défaut côté API si omis. */
+  showOnDirectory?: boolean;
 }
 
 /** POST /api/admin/prospects */
