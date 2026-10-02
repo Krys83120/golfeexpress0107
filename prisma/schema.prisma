@@ -528,6 +528,8 @@ model Rider {
   /// simple photo de profil (voir considérations RGPD : accès restreint,
   /// durée de conservation limitée à la durée strictement nécessaire à la
   /// vérification + obligations légales, jamais réutilisé à d'autres fins).
+  /// Depuis le 02/10/2026, stocke un chemin dans le bucket privé
+  /// "kyc-documents", pas une URL publique -- voir idCardFront ci-dessus.
   verificationSelfieUrl String? @map("verification_selfie_url")
   professionalStatus RiderProfessionalStatus? @map("professional_status")
   /// SIRET du livreur lui-même, uniquement s'il exerce en indépendant
@@ -538,6 +540,12 @@ model Rider {
   vehicleType     VehicleType  @map("vehicle_type")
   vehiclePlate    String?      @map("vehicle_plate")
   licenseNumber   String?      @map("license_number")
+  /// Depuis le 02/10/2026 (correctif sécurité/RGPD), stocke juste le CHEMIN
+  /// dans le bucket Supabase privé "kyc-documents" (ex: "{userId}/id-front.jpg"),
+  /// plus une URL publique -- voir apps/api/src/lib/kycDocuments.ts pour la
+  /// génération d'URLs signées à la demande. Les lignes créées avant cette
+  /// date contiennent encore l'ancienne URL publique complète (compatible,
+  /// voir extractStoragePath), jamais migrées en base par souci de risque.
   idCardFront     String       @map("id_card_front")
   idCardBack      String       @map("id_card_back")
   /// Date de la dernière relance "complétez votre dossier" envoyée

@@ -35,3 +35,20 @@ export async function updateMyRiderProfile(updates: UpdateRiderProfileInput): Pr
   const data = await apiFetch<{ rider: Rider }>("/api/riders/me", { method: "PATCH", body: updates });
   return data.rider;
 }
+
+export interface RiderKycDocumentUrls {
+  idCardFront: string | null;
+  idCardBack: string | null;
+  verificationSelfieUrl: string | null;
+}
+
+/**
+ * GET /api/riders/me/kyc-documents -- URLs signées temporaires (5 min) pour
+ * revoir ses propres documents déjà envoyés (voir RiderKycScreen.tsx).
+ * Correctif du 02/10/2026 : Rider.idCardFront/idCardBack/verificationSelfieUrl
+ * ne sont plus des URLs directement affichables (bucket Supabase privé) --
+ * voir apps/api/src/lib/kycDocuments.ts pour le détail.
+ */
+export async function fetchMyKycDocumentUrls(): Promise<RiderKycDocumentUrls> {
+  return apiFetch("/api/riders/me/kyc-documents");
+}

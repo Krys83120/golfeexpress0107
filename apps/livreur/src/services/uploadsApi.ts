@@ -99,6 +99,16 @@ export async function uploadRiderProfilePhoto(userId: string, localUri: string):
  * vérification). Bucket dédié "kyc-documents" — SÉPARÉ du bucket
  * "avatars" (public) car ces documents ne doivent jamais être exposés
  * publiquement, contrairement à une photo de profil classique.
+ *
+ * Correctif du 02/10/2026 (revue de sécurité/RGPD demandée par Krys) : on
+ * ne génère plus d'URL publique permanente ici -- on renvoie juste le
+ * CHEMIN dans le bucket, stocké tel quel dans Rider.idCardFront/idCardBack/
+ * verificationSelfieUrl. Pour consulter ces documents, l'Admin passe
+ * désormais par GET /api/admin/riders/[riderId]/kyc-documents, qui génère
+ * une URL signée temporaire (5 min) côté serveur avec la clé service_role
+ * -- voir ce fichier pour le détail. Suppose que le bucket "kyc-documents"
+ * soit configuré en PRIVÉ côté dashboard Supabase (sinon une URL publique
+ * directe vers ce même chemin reste accessible à quiconque la devine).
  */
 export async function uploadKycDocument(
   userId: string,
@@ -127,8 +137,7 @@ export async function uploadKycDocument(
     throw new UploadError(`Échec de l'upload : ${error.message}`);
   }
 
-  const { data } = supabase.storage.from("kyc-documents").getPublicUrl(path);
-  return data.publicUrl;
+  return path;
 }
 
 /**

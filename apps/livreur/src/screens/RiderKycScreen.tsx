@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, StyleS
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Rider, RiderProfessionalStatus } from "@golfeexpress/types";
 import { VehicleType, RiderVerificationStatus } from "@golfeexpress/types";
-import { fetchMyRiderProfile, updateMyRiderProfile } from "@/services/riderProfileApi";
+import { fetchMyRiderProfile, updateMyRiderProfile, fetchMyKycDocumentUrls, type RiderKycDocumentUrls } from "@/services/riderProfileApi";
 import { uploadKycDocument, uploadRiderProfilePhoto } from "@/services/uploadsApi";
 import { useAuthStore } from "@/store/useAuthStore";
 import { DocumentPhotoField } from "@/components/DocumentPhotoField";
@@ -126,6 +126,13 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
 
   const [acceptTerms, setAcceptTerms] = useState(false);
 
+  // URLs signées temporaires pour l'aperçu des documents déjà envoyés --
+  // correctif du 02/10/2026 : Rider.idCardFront/idCardBack/
+  // verificationSelfieUrl ne sont plus des URLs directement affichables
+  // (bucket Supabase privé, voir uploadsApi.ts/kycDocuments.ts). null tant
+  // que non chargé ou si le livreur n'a encore rien envoyé.
+  const [kycDocUrls, setKycDocUrls] = useState<RiderKycDocumentUrls | null>(null);
+
   useEffect(() => {
     fetchMyRiderProfile()
       .then((data) => {
@@ -145,6 +152,13 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
         setStatus("loaded");
       })
       .catch(() => setStatus("error"));
+
+    // Indépendant du chargement du profil ci-dessus (seulement un aperçu,
+    // pas bloquant si ça échoue -- les champs restent vides, le livreur
+    // peut toujours ré-uploader).
+    fetchMyKycDocumentUrls()
+      .then(setKycDocUrls)
+      .catch(() => {});
   }, []);
 
   async function handleSave() {
@@ -332,7 +346,7 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
         <Section title="Documents (KYC)">
           <DocumentPhotoField
             label="Pièce d'identité — recto"
-            currentImageUrl={rider?.idCardFront}
+            currentImageUrl={kycDocUrls?.idCardFront}
             onUpload={async (uri) => {
               if (!user) return;
               const url = await uploadKycDocument(user.id, "id-front", uri);
@@ -342,7 +356,7 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
           />
           <DocumentPhotoField
             label="Pièce d'identité — verso"
-            currentImageUrl={rider?.idCardBack}
+            currentImageUrl={kycDocUrls?.idCardBack}
             onUpload={async (uri) => {
               if (!user) return;
               const url = await uploadKycDocument(user.id, "id-back", uri);
@@ -353,7 +367,7 @@ export function RiderKycScreen({ onClose }: RiderKycScreenProps) {
           <DocumentPhotoField
             label="Selfie de vérification"
             hint="Photo de face, sans lunettes ni casque — usage interne uniquement, jamais affiché publiquement."
-            currentImageUrl={rider?.verificationSelfieUrl}
+            currentImageUrl={kycDocUrls?.verificationSelfieUrl}
             isSelfie
             onUpload={async (uri) => {
               if (!user) return;

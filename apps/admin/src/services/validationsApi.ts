@@ -32,6 +32,23 @@ export async function validateRider(riderId: string, approve: boolean, reason?: 
   return data.rider;
 }
 
+export interface RiderKycDocumentUrls {
+  idCardFront: string | null;
+  idCardBack: string | null;
+  verificationSelfieUrl: string | null;
+}
+
+/**
+ * GET /api/admin/riders/[riderId]/kyc-documents -- URLs signées temporaires
+ * (5 min) pour consulter la pièce d'identité/selfie d'un livreur (voir
+ * RiderDetailModal.tsx). Correctif du 02/10/2026 : Rider.idCardFront/
+ * idCardBack/verificationSelfieUrl ne sont plus des URLs directement
+ * affichables (bucket Supabase privé) -- voir apps/api/src/lib/kycDocuments.ts.
+ */
+export async function fetchRiderKycDocumentUrls(riderId: string): Promise<RiderKycDocumentUrls> {
+  return apiFetch(`/api/admin/riders/${riderId}/kyc-documents`);
+}
+
 // ==================== RELANCE DOSSIER INCOMPLET (26/09/2026) ====================
 //
 // Certains Pro/Rider s'inscrivent mais ne terminent jamais leur dossier

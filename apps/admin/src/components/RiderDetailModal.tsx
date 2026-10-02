@@ -3,7 +3,7 @@ import { X, Star, CheckCircle2, XCircle } from "lucide-react";
 import type { VehicleType, RiderStatus, RiderVerificationStatus, Review } from "@golfeexpress/types";
 import { RIDER_STATUS_LABELS, RIDER_VERIFICATION_STATUS_LABELS, ADMIN_VEHICLE_LABELS } from "@/services/riderLabels";
 import { updateAdminRider, fetchAdminRiderReviews, type AdminRiderRow } from "@/services/adminEntitiesApi";
-import { validateRider } from "@/services/validationsApi";
+import { validateRider, fetchRiderKycDocumentUrls, type RiderKycDocumentUrls } from "@/services/validationsApi";
 import { MapView, type MapPin } from "@/components/MapView";
 
 interface RiderDetailModalProps {
@@ -37,6 +37,33 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
       })
       .catch(() => {
         if (!cancelled) setReviewsStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [rider.id]);
+
+  // URLs signées temporaires (5 min) pour les documents KYC -- correctif du
+  // 02/10/2026 (RGPD/sécurité) : Rider.idCardFront/idCardBack/
+  // verificationSelfieUrl ne sont plus des URLs directement affichables
+  // (bucket Supabase privé), voir apps/api/src/lib/kycDocuments.ts. Rechargé
+  // à chaque ouverture de fiche, jamais mis en cache plus longtemps que la
+  // durée de vie du modal.
+  const [kycDocUrls, setKycDocUrls] = useState<RiderKycDocumentUrls | null>(null);
+  const [kycDocUrlsStatus, setKycDocUrlsStatus] = useState<"loading" | "loaded" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    setKycDocUrlsStatus("loading");
+    fetchRiderKycDocumentUrls(rider.id)
+      .then((data) => {
+        if (!cancelled) {
+          setKycDocUrls(data);
+          setKycDocUrlsStatus("loaded");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setKycDocUrlsStatus("error");
       });
     return () => {
       cancelled = true;
@@ -326,9 +353,21 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
           <label className="mb-2 block text-xs font-semibold text-gris">📄 Documents KYC</label>
           <div className="grid grid-cols-3 gap-3">
             <DocThumb label="Photo de profil (visible client) *" url={rider.profilePhotoUrl} />
-            <DocThumb label="Pièce d'identité — recto" url={rider.idCardFront} />
-            <DocThumb label="Pièce d'identité — verso" url={rider.idCardBack} />
-            <DocThumb label="Selfie de vérification" url={rider.verificationSelfieUrl} />
+            <DocThumb
+              label="Pièce d'identité — recto"
+              url={kycDocUrls?.idCardFront}
+              loading={kycDocUrlsStatus === "loading"}
+            />
+            <DocThumb
+              label="Pièce d'identité — verso"
+              url={kycDocUrls?.idCardBack}
+              loading={kycDocUrlsStatus === "loading"}
+            />
+            <DocThumb
+              label="Selfie de vérification"
+              url={kycDocUrls?.verificationSelfieUrl}
+              loading={kycDocUrlsStatus === "loading"}
+            />
           </div>
         </div>
 
@@ -468,7 +507,15 @@ function DetailField({ label, value }: { label: string; value: React.ReactNode }
   );
 }
 
-function DocThumb({ label, url }: { label: string; url?: string | null }) {
+function DocThumb({ label, url, loading }: { label: string; url?: string | null; loading?: boolean }) {
+  if (loading) {
+    return (
+      <div className="flex h-24 flex-col items-center justify-center rounded-sm border border-dashed border-gris-light text-center">
+        <span className="text-xs text-gris">Chargement…</span>
+        <span className="mt-0.5 px-2 text-[10px] text-gris">{label}</span>
+      </div>
+    );
+  }
   if (!url) {
     return (
       <div className="flex h-24 flex-col items-center justify-center rounded-sm border border-dashed border-gris-light text-center">
