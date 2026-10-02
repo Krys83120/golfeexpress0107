@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "19 août 2026";
+const LAST_UPDATED = "2 octobre 2026";
 
 interface TocItem {
   id: string;
@@ -156,9 +156,11 @@ export default function PrivacyPage() {
             <Section id="securite" title="7. Sécurité des données">
               <p>
                 Nous mettons en œuvre des mesures techniques et organisationnelles adaptées pour protéger vos
-                données : chiffrement des mots de passe, accès restreint aux documents sensibles (pièces d'identité,
-                selfies de vérification) qui sont hébergés dans un espace distinct et non public des photos de
-                profil, et contrôle des accès internes à notre équipe.
+                données : chiffrement des mots de passe, et pour les documents sensibles (pièces d'identité, selfies
+                de vérification), un espace de stockage privé entièrement distinct des photos de profil publiques —
+                non accessible directement ni par un lien public, consultable uniquement via des liens temporaires et
+                sécurisés (valables quelques minutes) générés par nos serveurs pour notre équipe de vérification
+                autorisée, chaque utilisateur n'ayant par ailleurs techniquement accès qu'à ses propres documents.
               </p>
             </Section>
 
