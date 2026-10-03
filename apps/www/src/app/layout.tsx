@@ -5,6 +5,7 @@ import { SplashLoader } from "@/components/SplashLoader";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ContactWidget } from "@/components/ContactWidget";
 import { VerifiedReviewsBadge } from "@/components/VerifiedReviewsBadge";
+import { NewPlatformBadge } from "@/components/NewPlatformBadge";
 import { VisitTracker } from "@/components/VisitTracker";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { fetchWwwOgText } from "@/lib/brandingApi";
@@ -193,6 +194,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="font-body bg-white text-nuit antialiased">
         <SplashLoader>{children}</SplashLoader>
+        <NewPlatformBadge />
         <CookieConsent />
         <ContactWidget />
         <VerifiedReviewsBadge />
