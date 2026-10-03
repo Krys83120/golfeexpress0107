@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 
 const NAV_LINKS = [
@@ -17,8 +17,38 @@ const NAV_LINKS = [
 // afin qu'il reprenne la même teinte que le logo plutôt qu'un jaune générique.
 const PARTNER_YELLOW = "#FEB903";
 
+// Clé localStorage pour mémoriser la fermeture du bandeau "Nouveau" par le
+// visiteur (même mécanisme que CookieConsent.tsx) — une fois fermé, il ne
+// réapparaît plus sur cet appareil.
+const NEW_BANNER_DISMISS_KEY = "dyg-new-banner-dismissed";
+
 export function NavClient({ logoUrl }: { logoUrl: string | null }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // false par défaut côté serveur ET au premier rendu client, pour éviter
+  // tout avertissement d'hydratation Next.js (localStorage n'existe pas
+  // côté serveur) — on ne lit le localStorage qu'après montage, dans le
+  // useEffect ci-dessous.
+  const [newBannerDismissed, setNewBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(NEW_BANNER_DISMISS_KEY) === "1") {
+        setNewBannerDismissed(true);
+      }
+    } catch {
+      // localStorage indisponible (navigation privée, etc.) — le bandeau
+      // reste simplement affiché, ce n'est pas bloquant.
+    }
+  }, []);
+
+  function dismissNewBanner() {
+    setNewBannerDismissed(true);
+    try {
+      localStorage.setItem(NEW_BANNER_DISMISS_KEY, "1");
+    } catch {
+      // idem — tant pis si ça ne persiste pas, l'UI reste correcte.
+    }
+  }
 
   function closeAll() {
     setMobileMenuOpen(false);
@@ -26,6 +56,31 @@ export function NavClient({ logoUrl }: { logoUrl: string | null }) {
 
   return (
     <>
+      {/* Bandeau "Nouveau" — EN FLUX NORMAL (ni sticky, ni fixed), défile
+          avec la page exactement comme la bannière logo juste en dessous.
+          Remplace l'ancien badge flottant (NewPlatformBadge, retiré le
+          03/10/2026) qui chevauchait le bouton "Devenir Partenaire" sur
+          mobile : un bandeau qui pousse le contenu vers le bas ne peut,
+          par construction, jamais chevaucher quoi que ce soit. Couleur
+          corail de la marque (pas de pastille bleu/gris générique façon
+          "NEW"), formulation sans date pour rester vraie dans la durée. */}
+      {!newBannerDismissed && (
+        <div className="relative bg-corail px-9 py-2.5 text-center sm:px-12">
+          <p className="mx-auto max-w-7xl text-xs font-semibold leading-snug text-white sm:text-sm">
+            <span className="font-extrabold">Nouveau</span> — Do You Geckoo arrive sur le Golfe de Saint-Tropez
+          </p>
+          <button
+            onClick={dismissNewBanner}
+            aria-label="Fermer ce message"
+            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white sm:right-4"
+          >
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+              <path d="M1 1L10 10M10 1L1 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Bannière logo — défile normalement avec la page (PAS sticky),
           contrairement à la barre de nav juste en dessous. Volontairement
           séparée : mettre un logo aussi grand dans un élément sticky
