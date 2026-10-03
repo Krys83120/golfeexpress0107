@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/indexnow-submit?token=b2e8ec17e693918cc7e2f221",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}
