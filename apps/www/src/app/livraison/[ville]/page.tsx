@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { CityInterestForm } from "@/components/CityInterestForm";
 import { buildMetadata, SITE_URL } from "@/lib/seo";
 import {
   fetchPublicServiceCities,
@@ -116,12 +117,15 @@ export default async function VillePage({ params }: PageProps) {
                 Commander maintenant →
               </a>
             ) : (
-              <Link
-                href="/commercants"
-                className="mt-8 inline-block rounded-full bg-nuit px-8 py-3.5 text-sm font-bold text-white transition hover:bg-nuit-light"
-              >
-                Voir les commerçants déjà livrés →
-              </Link>
+              <>
+                <Link
+                  href="/commercants"
+                  className="mt-8 inline-block rounded-full bg-nuit px-8 py-3.5 text-sm font-bold text-white transition hover:bg-nuit-light"
+                >
+                  Voir les commerçants déjà livrés →
+                </Link>
+                <CityInterestForm cityName={city.name} />
+              </>
             )}
             {hasDirectoryPage && (
               <p className="mt-5">
@@ -143,13 +147,17 @@ export default async function VillePage({ params }: PageProps) {
                 {cityPros.length > 0 ? `Commerçants partenaires à ${city.name}` : `Bientôt des commerçants à ${city.name}`}
               </h2>
               {cityPros.length === 0 ? (
-                <p className="text-sm text-gris">
-                  Aucun commerçant partenaire n'est encore référencé à {city.name} — revenez bientôt, ou{" "}
-                  <Link href="/devenir-partenaire#commercants" className="font-semibold text-golfe-green hover:underline">
-                    inscrivez votre commerce
-                  </Link>
-                  .
-                </p>
+                <div className="text-center">
+                  <p className="text-sm text-gris">
+                    Aucun commerçant partenaire n'est encore référencé à {city.name} — vous serez parmi les premiers
+                    informés dès que ce sera le cas. Vous gérez un commerce ici ?{" "}
+                    <Link href="/devenir-partenaire#commercants" className="font-semibold text-golfe-green hover:underline">
+                      inscrivez-le
+                    </Link>
+                    .
+                  </p>
+                  <CityInterestForm cityName={city.name} />
+                </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {cityPros.map((pro) => (
