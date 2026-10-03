@@ -4,6 +4,7 @@ import { SplashLoader } from "@/components/SplashLoader";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { MenuPage } from "@/pages/MenuPage";
+import { StockPage } from "@/pages/StockPage";
 import { ColisExpressPage } from "@/pages/ColisExpressPage";
 import { FinancesPage } from "@/pages/FinancesPage";
 import { StatsPage } from "@/pages/StatsPage";
@@ -34,8 +35,10 @@ import { trackAppOpen } from "@/services/analyticsApi";
 // La Sidebar ne propose déjà que ces entrées, mais on regarde-double ici
 // (activePage initial + renderPage) au cas où activePage serait resté sur
 // une page interdite d'un précédent état (ex: bascule de compte sans
-// rechargement complet de la page).
-const EMPLOYEE_ALLOWED_PAGES = new Set(["orders", "notifications"]);
+// rechargement complet de la page). "stock" ajouté le 03/10/2026 (demande de
+// Krys, voir StockPage.tsx) -- un employé peut y cocher un produit/ingrédient
+// en rupture, le patron étant alors alerté automatiquement côté serveur.
+const EMPLOYEE_ALLOWED_PAGES = new Set(["orders", "notifications", "stock"]);
 
 function MainApp() {
   const isEmployee = useAuthStore((s) => s.isEmployee);
@@ -82,6 +85,8 @@ function MainApp() {
         return <OrdersPage />;
       case "menu":
         return <MenuPage />;
+      case "stock":
+        return <StockPage />;
       case "colis-express":
         return <ColisExpressPage />;
       case "finances":

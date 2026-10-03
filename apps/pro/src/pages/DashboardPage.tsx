@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { RevenueChart } from "@/components/RevenueChart";
 import { TopProductsCard } from "@/components/TopProductsCard";
@@ -8,6 +9,7 @@ import { useProDashboardStore, type PeriodFilter } from "@/store/useProDashboard
 import { useProOrdersStore } from "@/store/useProOrdersStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { fetchMyViews } from "@/services/viewsApi";
+import { fetchStock } from "@/services/stockApi";
 import {
   computeWeeklyRevenue,
   computeTopProducts,
@@ -43,11 +45,32 @@ export function DashboardPage({ onViewAllOrders }: DashboardPageProps) {
   // "0" par erreur pendant le chargement.
   const [pageViews, setPageViews] = useState<number | null>(null);
 
+  // Bandeau "en rupture" (ajout du 03/10/2026, demande de Krys -- voir
+  // StockPage.tsx / PATCH /api/pros/me/stock). Simple reflet de l'état
+  // actuel (isAvailable=false), jamais filtré par période contrairement au
+  // reste du dashboard, ni par qui a déclenché la rupture (patron ou
+  // employé) -- le patron doit voir TOUT ce qui est indisponible maintenant.
+  const [outOfStockItems, setOutOfStockItems] = useState<string[]>([]);
+
   useEffect(() => {
     loadOrders();
     fetchMyViews()
       .then((data) => setPageViews(data.pageViews))
       .catch(() => setPageViews(null));
+    fetchStock()
+      .then((products) => {
+        const items: string[] = [];
+        products.forEach((p) => {
+          if (!p.isAvailable) items.push(p.name);
+          p.options.forEach((o) =>
+            o.choices.forEach((c) => {
+              if (!c.isAvailable) items.push(`${p.name} — ${c.name}`);
+            })
+          );
+        });
+        setOutOfStockItems(items);
+      })
+      .catch(() => setOutOfStockItems([]));
   }, []);
 
   const periodOrders = filterOrdersByPeriod(orders, period);
@@ -90,6 +113,20 @@ export function DashboardPage({ onViewAllOrders }: DashboardPageProps) {
           <button onClick={loadOrders} className="font-semibold underline">
             Réessayer
           </button>
+        </div>
+      )}
+
+      {/* STOCK -- bandeau visible uniquement s'il y a au moins une rupture en cours. */}
+      {outOfStockItems.length > 0 && (
+        <div className="mb-6 rounded-sm border border-[#FFD9BF] bg-[#FFF3E0] p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-nuit">
+            <AlertTriangle size={16} className="text-[#FF6B35]" />
+            {outOfStockItems.length} article{outOfStockItems.length > 1 ? "s" : ""} actuellement en rupture
+          </p>
+          <p className="mt-1 text-xs text-gris">
+            {outOfStockItems.slice(0, 6).join(" · ")}
+            {outOfStockItems.length > 6 ? "…" : ""}
+          </p>
         </div>
       )}
 

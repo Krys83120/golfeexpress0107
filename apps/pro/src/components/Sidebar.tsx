@@ -14,6 +14,7 @@ import {
   Users,
   Menu,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { getCategoryEmoji } from "@/services/categoryVisuals";
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
   { key: "orders", label: "Commandes", icon: <ClipboardList size={18} /> },
   { key: "menu", label: "Produits", icon: <Package size={18} /> },
+  { key: "stock", label: "Stock", icon: <AlertTriangle size={18} /> },
   { key: "colis-express", label: "Colis Express", icon: <Truck size={18} /> },
   { key: "finances", label: "Finances", icon: <Wallet size={18} /> },
   { key: "stats", label: "Statistiques", icon: <BarChart3 size={18} /> },
@@ -42,12 +44,15 @@ const NAV_ITEMS: NavItem[] = [
 /**
  * Nav visible pour un compte employé (role PRO_EMPLOYEE) -- volontairement
  * restreinte aux commandes en cours + notifications (impression des tickets
- * incluse dans la page Commandes). Jamais Finances/Statistiques/Abonnement/
+ * incluse dans la page Commandes) + Stock (ajout du 03/10/2026, demande de
+ * Krys : un employé peut cocher un produit/ingrédient en rupture, voir
+ * StockPage.tsx -- le patron est alors alerté automatiquement côté serveur,
+ * voir PATCH /api/pros/me/stock). Jamais Finances/Statistiques/Abonnement/
  * Avis/Réglages ni le Dashboard, qui exposent le chiffre d'affaires -- voir
  * ProEmployee dans prisma/schema.prisma et le commentaire équivalent côté
  * serveur dans requireProOrEmployee() (apps/api/src/middleware/auth.ts).
  */
-const EMPLOYEE_NAV_KEYS = new Set(["orders", "notifications"]);
+const EMPLOYEE_NAV_KEYS = new Set(["orders", "notifications", "stock"]);
 
 interface SidebarProps {
   activeItem: string;
