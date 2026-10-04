@@ -2,5 +2,25 @@
 # contenu éditorial public, jamais indexé. Voir apps/pro/index.html (meta
 # robots noindex) -- ce fichier est la seconde couche de protection (LOT 1,
 # audit SEO/GEO du 24/08/2026).
+
+# Robots de prévisualisation de liens (Facebook/Instagram, WhatsApp, X,
+# LinkedIn, Telegram, Slack...) : ils ne font QUE lire les balises Open Graph
+# pour afficher l apercu quand un lien est partage -- ils n indexent rien.
+# Sans cette autorisation explicite, le "Disallow: /" ci-dessous les bloque :
+# Facebook renvoie alors "403" dans le Sharing Debugger, n affiche aucun
+# apercu, et sa protection anti-arnaque marque le lien comme suspect
+# (constate le 04/10/2026 sur commander.doyougeckoo.fr). L indexation par les
+# moteurs de recherche reste bloquee (Disallow ci-dessous + meta noindex).
+User-agent: facebookexternalhit
+User-agent: Facebot
+User-agent: meta-externalagent
+User-agent: WhatsApp
+User-agent: Twitterbot
+User-agent: LinkedInBot
+User-agent: TelegramBot
+User-agent: Slackbot
+User-agent: Discordbot
+Allow: /
+
 User-agent: *
 Disallow: /
