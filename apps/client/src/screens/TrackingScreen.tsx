@@ -4,6 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { OrderStatus, type Order } from "@golfeexpress/types";
 import { apiFetch } from "@/services/apiClient";
 import { TrackingMap } from "@/components/TrackingMap";
+import { QrCodeView } from "@/components/QrCodeView";
+import { buildDeliveryQrPayload } from "@/lib/deliveryQr";
 
 interface TrackingScreenProps {
   order: Order;
@@ -100,6 +102,17 @@ export function TrackingScreen({ order: initialOrder, onClose }: TrackingScreenP
             <Text className="mt-1 text-2xl font-extrabold text-nuit" style={{ letterSpacing: 4 }}>
               {order.deliveryCode}
             </Text>
+            {/* QR à faire scanner au livreur à la porte (06/10/2026) : valide la
+                livraison sans avoir à dicter le code, qui reste affiché ci-dessus
+                en secours. Visible une fois la commande récupérée seulement. */}
+            {(order.status === OrderStatus.PICKED_UP || order.status === OrderStatus.IN_DELIVERY) && (
+              <View className="mt-3 items-center">
+                <QrCodeView value={buildDeliveryQrPayload(order.id, order.deliveryCode)} size={190} />
+                <Text className="mt-2 px-4 text-center text-xs text-gris">
+                  Présentez ce QR code au livreur pour qu'il le scanne. Ne le partagez pas avant son arrivée.
+                </Text>
+              </View>
+            )}
           </View>
         )}
 

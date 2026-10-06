@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { OrderStatus, PaymentStatus, UserRole } from "@golfeexpress/types";
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { updateOrderStatusSchema } from "@/lib/validation/orders";
 import { canTransition, isTransitionAllowedForRole } from "@/lib/orderStateMachine";
 import { stripe } from "@/lib/stripe";
@@ -165,6 +166,19 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
   // référence à comparer — on ne peut pas exiger un code qui n'existe pas,
   // donc on ne bloque que si un vrai code a été généré pour cette commande.
   if (nextStatus === OrderStatus.DELIVERED && order.deliveryCode) {
+    // Le code n'a que 10 000 combinaisons : sans limite d'essais, un livreur
+    // pouvait le deviner par essais successifs (script) et valider une livraison
+    // sans voir le client. 6 essais par tranche de 10 minutes et PAR COMMANDE
+    // (pas par IP : un changement d'IP ne remet pas le compteur à zéro). Compte
+    // chaque saisie du livreur, juste ou fausse ; l'Admin n'est pas concerné.
+    if (auth.role === UserRole.RIDER) {
+      await enforceRateLimit(req, {
+        route: "delivery-code",
+        identifier: order.id,
+        limit: 6,
+        windowMs: 10 * 60 * 1000,
+      });
+    }
     if (!enteredDeliveryCode) {
       throw new ApiError(
         400,

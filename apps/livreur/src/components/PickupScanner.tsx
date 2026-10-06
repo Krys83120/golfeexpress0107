@@ -1,9 +1,54 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, TextInput, StyleSheet, Platform } from "react-native";
 import jsQR from "jsqr";
-import { parsePickupQr, normalizeManualCode } from "@/lib/pickupQr";
+import { parsePickupQr, parseDeliveryQr, normalizeManualCode } from "@/lib/pickupQr";
+
+/**
+ * "pickup" : récupération chez le commerçant (QR du ticket, code à 6 chiffres).
+ * "delivery" : remise au client (QR affiché dans l'app Commander, code à 4 chiffres).
+ */
+type ScanMode = "pickup" | "delivery";
+
+const MODE_CONFIG = {
+  pickup: {
+    parse: parsePickupQr,
+    codeLength: 6,
+    title: "Remise par le commerçant",
+    refLabel: "Commande à récupérer :",
+    hint:
+      "Scannez le QR code imprimé sur le ticket de la commande. Ne partez pas sans avoir validé : c'est ce qui enregistre la remise à votre nom.",
+    manualLabel: "Ou saisissez le code à 6 chiffres écrit sous le QR",
+    manualPlaceholder: "Ex: 483920",
+    notOurQr: "Ce QR code n'est pas celui d'un ticket Do You Geckoo.",
+    otherOrder: (n?: string) =>
+      `Ce n'est pas la bonne commande : ce ticket est celui d'une autre commande.${
+        n ? ` Demandez au commerçant la commande ${n}.` : " Demandez au commerçant votre commande."
+      }`,
+    noCamera: "La caméra n'est pas disponible sur cet appareil : saisissez le code à 6 chiffres du ticket.",
+    cameraDenied:
+      "Accès à la caméra refusé. Autorisez-la dans les réglages du navigateur, ou saisissez le code à 6 chiffres du ticket.",
+  },
+  delivery: {
+    parse: parseDeliveryQr,
+    codeLength: 4,
+    title: "Remise au client",
+    refLabel: "Commande à remettre :",
+    hint:
+      "Demandez au client d'ouvrir le suivi de sa commande dans l'app et scannez son QR code. S'il ne peut pas l'afficher, il peut vous dire son code à 4 chiffres.",
+    manualLabel: "Ou saisissez le code à 4 chiffres donné par le client",
+    manualPlaceholder: "Ex: 4821",
+    notOurQr: "Ce QR code n'est pas celui d'un client Do You Geckoo.",
+    otherOrder: (n?: string) =>
+      `Ce QR est celui d'une autre commande.${n ? ` Vous devez remettre la commande ${n}.` : ""}`,
+    noCamera: "La caméra n'est pas disponible sur cet appareil : saisissez le code à 4 chiffres du client.",
+    cameraDenied:
+      "Accès à la caméra refusé. Autorisez-la dans les réglages du navigateur, ou saisissez le code à 4 chiffres du client.",
+  },
+} as const;
 
 interface PickupPanelProps {
+  /** "pickup" par défaut. */
+  mode?: ScanMode;
   /** Commande en cours : le QR scanné doit porter exactement cet id. */
   expectedOrderId: string;
   /** Numéro lisible de la commande en cours (celui imprimé sur le ticket), affiché pour que le livreur sache laquelle réclamer au commerçant. */
@@ -28,7 +73,8 @@ const MAX_SCAN_SIDE_PX = 640;
  * proposé. Ce composant n'envoie jamais rien lui-même : il décode, vérifie
  * que le QR est bien celui de la commande en cours, puis appelle onSubmitCode.
  */
-export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode, onCancel }: PickupPanelProps) {
+export function PickupPanel({ mode = "pickup", expectedOrderId, expectedOrderNumber, onSubmitCode, onCancel }: PickupPanelProps) {
+  const config = MODE_CONFIG[mode];
   const [manualCode, setManualCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,9 +130,9 @@ export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode
     }
 
     function handleDecoded(text: string) {
-      const parsed = parsePickupQr(text);
+      const parsed = config.parse(text);
       if (!parsed) {
-        setCameraHint("Ce QR code n'est pas celui d'un ticket Do You Geckoo.");
+        setCameraHint(config.notOurQr);
         return false;
       }
       if (parsed.orderId !== expectedOrderId) {
@@ -94,11 +140,7 @@ export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode
         // du scan (sinon le message clignoterait tant que le ticket reste devant
         // la caméra). Rien n'est envoyé au serveur.
         setCameraHint(null);
-        setError(
-          `Ce n'est pas la bonne commande : ce ticket est celui d'une autre commande.${
-            expectedOrderNumber ? ` Demandez au commerçant la commande ${expectedOrderNumber}.` : " Demandez au commerçant votre commande."
-          }`
-        );
+        setError(config.otherOrder(expectedOrderNumber));
         pausedRef.current = true;
         setPaused(true);
         return false;
@@ -124,7 +166,7 @@ export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode
         const image = context.getImageData(0, 0, canvas.width, canvas.height);
         const result = jsQR(image.data, image.width, image.height, { inversionAttempts: "dontInvert" });
         if (result?.data && handleDecoded(result.data)) {
-          const parsed = parsePickupQr(result.data);
+          const parsed = config.parse(result.data);
           if (parsed) {
             submit(parsed.code);
           }
@@ -136,7 +178,7 @@ export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode
     (async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
         setCameraActive(false);
-        setCameraHint("La caméra n'est pas disponible sur cet appareil : saisissez le code à 6 chiffres du ticket.");
+        setCameraHint(config.noCamera);
         return;
       }
       try {
@@ -155,15 +197,13 @@ export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode
         tick();
       } catch {
         setCameraActive(false);
-        setCameraHint(
-          "Accès à la caméra refusé. Autorisez-la dans les réglages du navigateur, ou saisissez le code à 6 chiffres du ticket."
-        );
+        setCameraHint(config.cameraDenied);
       }
     })();
 
     return stopCamera;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraActive, expectedOrderId, expectedOrderNumber]);
+  }, [cameraActive, expectedOrderId, expectedOrderNumber, mode]);
 
   function resumeScanning() {
     pausedRef.current = false;
@@ -173,9 +213,9 @@ export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode
   }
 
   function handleManualSubmit() {
-    const code = normalizeManualCode(manualCode);
-    if (code.length !== 6) {
-      setError("Le code comporte 6 chiffres.");
+    const code = normalizeManualCode(manualCode, config.codeLength);
+    if (code.length !== config.codeLength) {
+      setError(`Le code comporte ${config.codeLength} chiffres.`);
       return;
     }
     submit(code);
@@ -183,12 +223,13 @@ export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode
 
   return (
     <View style={styles.panel}>
-      <Text style={styles.title}>Remise par le commerçant</Text>
-      {expectedOrderNumber ? <Text style={styles.orderRef}>Commande à récupérer : {expectedOrderNumber}</Text> : null}
-      <Text style={styles.hint}>
-        Scannez le QR code imprimé sur le ticket de la commande. Ne partez pas sans avoir validé : c'est ce qui
-        enregistre la remise à votre nom.
-      </Text>
+      <Text style={styles.title}>{config.title}</Text>
+      {expectedOrderNumber ? (
+        <Text style={styles.orderRef}>
+          {config.refLabel} {expectedOrderNumber}
+        </Text>
+      ) : null}
+      <Text style={styles.hint}>{config.hint}</Text>
 
       {Platform.OS === "web" && cameraActive && (
         <View style={styles.cameraWrap}>
@@ -205,14 +246,14 @@ export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode
       {cameraHint && <Text style={styles.cameraHint}>{cameraHint}</Text>}
       {submitting && <Text style={styles.cameraHint}>Validation en cours…</Text>}
 
-      <Text style={styles.manualLabel}>Ou saisissez le code à 6 chiffres écrit sous le QR</Text>
+      <Text style={styles.manualLabel}>{config.manualLabel}</Text>
       <TextInput
         value={manualCode}
-        onChangeText={(text) => setManualCode(normalizeManualCode(text))}
-        placeholder="Ex: 483920"
+        onChangeText={(text) => setManualCode(normalizeManualCode(text, config.codeLength))}
+        placeholder={config.manualPlaceholder}
         placeholderTextColor="rgba(255,255,255,0.4)"
         keyboardType="number-pad"
-        maxLength={7}
+        maxLength={config.codeLength + 1}
         style={styles.manualInput}
       />
 
@@ -229,8 +270,8 @@ export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode
         </Pressable>
         <Pressable
           onPress={handleManualSubmit}
-          disabled={submitting || manualCode.length !== 6}
-          style={[styles.primaryBtn, { opacity: submitting || manualCode.length !== 6 ? 0.5 : 1 }]}
+          disabled={submitting || manualCode.length !== config.codeLength}
+          style={[styles.primaryBtn, { opacity: submitting || manualCode.length !== config.codeLength ? 0.5 : 1 }]}
         >
           <Text style={styles.primaryText}>Valider le code</Text>
         </Pressable>

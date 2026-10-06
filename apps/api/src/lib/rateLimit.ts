@@ -8,6 +8,12 @@ interface RateLimitOptions {
   limit: number;
   /** Durée de la fenêtre en millisecondes. */
   windowMs: number;
+  /**
+   * Remplace l'IP dans la clé du compteur (ex: un id de commande) pour limiter
+   * les essais PAR CIBLE quelle que soit l'IP -- un attaquant qui change d'IP
+   * (4G, VPN) ne remet alors pas le compteur à zéro. Absent : limite par IP.
+   */
+  identifier?: string;
 }
 
 /**
@@ -46,8 +52,8 @@ function getClientIp(req: Request): string {
  * n'importe quelle ApiError par withErrorHandling (voir middleware/auth.ts).
  */
 export async function enforceRateLimit(req: Request, options: RateLimitOptions): Promise<void> {
-  const ip = getClientIp(req);
-  const key = `${options.route}:${ip}`;
+  const who = options.identifier ?? getClientIp(req);
+  const key = `${options.route}:${who}`;
   const resetAt = new Date(Date.now() + options.windowMs);
 
   const rows = await prisma.$queryRaw<{ count: number; reset_at: Date }[]>`

@@ -101,6 +101,11 @@ export function CurrentDeliveryCard() {
   const [showProofPanel, setShowProofPanel] = useState(false);
   const [proofPhotoUrl, setProofPhotoUrl] = useState<string | null>(null);
   const [proofCode, setProofCode] = useState("");
+  // Scan du QR affiché dans l'app Commander du client (06/10/2026) : valide la
+  // livraison avec le code du client sans qu'il ait à le dicter. La saisie
+  // manuelle des 4 chiffres reste possible (panneau ci-dessous, ou champ du
+  // bilan de livraison).
+  const [showDeliveryScan, setShowDeliveryScan] = useState(false);
 
   // Signalement d'un problème sur la livraison en cours — indépendant du
   // flux de statut ci-dessus, peut être ouvert à tout moment pendant la
@@ -220,6 +225,17 @@ export function CurrentDeliveryCard() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleDeliveryCode(code: string) {
+    // Même chemin que la validation manuelle (PATCH statut + deliveryCode) : le
+    // serveur compare au code du client et limite les essais. Une erreur (code
+    // faux, trop d'essais...) remonte au panneau de scan, qui l'affiche.
+    await advanceDeliveryStep({ deliveryPhoto: proofPhotoUrl ?? undefined, deliveryCode: code });
+    setShowDeliveryScan(false);
+    setShowProofPanel(false);
+    setProofPhotoUrl(null);
+    setProofCode("");
   }
 
   async function handleUploadProof(localUri: string) {
@@ -420,13 +436,16 @@ export function CurrentDeliveryCard() {
         })}
       </View>
 
-      {showProofPanel && (
+      {showProofPanel && !showDeliveryScan && (
         <View style={styles.proofPanel}>
           <Text style={styles.proofTitle}>Preuve de remise</Text>
           <View style={styles.proofPhotoWrap}>
             <DocumentPhotoField label="Photo de la remise (optionnel)" onUpload={handleUploadProof} />
           </View>
-          <Text style={styles.proofLabel}>Code de remise donné par le client (obligatoire)</Text>
+          <Pressable onPress={() => setShowDeliveryScan(true)} style={styles.scanClientBtn}>
+            <Text style={styles.scanClientText}>📷 Scanner le QR du client</Text>
+          </Pressable>
+          <Text style={styles.proofLabel}>Ou code de remise à 4 chiffres donné par le client (obligatoire)</Text>
           <TextInput
             value={proofCode}
             onChangeText={setProofCode}
@@ -439,6 +458,16 @@ export function CurrentDeliveryCard() {
         </View>
       )}
 
+      {showProofPanel && showDeliveryScan && (
+        <PickupPanel
+          mode="delivery"
+          expectedOrderId={activeDelivery.id}
+          expectedOrderNumber={activeDelivery.orderNumber}
+          onSubmitCode={handleDeliveryCode}
+          onCancel={() => setShowDeliveryScan(false)}
+        />
+      )}
+
       {showPickupPanel && needsPickupScan && (
         <PickupPanel
           expectedOrderId={activeDelivery.id}
@@ -448,7 +477,7 @@ export function CurrentDeliveryCard() {
         />
       )}
 
-      {!(showPickupPanel && needsPickupScan) && (
+      {!(showPickupPanel && needsPickupScan) && !(showProofPanel && showDeliveryScan) && (
         <Pressable
           onPress={handleAction}
           disabled={submitting || isWaitingForFoodToBeReady}
@@ -521,6 +550,8 @@ const styles = StyleSheet.create({
   stepLabel: { marginTop: 4, textAlign: "center", fontSize: 10 },
   proofPanel: { marginBottom: 16, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.06)", padding: 12 },
   proofTitle: { marginBottom: 10, fontSize: 13, fontWeight: "700", color: "white" },
+  scanClientBtn: { marginBottom: 12, alignItems: "center", borderRadius: 8, backgroundColor: "#2ECC71", paddingVertical: 12 },
+  scanClientText: { fontSize: 13, fontWeight: "700", color: "white" },
   proofPhotoWrap: { borderRadius: 8, backgroundColor: "white", padding: 10, marginBottom: 4 },
   proofLabel: { marginTop: 4, marginBottom: 6, fontSize: 12, fontWeight: "600", color: "rgba(255,255,255,0.8)" },
   proofInput: {
