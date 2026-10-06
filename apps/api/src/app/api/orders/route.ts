@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { createOrderSchema } from "@/lib/validation/orders";
 import { computeOpenStatus } from "@/lib/openingHours";
 import { generateDeliveryCode } from "@/lib/deliveryCode";
+import { generatePickupCode, sanitizeOrderForRole } from "@/lib/pickupCode";
 import { normalizeCity } from "@/lib/normalizeCity";
 import { haversineDistanceKm } from "@/lib/distance";
 import {
@@ -492,6 +493,10 @@ async function postHandler(req: NextRequest) {
       // communication au client, et orders/[orderId]/status/route.ts pour
       // la vérification côté livreur).
       deliveryCode: generateDeliveryCode(),
+      // Code à 6 chiffres imprimé en QR code sur le ticket de préparation du
+      // Pro : le livreur le scanne pour valider la récupération (voir
+      // lib/pickupCode.ts et order-pickup/route.ts). Jamais renvoyé au livreur.
+      pickupCode: generatePickupCode(),
       items: { create: orderItemsData },
       statusHistory: {
         create: { status: OrderStatus.PENDING, changedBy: auth.userId },
@@ -500,7 +505,9 @@ async function postHandler(req: NextRequest) {
     include: { items: true },
   });
 
-  return NextResponse.json({ order }, { status: 201 });
+  // Le client reçoit son deliveryCode (à communiquer au livreur) mais pas le
+  // pickupCode, réservé au ticket du Pro -- voir sanitizeOrderForRole.
+  return NextResponse.json({ order: sanitizeOrderForRole(order, auth.role) }, { status: 201 });
 }
 
 /**
@@ -676,16 +683,28 @@ async function getHandler(req: NextRequest) {
   // rider.currentLat/currentLng sont des Decimal Prisma -> sérialisés en
   // texte par défaut en JSON, ce qui casserait leur usage direct comme
   // coordonnées sur la carte de suivi côté Client. On les caste ici.
-  const serialized = orders.map((order) => ({
-    ...order,
-    rider: order.rider
-      ? {
-          ...order.rider,
-          currentLat: order.rider.currentLat !== null ? Number(order.rider.currentLat) : null,
-          currentLng: order.rider.currentLng !== null ? Number(order.rider.currentLng) : null,
-        }
-      : null,
-  }));
+  //
+  // sanitizeOrderForRole (06/10/2026) : cette route renvoyait auparavant
+  // TOUTES les colonnes de la commande à tous les rôles -- donc le
+  // deliveryCode (code client -> livreur qui valide la livraison) était
+  // lisible par le livreur dans la réponse réseau, ce qui annulait l'intérêt
+  // du code. Désormais : deliveryCode réservé au client/admin, pickupCode
+  // (QR du ticket) réservé au Pro/employé/admin.
+  const serialized = orders.map((order) =>
+    sanitizeOrderForRole(
+      {
+        ...order,
+        rider: order.rider
+          ? {
+              ...order.rider,
+              currentLat: order.rider.currentLat !== null ? Number(order.rider.currentLat) : null,
+              currentLng: order.rider.currentLng !== null ? Number(order.rider.currentLng) : null,
+            }
+          : null,
+      },
+      auth.role
+    )
+  );
 
   return NextResponse.json({ orders: serialized });
 }

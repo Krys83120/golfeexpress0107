@@ -26,6 +26,25 @@ export async function updateOrderStatus(
   return data.order;
 }
 
+/**
+ * POST /api/order-pickup -- valide la récupération chez le commerçant en
+ * envoyant le code lu dans le QR du ticket (06/10/2026). Le serveur enchaîne
+ * lui-même RIDER_ASSIGNED -> PICKED_UP -> IN_DELIVERY et renvoie la commande
+ * à jour ; position facultative, vérifiée côté serveur (présence chez le
+ * commerçant).
+ */
+export async function scanOrderPickup(
+  orderId: string,
+  code: string,
+  coords?: { lat: number; lng: number }
+): Promise<Order> {
+  const data = await apiFetch<{ order: Order }>("/api/order-pickup", {
+    method: "POST",
+    body: { orderId, code, lat: coords?.lat, lng: coords?.lng },
+  });
+  return data.order;
+}
+
 /** PATCH /api/riders/me/online */
 export async function setOnlineStatus(isOnline: boolean): Promise<Rider> {
   const data = await apiFetch<{ rider: Rider }>("/api/riders/me/online", {

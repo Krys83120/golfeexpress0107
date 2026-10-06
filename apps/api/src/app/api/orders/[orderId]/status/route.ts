@@ -14,6 +14,7 @@ import {
 } from "@/lib/emails/orderEmails";
 import { sendTransferFailedAlert, sendOrderRefundFailedAlert } from "@/lib/emails/adminEmails";
 import { notifyNearbyRidersOrderPreparing } from "@/lib/riderNotifications";
+import { assertPickupVerifiedForRider, sanitizeOrderForRole } from "@/lib/pickupCode";
 
 /**
  * PATCH /api/orders/[orderId]/status
@@ -124,6 +125,20 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
       400,
       "Cette commande n'est pas encore marquée prête par le commerçant — impossible de la récupérer pour l'instant."
     );
+  }
+
+  // QR de remise (06/10/2026, voir lib/pickupCode.ts) : un livreur ne peut
+  // plus déclarer lui-même "récupérée" / "en route" -- il faut que le scan du
+  // QR du ticket ait été validé par POST /api/order-pickup (qui renseigne
+  // Order.pickupVerifiedAt avant d'appeler cette route). Sans ce garde-fou
+  // serveur, il suffisait d'appeler l'API directement pour contourner l'app.
+  // Les commandes sans pickupCode (créées avant le déploiement) et les
+  // interventions Admin ne sont pas concernées.
+  if (
+    auth.role === UserRole.RIDER &&
+    (nextStatus === OrderStatus.PICKED_UP || nextStatus === OrderStatus.IN_DELIVERY)
+  ) {
+    assertPickupVerifiedForRider(order);
   }
 
   const timestampField: Partial<Record<OrderStatus, string>> = {
@@ -506,7 +521,11 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
     }
   }
 
-  return NextResponse.json({ order: updated });
+  // Cette réponse sert d'état "commande en cours" côté apps Livreur/Pro :
+  // sanitizeOrderForRole en retire les codes secrets que le rôle appelant n'a
+  // pas à connaître (jusqu'ici le livreur recevait le deliveryCode du client
+  // à chaque changement de statut -- voir lib/pickupCode.ts).
+  return NextResponse.json({ order: sanitizeOrderForRole(updated, auth.role) });
 }
 
 export const PATCH = withErrorHandling(patchHandler);

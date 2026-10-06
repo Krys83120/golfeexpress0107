@@ -1002,6 +1002,19 @@ model Order {
   clientNote      String?     @map("client_note")
   deliveryPhoto   String?     @map("delivery_photo")
   deliveryCode    String?     @map("delivery_code")
+  /// Code de remise Pro -> Livreur (06/10/2026, suite à un signalement d'un
+  /// commerçant : un livreur repart avec le sac sans valider la récupération,
+  /// la commande reste bloquée en RIDER_ASSIGNED et se retrouve "gratuite").
+  /// 6 chiffres générés à la création de la commande, imprimés sous forme de
+  /// QR code sur le ticket de préparation (voir apps/pro/src/services/
+  /// printLabel.ts) et jamais renvoyés au livreur par l'API -- c'est le
+  /// scan de ce QR dans l'app Livreur (POST /api/order-pickup) qui valide la
+  /// récupération et fait passer la commande en livraison. null = commande
+  /// créée avant ce déploiement : l'ancien flux manuel reste alors autorisé.
+  pickupCode      String?     @map("pickup_code")
+  /// Moment où le scan du QR a été validé par le serveur (preuve que le
+  /// livreur était chez le commerçant et que celui-ci lui a remis la commande).
+  pickupVerifiedAt DateTime?  @map("pickup_verified_at")
   rating          Int?
   review          String?
 

@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { OrderStatus, ParcelOrderStatus, type Order, type ParcelOrder } from "@golfeexpress/types";
-import { acceptOrder, updateOrderStatus, setOnlineStatus, fetchAvailableOrders, fetchMyDeliveries } from "@/services/ridersApi";
+import {
+  acceptOrder,
+  updateOrderStatus,
+  scanOrderPickup,
+  setOnlineStatus,
+  fetchAvailableOrders,
+  fetchMyDeliveries,
+} from "@/services/ridersApi";
 import {
   fetchAvailableParcelOrders,
   fetchMyParcelDeliveries,
@@ -60,6 +67,8 @@ interface RiderSessionState {
   loadActiveDelivery: () => Promise<void>;
   handleAcceptOrder: (orderId: string) => Promise<void>;
   advanceDeliveryStep: (proof?: { deliveryPhoto?: string; deliveryCode?: string }) => Promise<void>;
+  /** Valide la récupération chez le commerçant (scan du QR du ticket, voir POST /api/order-pickup). */
+  confirmPickup: (code: string, coords?: { lat: number; lng: number }) => Promise<void>;
 
   loadAvailableParcelOrders: () => Promise<void>;
   loadActiveParcelDelivery: () => Promise<void>;
@@ -173,6 +182,16 @@ export const useRiderSessionStore = create<RiderSessionState>((set, get) => ({
     } else {
       set({ activeDelivery: updated });
     }
+  },
+
+  confirmPickup: async (code, coords) => {
+    const current = get().activeDelivery;
+    if (!current) return;
+    // Le serveur vérifie le code, la présence chez le commerçant, puis passe
+    // la commande en livraison : on remplace simplement l'état local par la
+    // commande à jour qu'il renvoie.
+    const updated = await scanOrderPickup(current.id, code, coords);
+    set({ activeDelivery: updated });
   },
 
   // Colis Express (23/09/2026) -- mêmes principes exacts que les 4 méthodes

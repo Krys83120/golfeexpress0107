@@ -3,6 +3,7 @@ import { OrderStatus, UserRole, RiderStatus, RiderVerificationStatus } from "@go
 import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { isWithinRiderSearchWindow } from "@/lib/riderSearchWindow";
+import { sanitizeOrderForRole } from "@/lib/pickupCode";
 
 /**
  * POST /api/orders/[orderId]/accept
@@ -84,7 +85,11 @@ async function postHandler(req: NextRequest, ctx: { params: { orderId: string } 
     where: { id: order.id },
     include: {
       items: true,
-      pro: true,
+      // Uniquement les champs réellement affichés par l'app Livreur (nom,
+      // logo, catégorie) -- comme GET /api/orders. `pro: true` renvoyait au
+      // livreur TOUTE la fiche du commerçant (coordonnées de contact,
+      // informations Stripe/SIRET...), sans aucune raison métier.
+      pro: { select: { id: true, businessName: true, logo: true, category: true } },
       fromAddress: true,
       toAddress: true,
       // Sans ça, le client n'apparaît jamais dans activeDelivery dès
@@ -95,7 +100,9 @@ async function postHandler(req: NextRequest, ctx: { params: { orderId: string } 
     },
   });
 
-  return NextResponse.json({ order: updated });
+  // Retire le deliveryCode (code du client) et le pickupCode (QR du Pro) de la
+  // réponse -- le livreur ne doit pas pouvoir les lire (voir lib/pickupCode.ts).
+  return NextResponse.json({ order: updated ? sanitizeOrderForRole(updated, auth.role) : updated });
 }
 
 export const POST = withErrorHandling(postHandler);

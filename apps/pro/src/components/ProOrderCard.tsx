@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Phone, MapPin, Clock, Printer, Receipt, Flag } from "lucide-react";
+import { Phone, MapPin, Clock, Printer, Receipt, Flag, QrCode } from "lucide-react";
 import { OrderStatus, OrderReportCategory, type Order } from "@golfeexpress/types";
 import { getNextStatus, NEXT_ACTION_LABELS, CONFIRMED_LATE_THRESHOLD_MINUTES } from "@/services/orderStatusFlow";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { PaymentStatusBadge } from "@/components/PaymentStatusBadge";
+import { PickupQr } from "@/components/PickupQr";
 import { printOrderLabel } from "@/services/printLabel";
 import { apiFetchBlob } from "@/services/apiClient";
 import { createReport } from "@/services/reportsApi";
@@ -62,6 +63,8 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
   const [showPrepPicker, setShowPrepPicker] = useState(false);
   const [customPrepMinutes, setCustomPrepMinutes] = useState("");
   const [loadingReceipt, setLoadingReceipt] = useState(false);
+  // QR de remise livreur affiché dans l'app (repli si le ticket imprimé est perdu).
+  const [showPickupQr, setShowPickupQr] = useState(false);
 
   // Signalement d'un problème sur cette commande (rupture de stock, client
   // injoignable...) — indépendant du flux de statut, envoyé à l'admin qui
@@ -109,6 +112,23 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
   // déjà en route. Le Pro doit alors pouvoir signaler "c'est prêt" sans
   // repasser par une transition de statut classique (voir mark-ready côté API).
   const needsMarkReadyOnly = order.status === OrderStatus.RIDER_ASSIGNED && !order.readyAt;
+
+  // Remise au livreur par scan de QR (06/10/2026, voir Order.pickupCode côté
+  // schema.prisma) : tant que le scan n'est pas validé, le Pro ne doit pas
+  // lâcher le sac ; une fois validé, il voit la confirmation ici -- c'est sa
+  // preuve que la remise a bien été enregistrée au nom de CE livreur.
+  const riderFirstName = order.rider?.user?.firstName;
+  const awaitingHandover =
+    order.status === OrderStatus.RIDER_ASSIGNED && !!order.readyAt && !!order.pickupCode && !order.pickupVerifiedAt;
+  const canShowPickupQr =
+    !!order.pickupCode &&
+    !order.pickupVerifiedAt &&
+    (order.status === OrderStatus.PREPARING ||
+      order.status === OrderStatus.READY ||
+      order.status === OrderStatus.RIDER_ASSIGNED);
+  const handoverConfirmedAt = order.pickupVerifiedAt
+    ? new Date(order.pickupVerifiedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    : null;
   const isPreparingWithoutRiderYet = order.status === OrderStatus.PREPARING;
 
   function handleStartPreparing(minutes: number) {
@@ -201,6 +221,18 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
         {needsMarkReadyOnly && (
           <p className="font-medium text-purple-600">🛵 Livreur en route — cliquez "Marquer prête" dès que c'est prêt</p>
         )}
+        {awaitingHandover && (
+          <p className="rounded-sm bg-purple-50 px-2.5 py-1.5 font-semibold text-purple-700">
+            📦 Ne remettez le sac {riderFirstName ? `à ${riderFirstName} ` : "au livreur "}qu'après le scan du QR du
+            ticket. « Remise validée » s'affichera ici.
+          </p>
+        )}
+        {handoverConfirmedAt && (
+          <p className="font-semibold text-golfe-green">
+            ✅ Remise validée à {handoverConfirmedAt}
+            {riderFirstName ? ` — ${riderFirstName}` : ""}
+          </p>
+        )}
       </div>
 
       {showPrepPicker && (
@@ -248,6 +280,12 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
               Annuler
             </button>
           </div>
+        </div>
+      )}
+
+      {showPickupQr && canShowPickupQr && order.pickupCode && (
+        <div className="mb-3">
+          <PickupQr orderId={order.id} code={order.pickupCode} />
         </div>
       )}
 
@@ -330,6 +368,15 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
             >
               <Printer size={13} /> Étiquette
             </button>
+            {canShowPickupQr && (
+              <button
+                onClick={() => setShowPickupQr((v) => !v)}
+                title="Afficher le QR de remise au livreur"
+                className="flex items-center gap-1.5 rounded-sm border border-gris-light px-3 py-1.5 text-xs font-semibold text-gris hover:bg-gris-light"
+              >
+                <QrCode size={13} /> QR livreur
+              </button>
+            )}
             <button
               onClick={() => {
                 setShowReportPanel((v) => !v);

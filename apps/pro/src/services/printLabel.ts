@@ -1,4 +1,5 @@
 import type { Order } from "@golfeexpress/types";
+import { pickupQrDataUrl, formatPickupCode } from "@/services/pickupQr";
 
 /**
  * Imprime une étiquette de commande.
@@ -25,7 +26,21 @@ import type { Order } from "@golfeexpress/types";
  */
 const LABEL_WIDTH_MM = 58;
 
-export function printOrderLabel(order: Order) {
+export async function printOrderLabel(order: Order): Promise<void> {
+  // QR de remise livreur (06/10/2026, voir Order.pickupCode côté schema.prisma
+  // et apps/api/src/lib/pickupCode.ts) : imprimé sur le ticket qui accompagne
+  // le sac, le livreur le scanne avec l'app pour prouver la remise. Si la
+  // génération échoue (ou si la commande est antérieure à cette fonction et
+  // n'a pas de code), le ticket s'imprime quand même, simplement sans QR.
+  let pickupQrUrl: string | null = null;
+  if (order.pickupCode) {
+    try {
+      pickupQrUrl = await pickupQrDataUrl(order.id, order.pickupCode, 320);
+    } catch {
+      pickupQrUrl = null;
+    }
+  }
+
   const itemsHtml = (order.items ?? [])
     .map((item) => {
       // Un bloc par groupe d'options (ex: "La Taille :"), et en dessous une
@@ -89,6 +104,11 @@ export function printOrderLabel(order: Order) {
     .note { font-size: 11px; font-style: italic; margin-bottom: 8px; }
     .payment { font-size: 11px; text-align: center; margin-bottom: 4px; }
     .footer { font-size: 10px; text-align: center; margin-top: 8px; }
+    .pickup { text-align: center; border-top: 2px dashed #000; margin-top: 8px; padding-top: 6px; }
+    .pickup-title { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .pickup-qr { width: 34mm; height: 34mm; image-rendering: pixelated; }
+    .pickup-code { font-size: 16px; font-weight: 800; letter-spacing: 2px; margin-top: 2px; }
+    .pickup-hint { font-size: 9px; margin-top: 3px; }
   </style>
 </head>
 <body>
@@ -107,6 +127,16 @@ export function printOrderLabel(order: Order) {
   ${order.clientNote ? `<div class="note">📝 ${escapeHtml(order.clientNote)}</div>` : ""}
   ${paymentLabel ? `<div class="payment">💳 Payé par ${escapeHtml(paymentLabel)}</div>` : ""}
   <div class="footer">Total : ${Number(order.total).toFixed(2)} €</div>
+  ${
+    pickupQrUrl && order.pickupCode
+      ? `<div class="pickup">
+    <div class="pickup-title">REMISE AU LIVREUR</div>
+    <img class="pickup-qr" src="${pickupQrUrl}" alt="" />
+    <div class="pickup-code">${escapeHtml(formatPickupCode(order.pickupCode))}</div>
+    <div class="pickup-hint">Le livreur scanne ce QR avec son app avant de partir. Pas de scan, pas de remise.</div>
+  </div>`
+      : ""
+  }
 </body>
 </html>`;
 
@@ -129,7 +159,19 @@ export function printOrderLabel(order: Order) {
   doc.close();
 
   // Laisse le temps au navigateur de mettre en page le contenu injecté
-  // avant de déclencher l'impression.
+  // avant de déclencher l'impression -- et, s'il y a un QR, d'avoir fini de
+  // le charger (sans ça, il pourrait sortir en blanc sur le ticket).
+  const qrImage = doc.querySelector<HTMLImageElement>("img.pickup-qr");
+  const qrReady =
+    !qrImage || qrImage.complete
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => {
+          qrImage.onload = () => resolve();
+          qrImage.onerror = () => resolve();
+          setTimeout(resolve, 1500);
+        });
+  await qrReady;
+
   setTimeout(() => {
     iframe.contentWindow?.focus();
     iframe.contentWindow?.print();

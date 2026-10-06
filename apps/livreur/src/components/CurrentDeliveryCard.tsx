@@ -5,6 +5,8 @@ import { OrderStatus, OrderReportCategory } from "@golfeexpress/types";
 import { useRiderSessionStore } from "@/store/useRiderSessionStore";
 import { getCategoryEmoji } from "@/services/categoryVisuals";
 import { DocumentPhotoField } from "@/components/DocumentPhotoField";
+import { PickupPanel } from "@/components/PickupScanner";
+import { getCurrentCoords } from "@/lib/currentCoords";
 import { uploadDeliveryProof, uploadReportPhoto } from "@/services/uploadsApi";
 import { createReport } from "@/services/reportsApi";
 
@@ -84,8 +86,15 @@ function formatElapsed(riderAssignedAt: string): string {
 export function CurrentDeliveryCard() {
   const activeDelivery = useRiderSessionStore((s) => s.activeDelivery);
   const advanceDeliveryStep = useRiderSessionStore((s) => s.advanceDeliveryStep);
+  const confirmPickup = useRiderSessionStore((s) => s.confirmPickup);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Validation de la récupération chez le commerçant par scan du QR du
+  // ticket (06/10/2026, voir PickupScanner.tsx) -- remplace l'ancien bouton
+  // "J'ai récupéré la commande", qui laissait le livreur déclarer seul
+  // avoir reçu la commande.
+  const [showPickupPanel, setShowPickupPanel] = useState(false);
 
   // Bilan de livraison — demandé juste avant de confirmer "Commande
   // livrée", jamais pour les étapes précédentes (récupération, en route).
@@ -141,6 +150,13 @@ export function CurrentDeliveryCard() {
   // une confirmation prématurée.
   const isWaitingForFoodToBeReady = activeDelivery.status === OrderStatus.RIDER_ASSIGNED && !activeDelivery.readyAt;
 
+  // Commandes créées depuis le déploiement du QR de remise : la récupération
+  // ne se valide plus par un simple bouton mais par le scan du ticket (le
+  // serveur refuse de toute façon l'ancien chemin, voir status/route.ts).
+  // Les commandes plus anciennes (pickupScanRequired absent/false) gardent
+  // l'ancien bouton manuel.
+  const needsPickupScan = activeDelivery.status === OrderStatus.RIDER_ASSIGNED && activeDelivery.pickupScanRequired === true;
+
   // Le client n'est appelable qu'une fois la commande récupérée — avant
   // ça, le trajet ne le concerne pas encore.
   const clientPhone = activeDelivery.client?.user?.phone ?? null;
@@ -156,7 +172,21 @@ export function CurrentDeliveryCard() {
 
   const isFinalStep = activeDelivery.status === OrderStatus.IN_DELIVERY;
 
+  async function handlePickupCode(code: string) {
+    // La position part avec le scan : le serveur vérifie que le livreur est
+    // bien chez le commerçant. Erreurs (code faux, trop loin...) remontées
+    // telles quelles au panneau de scan, qui les affiche.
+    const coords = await getCurrentCoords();
+    await confirmPickup(code, coords);
+    setShowPickupPanel(false);
+  }
+
   async function handleAction() {
+    if (needsPickupScan) {
+      if (!isWaitingForFoodToBeReady) setShowPickupPanel(true);
+      return;
+    }
+
     // Dernière étape (marquer livré) : on demande d'abord une preuve de
     // remise (photo optionnelle + code obligatoire) plutôt que de clôturer
     // directement.
@@ -409,19 +439,31 @@ export function CurrentDeliveryCard() {
         </View>
       )}
 
-      <Pressable
-        onPress={handleAction}
-        disabled={submitting || isWaitingForFoodToBeReady}
-        style={[styles.actionBtn, { opacity: submitting || isWaitingForFoodToBeReady ? 0.5 : 1 }]}
-      >
-        <Text style={styles.actionText}>
-          {isWaitingForFoodToBeReady
-            ? "⏳ En attente que ce soit prêt..."
-            : showProofPanel
-              ? "✅ Confirmer la livraison"
-              : ACTION_LABELS[activeDelivery.status] ?? "Continuer"}
-        </Text>
-      </Pressable>
+      {showPickupPanel && needsPickupScan && (
+        <PickupPanel
+          expectedOrderId={activeDelivery.id}
+          onSubmitCode={handlePickupCode}
+          onCancel={() => setShowPickupPanel(false)}
+        />
+      )}
+
+      {!(showPickupPanel && needsPickupScan) && (
+        <Pressable
+          onPress={handleAction}
+          disabled={submitting || isWaitingForFoodToBeReady}
+          style={[styles.actionBtn, { opacity: submitting || isWaitingForFoodToBeReady ? 0.5 : 1 }]}
+        >
+          <Text style={styles.actionText}>
+            {isWaitingForFoodToBeReady
+              ? "⏳ En attente que ce soit prêt..."
+              : showProofPanel
+                ? "✅ Confirmer la livraison"
+                : needsPickupScan
+                  ? "📷 Scanner le QR de remise"
+                  : ACTION_LABELS[activeDelivery.status] ?? "Continuer"}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

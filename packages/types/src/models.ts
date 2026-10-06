@@ -370,7 +370,14 @@ export interface Order {
 
   clientNote?: string | null;
   deliveryPhoto?: string | null;
+  /** Code de remise client -> livreur. Renvoyé UNIQUEMENT au client (et à l'admin), jamais au livreur ni au Pro. */
   deliveryCode?: string | null;
+  /** Code de remise Pro -> livreur (QR du ticket). Renvoyé UNIQUEMENT au Pro/employé et à l'admin -- voir Order.pickupCode côté schema.prisma. */
+  pickupCode?: string | null;
+  /** Moment où le scan du QR de remise a été validé (null = pas encore remise au livreur). */
+  pickupVerifiedAt?: string | null;
+  /** true si la récupération doit passer par le scan du QR (commandes créées après le déploiement) -- renvoyé à tous les rôles, sans exposer le code lui-même. */
+  pickupScanRequired?: boolean;
   rating?: number | null;
   review?: string | null;
 
