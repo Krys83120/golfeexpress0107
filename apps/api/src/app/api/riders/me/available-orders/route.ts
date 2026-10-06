@@ -4,6 +4,7 @@ import { requireAuth, withErrorHandling, ApiError } from "@/middleware/auth";
 import { prisma } from "@/lib/prisma";
 import { isWithinRiderSearchWindow } from "@/lib/riderSearchWindow";
 import { notifyNearbyRidersForOrder } from "@/lib/riderNotifications";
+import { sanitizeOrderForRole } from "@/lib/pickupCode";
 
 /**
  * GET /api/riders/me/available-orders
@@ -95,7 +96,12 @@ async function getHandler(req: NextRequest) {
       })
   );
 
-  return NextResponse.json({ orders });
+  // Le livreur ne doit voir ni le code de livraison du client (deliveryCode) ni
+  // le code de remise du Pro (pickupCode) : avant ce correctif, ils partaient
+  // dans cette liste à TOUS les livreurs en ligne, commandes non prises
+  // comprises (voir lib/pickupCode.ts). La notification de proximité ci-dessus
+  // lit l'objet d'origine et n'est pas concernée.
+  return NextResponse.json({ orders: orders.map((order) => sanitizeOrderForRole(order, auth.role)) });
 }
 
 export const GET = withErrorHandling(getHandler);
