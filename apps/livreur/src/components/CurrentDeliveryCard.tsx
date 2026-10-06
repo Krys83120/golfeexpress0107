@@ -442,6 +442,7 @@ export function CurrentDeliveryCard() {
       {showPickupPanel && needsPickupScan && (
         <PickupPanel
           expectedOrderId={activeDelivery.id}
+          expectedOrderNumber={activeDelivery.orderNumber}
           onSubmitCode={handlePickupCode}
           onCancel={() => setShowPickupPanel(false)}
         />

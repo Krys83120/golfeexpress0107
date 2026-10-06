@@ -122,7 +122,12 @@ async function postHandler(req: NextRequest) {
   }
 
   if (!pickupCodesMatch(order.pickupCode, cleanedCode)) {
-    throw new ApiError(403, "Code incorrect. Scannez le QR du ticket, ou vérifiez les 6 chiffres.");
+    // Cas typique : le commerçant a remis le ticket (ou le sac) d'une AUTRE commande
+    // en attente. On nomme la commande attendue pour que le livreur la réclame.
+    throw new ApiError(
+      403,
+      `Ce n'est pas la bonne commande : ce code ne correspond pas à la commande ${order.orderNumber}. Demandez au commerçant le ticket de cette commande.`
+    );
   }
 
   // Présence chez le commerçant. Position envoyée avec le scan en priorité ;

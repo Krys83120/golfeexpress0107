@@ -6,6 +6,8 @@ import { parsePickupQr, normalizeManualCode } from "@/lib/pickupQr";
 interface PickupPanelProps {
   /** Commande en cours : le QR scanné doit porter exactement cet id. */
   expectedOrderId: string;
+  /** Numéro lisible de la commande en cours (celui imprimé sur le ticket), affiché pour que le livreur sache laquelle réclamer au commerçant. */
+  expectedOrderNumber?: string;
   /** Envoie le code au serveur (POST /api/order-pickup). Doit lever une Error au message lisible en cas de refus. */
   onSubmitCode: (code: string) => Promise<void>;
   onCancel: () => void;
@@ -26,7 +28,7 @@ const MAX_SCAN_SIDE_PX = 640;
  * proposé. Ce composant n'envoie jamais rien lui-même : il décode, vérifie
  * que le QR est bien celui de la commande en cours, puis appelle onSubmitCode.
  */
-export function PickupPanel({ expectedOrderId, onSubmitCode, onCancel }: PickupPanelProps) {
+export function PickupPanel({ expectedOrderId, expectedOrderNumber, onSubmitCode, onCancel }: PickupPanelProps) {
   const [manualCode, setManualCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +90,17 @@ export function PickupPanel({ expectedOrderId, onSubmitCode, onCancel }: PickupP
         return false;
       }
       if (parsed.orderId !== expectedOrderId) {
-        setCameraHint("Ce ticket est celui d'une autre commande.");
+        // Le commerçant s'est trompé de commande : erreur bien visible, et pause
+        // du scan (sinon le message clignoterait tant que le ticket reste devant
+        // la caméra). Rien n'est envoyé au serveur.
+        setCameraHint(null);
+        setError(
+          `Ce n'est pas la bonne commande : ce ticket est celui d'une autre commande.${
+            expectedOrderNumber ? ` Demandez au commerçant la commande ${expectedOrderNumber}.` : " Demandez au commerçant votre commande."
+          }`
+        );
+        pausedRef.current = true;
+        setPaused(true);
         return false;
       }
       setCameraHint(null);
@@ -151,7 +163,7 @@ export function PickupPanel({ expectedOrderId, onSubmitCode, onCancel }: PickupP
 
     return stopCamera;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraActive, expectedOrderId]);
+  }, [cameraActive, expectedOrderId, expectedOrderNumber]);
 
   function resumeScanning() {
     pausedRef.current = false;
@@ -172,6 +184,7 @@ export function PickupPanel({ expectedOrderId, onSubmitCode, onCancel }: PickupP
   return (
     <View style={styles.panel}>
       <Text style={styles.title}>Remise par le commerçant</Text>
+      {expectedOrderNumber ? <Text style={styles.orderRef}>Commande à récupérer : {expectedOrderNumber}</Text> : null}
       <Text style={styles.hint}>
         Scannez le QR code imprimé sur le ticket de la commande. Ne partez pas sans avoir validé : c'est ce qui
         enregistre la remise à votre nom.
@@ -229,6 +242,7 @@ export function PickupPanel({ expectedOrderId, onSubmitCode, onCancel }: PickupP
 const styles = StyleSheet.create({
   panel: { marginBottom: 16, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.06)", padding: 12 },
   title: { marginBottom: 6, fontSize: 13, fontWeight: "700", color: "white" },
+  orderRef: { marginBottom: 6, fontSize: 15, fontWeight: "800", color: "white" },
   hint: { marginBottom: 10, fontSize: 12, lineHeight: 17, color: "rgba(255,255,255,0.8)" },
   cameraWrap: {
     height: 240,
