@@ -56,8 +56,40 @@ if ($html -notmatch [regex]::Escape($pwaTags)) {
     Set-Content -Path $indexPath -Value $html -NoNewline -Encoding utf8
 }
 
-Copy-Item -Recurse ".vercel" "dist\.vercel" -Force
+# Meme raison que ci-dessus : web/index.html est ignore par ce bundler, donc les
+# balises Open Graph qui y sont ecrites n'arrivaient JAMAIS en production --
+# Facebook/WhatsApp ne trouvaient ni titre, ni description, ni image sur
+# commander.doyougeckoo.fr, et affichaient leur avertissement "arnaque" sur les
+# liens partages (constate le 04/10/2026). On les injecte donc ici aussi, avec
+# le noindex (qui n'etait lui non plus jamais publie). Accents ecrits en
+# entites HTML pour que ce script reste en ASCII pur (PowerShell 5 lit les
+# fichiers sans BOM en ANSI).
+Step "Injection des balises Open Graph + noindex dans dist/index.html (client)"
+$html = Get-Content $indexPath -Raw
+if ($html -notmatch 'property="og:title"') {
+    $ogTags = '<meta name="robots" content="noindex, nofollow">' +
+        '<meta property="og:type" content="website">' +
+        '<meta property="og:site_name" content="Do You Geckoo">' +
+        '<meta property="og:title" content="Do You Geckoo">' +
+        '<meta property="og:description" content="Restaurant ? Courses ? Colis ? Geckoo it. Livraison locale du Golfe de Saint-Tropez.">' +
+        '<meta property="og:image" content="https://hqofwdrgtxvpnfwhaefn.supabase.co/storage/v1/object/public/branding-assets/og-commander.png">' +
+        '<meta property="og:url" content="https://commander.doyougeckoo.fr/">' +
+        '<meta name="twitter:card" content="summary_large_image">'
+    $html = $html -replace "</head>", "$ogTags</head>"
+    Set-Content -Path $indexPath -Value $html -NoNewline -Encoding utf8
+}
+
+# Liaison de dist au projet Vercel "golfeexpress0107-client" par un `vercel link`
+# (comme pour les deploiements manuels) plutot que par la copie de
+# apps\client\.vercel : cette copie perimee a fait echouer le deploiement du
+# Livreur avec "Not authorized" (06/10/2026). Le domaine commander.doyougeckoo.fr
+# est attache a ce projet : pas d'alias a poser.
+Step "Liaison de dist au projet Vercel golfeexpress0107-client"
 Set-Location "$RepoRoot\apps\client\dist"
+vercel link --yes --project golfeexpress0107-client
+Assert-LastExitCode "vercel link (client)"
+
+Step "Deploiement en production (vercel --prod)"
 vercel --prod
 Assert-LastExitCode "vercel --prod (client)"
 
