@@ -361,6 +361,25 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
   // manuellement (proTransferId/riderTransferId resteront null, visibles
   // depuis l'admin pour repérer les virements en attente).
   if (nextStatus === OrderStatus.DELIVERED) {
+    // Charge Stripe d'origine du paiement client (06/10/2026). Sans
+    // source_transaction, un transfert est prélevé sur le solde DISPONIBLE de
+    // la plateforme : or l'argent d'un paiement reste "en attente" plusieurs
+    // jours (et un virement automatique quotidien vide le disponible), donc
+    // le transfert échouait avec "insufficient funds". Rattaché à la charge
+    // d'origine, il part immédiatement et Stripe l'honore dès que les fonds
+    // du paiement sont disponibles. Si on ne retrouve pas la charge (commande
+    // sans PaymentIntent), on retombe sur l'ancien comportement.
+    let sourceChargeId: string | undefined;
+    if (updated.stripePaymentIntentId) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(updated.stripePaymentIntentId);
+        sourceChargeId = typeof pi.latest_charge === "string" ? pi.latest_charge : pi.latest_charge?.id;
+      } catch (err) {
+        console.error(`[stripe connect] Charge d'origine introuvable pour commande ${updated.id}:`, err);
+      }
+    }
+    const sourceTransactionField = sourceChargeId ? { source_transaction: sourceChargeId } : {};
+
     if (proReadyForPayout) {
       try {
         const pro = await prisma.pro.findUnique({ where: { id: updated.proId }, select: { stripeAccountId: true } });
@@ -369,6 +388,7 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
             amount: Math.round(Number(updated.proEarnings) * 100),
             currency: "eur",
             destination: pro.stripeAccountId,
+            ...sourceTransactionField,
             transfer_group: updated.id,
             metadata: { orderId: updated.id, orderNumber: updated.orderNumber, recipient: "pro" },
           });
@@ -386,6 +406,7 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
     }
 
     if (riderReadyForPayout && updated.riderId) {
+      let riderTransferCreated = false;
       try {
         const rider = await prisma.rider.findUnique({ where: { id: updated.riderId }, select: { stripeAccountId: true } });
         if (rider?.stripeAccountId) {
@@ -393,9 +414,11 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
             amount: Math.round(Number(updated.riderEarnings) * 100),
             currency: "eur",
             destination: rider.stripeAccountId,
+            ...sourceTransactionField,
             transfer_group: updated.id,
             metadata: { orderId: updated.id, orderNumber: updated.orderNumber, recipient: "rider" },
           });
+          riderTransferCreated = true;
           await prisma.order.update({ where: { id: updated.id }, data: { riderTransferId: transfer.id } });
           await prisma.earning.updateMany({
             where: { orderId: updated.id, riderId: updated.riderId },
@@ -404,6 +427,26 @@ async function patchHandler(req: NextRequest, ctx: { params: { orderId: string }
         }
       } catch (err) {
         console.error(`[stripe connect] Échec virement Rider pour commande ${updated.id}:`, err);
+        // Le gain avait été compté "PAID" sans passer par le solde (voir plus
+        // haut) : si le transfert n'est pas parti, on le remet dans le solde
+        // retirable du livreur pour qu'il ne soit pas perdu (retrait manuel
+        // possible, ou régularisation par l'admin).
+        if (!riderTransferCreated) {
+          try {
+            await prisma.$transaction([
+              prisma.earning.updateMany({
+                where: { orderId: updated.id, riderId: updated.riderId },
+                data: { status: "AVAILABLE" },
+              }),
+              prisma.rider.update({
+                where: { id: updated.riderId },
+                data: { balance: { increment: Number(updated.riderEarnings) } },
+              }),
+            ]);
+          } catch (restoreErr) {
+            console.error(`[stripe connect] Impossible de recréditer le solde livreur (commande ${updated.id}):`, restoreErr);
+          }
+        }
         sendTransferFailedAlert(
           "rider",
           updated.orderNumber,

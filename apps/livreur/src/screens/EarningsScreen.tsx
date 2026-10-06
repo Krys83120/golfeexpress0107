@@ -139,13 +139,18 @@ export function EarningsScreen() {
                 <Text style={styles.pendingText}>+ {(summary?.pendingBalance ?? 0).toFixed(2).replace(".", ",")} € en attente</Text>
               )}
 
-              <Pressable
-                onPress={() => setWithdrawModalOpen(true)}
-                disabled={!summary || summary.availableBalance <= 0}
-                style={[styles.withdrawBtn, { opacity: !summary || summary.availableBalance <= 0 ? 0.5 : 1 }]}
-              >
-                <Text style={styles.withdrawBtnText}>💸 Retirer mes gains</Text>
-              </Pressable>
+              {/* Compte bancaire actif + solde à 0 : les gains partent seuls vers
+                  Stripe à chaque livraison, le retrait manuel n'a pas d'utilité
+                  (06/10/2026). Il réapparaît dès qu'un solde est à récupérer. */}
+              {!(stripeStatus?.payoutsEnabled && (summary?.availableBalance ?? 0) <= 0) && (
+                <Pressable
+                  onPress={() => setWithdrawModalOpen(true)}
+                  disabled={!summary || summary.availableBalance <= 0}
+                  style={[styles.withdrawBtn, { opacity: !summary || summary.availableBalance <= 0 ? 0.5 : 1 }]}
+                >
+                  <Text style={styles.withdrawBtnText}>💸 Retirer mes gains</Text>
+                </Pressable>
+              )}
             </View>
 
             <View style={styles.infoCard}>
