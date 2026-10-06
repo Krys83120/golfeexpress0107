@@ -436,9 +436,30 @@ export function CurrentDeliveryCard() {
         })}
       </View>
 
+      {needsPickupScan && !showPickupPanel && !showProofPanel && (
+        <View style={styles.helpBox}>
+          <Text style={styles.helpTitle}>ℹ️ Comment récupérer la commande</Text>
+          <Text style={styles.helpText}>
+            1. Donnez au commerçant le numéro de commande {activeDelivery.orderNumber}.{"\n"}
+            2. Vérifiez que le ticket sur le sac porte bien ce numéro.{"\n"}
+            3. Scannez le QR du ticket avec le bouton ci-dessous (ou saisissez le code à 6 chiffres écrit sous le QR).{"\n"}
+            Si l'appli indique « Ce n'est pas la bonne commande », le commerçant vous a présenté un autre sac : demandez-lui le bon ticket.{"\n"}
+            Ne partez jamais sans avoir scanné : sans scan, la commande ne passe pas en livraison et vous ne serez pas payé.
+          </Text>
+        </View>
+      )}
+
       {showProofPanel && !showDeliveryScan && (
         <View style={styles.proofPanel}>
           <Text style={styles.proofTitle}>Preuve de remise</Text>
+          <View style={styles.helpBox}>
+            <Text style={styles.helpTitle}>ℹ️ Comment valider la livraison</Text>
+            <Text style={styles.helpText}>
+              Le client voit un QR code et un code à 4 chiffres dans son appli. Scannez son QR avec le bouton vert, ou
+              saisissez le code qu'il vous donne. Ne validez jamais sans la présence du client : après 6 essais
+              erronés, la saisie est bloquée pendant 10 minutes.
+            </Text>
+          </View>
           <View style={styles.proofPhotoWrap}>
             <DocumentPhotoField label="Photo de la remise (optionnel)" onUpload={handleUploadProof} />
           </View>
@@ -550,6 +571,9 @@ const styles = StyleSheet.create({
   stepLabel: { marginTop: 4, textAlign: "center", fontSize: 10 },
   proofPanel: { marginBottom: 16, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.06)", padding: 12 },
   proofTitle: { marginBottom: 10, fontSize: 13, fontWeight: "700", color: "white" },
+  helpBox: { marginBottom: 12, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.08)", padding: 12 },
+  helpTitle: { marginBottom: 4, fontSize: 12, fontWeight: "700", color: "white" },
+  helpText: { fontSize: 12, lineHeight: 17, color: "rgba(255,255,255,0.8)" },
   scanClientBtn: { marginBottom: 12, alignItems: "center", borderRadius: 8, backgroundColor: "#2ECC71", paddingVertical: 12 },
   scanClientText: { fontSize: 13, fontWeight: "700", color: "white" },
   proofPhotoWrap: { borderRadius: 8, backgroundColor: "white", padding: 10, marginBottom: 4 },

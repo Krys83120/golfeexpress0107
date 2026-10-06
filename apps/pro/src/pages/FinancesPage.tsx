@@ -203,6 +203,30 @@ export function FinancesPage() {
         )}
       </div>
 
+      <div className="mb-6 rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+        <h3 className="mb-2 font-heading text-base font-bold text-nuit">ℹ️ Comment sont versés vos gains ?</h3>
+        <ol className="list-decimal space-y-1.5 pl-5 text-xs text-gris">
+          <li>
+            <span className="font-semibold text-nuit">Une seule fois</span> : configurez vos coordonnées bancaires avec
+            le bouton ci-dessus (formulaire sécurisé Stripe, durée : quelques minutes).
+          </li>
+          <li>
+            <span className="font-semibold text-nuit">À chaque commande</span> : dès qu'elle passe en « Livrée »,
+            votre part (prix de la commande moins la commission de {((summary?.commissionRate ?? 0.18) * 100).toFixed(0)}%)
+            est transférée automatiquement sur votre compte Stripe. Vous n'avez aucun retrait à demander.
+          </li>
+          <li>
+            <span className="font-semibold text-nuit">Sur votre banque</span> : Stripe verse ensuite l'argent sur votre
+            compte bancaire, en général sous 2 à 7 jours ouvrés (le premier versement peut prendre un peu plus de temps).
+          </li>
+        </ol>
+        <p className="mt-3 text-xs text-gris">
+          Tant que vos coordonnées ne sont pas validées par Stripe, vos gains sont conservés et vous êtes payé une fois
+          la configuration terminée : pensez à la finir rapidement. La commande n'est « Livrée » que lorsque le livreur
+          a scanné la remise chez le client, ce qui sécurise votre paiement.
+        </p>
+      </div>
+
       <div className="rounded bg-white p-5 shadow-sm" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
         <h3 className="mb-4 font-heading text-base font-bold text-nuit">📄 Chiffre d'affaires par semaine</h3>
         <div className="overflow-x-auto">

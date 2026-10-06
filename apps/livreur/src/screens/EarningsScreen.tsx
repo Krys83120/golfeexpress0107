@@ -148,6 +148,18 @@ export function EarningsScreen() {
               </Pressable>
             </View>
 
+            <View style={styles.infoCard}>
+              <Text style={styles.infoTitle}>ℹ️ Comment sont payés vos gains ?</Text>
+              <Text style={styles.infoText}>
+                {stripeStatus?.payoutsEnabled
+                  ? "Vos coordonnées bancaires sont actives : à chaque livraison validée (scan du QR du client ou code à 4 chiffres), votre gain est envoyé automatiquement sur votre compte Stripe, puis versé sur votre banque sous quelques jours ouvrés. Aucun retrait à faire."
+                  : "1. Configurez vos coordonnées bancaires (bouton ci-dessus, une seule fois, via Stripe).\n2. Après chaque livraison validée (scan du QR du client ou code à 4 chiffres), votre gain est ajouté ici.\n3. Tant que votre compte bancaire n'est pas validé, vos gains restent dans « Solde disponible » : une fois configuré, vous êtes payé automatiquement, ou vous pouvez demander un retrait manuel."}
+              </Text>
+              <Text style={styles.infoText}>
+                {"\n"}« En attente » = gains pas encore disponibles. Une livraison non validée par le scan n'est pas payée.
+              </Text>
+            </View>
+
             <View style={styles.quickStatsRow}>
               <View style={styles.quickStat}>
                 <Text style={styles.quickStatLabel}>Cette semaine</Text>
@@ -326,6 +338,9 @@ const styles = StyleSheet.create({
   pendingText: { marginTop: 4, fontSize: 12, color: "rgba(255,255,255,0.5)" },
   withdrawBtn: { marginTop: 16, alignItems: "center", borderRadius: 8, backgroundColor: "#2ECC71", paddingVertical: 12 },
   withdrawBtnText: { fontSize: 14, fontWeight: "700", color: "white" },
+  infoCard: { marginHorizontal: 20, marginTop: 16, borderRadius: 12, backgroundColor: "#F3F4F6", padding: 14 },
+  infoTitle: { marginBottom: 4, fontSize: 13, fontWeight: "700", color: "#1A1A2E" },
+  infoText: { fontSize: 12, lineHeight: 17, color: "#6B7280" },
   quickStatsRow: { marginHorizontal: 20, marginTop: 16, flexDirection: "row", gap: 12 },
   quickStat: { flex: 1, borderRadius: 8, backgroundColor: "#F3F4F6", padding: 16 },
   quickStatLabel: { fontSize: 12, color: "#6B7280" },

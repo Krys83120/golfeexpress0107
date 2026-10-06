@@ -105,11 +105,18 @@ export function TrackingScreen({ order: initialOrder, onClose }: TrackingScreenP
             {/* QR à faire scanner au livreur à la porte (06/10/2026) : valide la
                 livraison sans avoir à dicter le code, qui reste affiché ci-dessus
                 en secours. Visible une fois la commande récupérée seulement. */}
+            {order.status !== OrderStatus.PICKED_UP && order.status !== OrderStatus.IN_DELIVERY && (
+              <Text className="mt-2 px-4 text-center text-xs text-gris">
+                Ce code sert à confirmer que vous avez bien reçu votre commande. Un QR code apparaîtra ici dès que le
+                livreur aura récupéré votre commande. Ne donnez le code qu'une fois votre commande en main : sans lui,
+                le livreur ne peut pas valider la livraison.
+              </Text>
+            )}
             {(order.status === OrderStatus.PICKED_UP || order.status === OrderStatus.IN_DELIVERY) && (
               <View className="mt-3 items-center">
                 <QrCodeView value={buildDeliveryQrPayload(order.id, order.deliveryCode)} size={190} />
                 <Text className="mt-2 px-4 text-center text-xs text-gris">
-                  Présentez ce QR code au livreur pour qu'il le scanne. Ne le partagez pas avant son arrivée.
+                  À son arrivée, présentez ce QR code au livreur pour qu'il le scanne (ou donnez-lui le code à 4 chiffres ci-dessus). Ne le partagez ni par message ni par téléphone, et uniquement une fois votre commande en main.
                 </Text>
               </View>
             )}

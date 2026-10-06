@@ -227,6 +227,14 @@ export function ProOrderCard({ order, onAdvance, onMarkReady, onCancel }: ProOrd
             ticket. « Remise validée » s'affichera ici.
           </p>
         )}
+        {awaitingHandover && (
+          <p className="rounded-sm bg-gris-light px-2.5 py-1.5 text-gris">
+            ℹ️ Collez le ticket imprimé sur le sac. Le livreur vous donne le numéro de commande, vérifiez qu'il
+            correspond au ticket, puis il scanne le QR (ou saisit le code à 6 chiffres sous le QR). Sa commande passe
+            alors automatiquement en livraison. Si vous lui présentez le sac d'une autre commande, son appli affichera
+            une erreur : changez de sac. Pas de ticket ? Bouton « QR livreur » ci-dessous.
+          </p>
+        )}
         {handoverConfirmedAt && (
           <p className="font-semibold text-golfe-green">
             ✅ Remise validée à {handoverConfirmedAt}
