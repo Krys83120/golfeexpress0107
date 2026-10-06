@@ -153,7 +153,7 @@ export function EarningsScreen() {
               <Text style={styles.infoText}>
                 {stripeStatus?.payoutsEnabled
                   ? "Vos coordonnées bancaires sont actives : à chaque livraison validée (scan du QR du client ou code à 4 chiffres), votre gain est envoyé automatiquement sur votre compte Stripe, puis versé sur votre banque sous quelques jours ouvrés. Aucun retrait à faire."
-                  : "1. Configurez vos coordonnées bancaires (bouton ci-dessus, une seule fois, via Stripe).\n2. Après chaque livraison validée (scan du QR du client ou code à 4 chiffres), votre gain est ajouté ici.\n3. Tant que votre compte bancaire n'est pas validé, vos gains restent dans « Solde disponible » : une fois configuré, vous êtes payé automatiquement, ou vous pouvez demander un retrait manuel."}
+                  : "1. Configurez vos coordonnées bancaires (bouton ci-dessus, une seule fois, via Stripe).\n2. Après chaque livraison validée (scan du QR du client ou code à 4 chiffres), votre gain est ajouté ici.\n3. Tant que Stripe n'a pas validé votre compte, vos gains restent dans « Solde disponible » et le retrait est impossible. Une fois validé, vous pouvez retirer ce solde, et les prochaines livraisons sont payées automatiquement."}
               </Text>
               <Text style={styles.infoText}>
                 {"\n"}« En attente » = gains pas encore disponibles. Une livraison non validée par le scan n'est pas payée.
@@ -224,7 +224,11 @@ export function EarningsScreen() {
       </ScrollView>
 
       <Modal visible={withdrawModalOpen} animationType="slide" transparent onRequestClose={() => setWithdrawModalOpen(false)}>
-        <WithdrawModal onClose={() => setWithdrawModalOpen(false)} availableBalance={summary?.availableBalance ?? 0} />
+        <WithdrawModal
+          onClose={() => setWithdrawModalOpen(false)}
+          availableBalance={summary?.availableBalance ?? 0}
+          payoutsEnabled={!!stripeStatus?.payoutsEnabled}
+        />
       </Modal>
     </SafeAreaView>
   );
@@ -247,20 +251,31 @@ function TabButton({ label, active, onPress }: { label: string; active: boolean;
   );
 }
 
-function WithdrawModal({ onClose, availableBalance }: { onClose: () => void; availableBalance: number }) {
+function WithdrawModal({
+  onClose,
+  availableBalance,
+  payoutsEnabled,
+}: {
+  onClose: () => void;
+  availableBalance: number;
+  payoutsEnabled: boolean;
+}) {
+  // Erreur affichée dans la fenêtre : Alert.alert ne fait rien sur le web.
+  const [errorText, setErrorText] = useState<string | null>(null);
   const [amountText, setAmountText] = useState(availableBalance > 0 ? availableBalance.toFixed(2) : "");
   const { withdraw, withdrawStatus } = useEarningsStore();
 
   const amount = Number(amountText.replace(",", "."));
-  const isValid = amount > 0 && amount <= availableBalance;
+  const isValid = payoutsEnabled && amount > 0 && amount <= availableBalance;
 
   async function handleConfirm() {
     if (!isValid) return;
+    setErrorText(null);
     try {
       await withdraw(amount);
       onClose();
     } catch (err) {
-      Alert.alert("Retrait impossible", err instanceof Error ? err.message : "Une erreur est survenue.");
+      setErrorText(err instanceof Error ? err.message : "Retrait impossible. Réessayez dans un instant.");
     }
   }
 
@@ -282,10 +297,18 @@ function WithdrawModal({ onClose, availableBalance }: { onClose: () => void; ava
         <Text style={{ marginBottom: 4, fontSize: 12, fontWeight: "600", color: "#6B7280" }}>Montant à retirer</Text>
         <TextInput value={amountText} onChangeText={setAmountText} keyboardType="decimal-pad" style={styles.modalInput} />
 
+        {!payoutsEnabled && (
+          <Text style={{ marginBottom: 8, fontSize: 12, fontWeight: "600", color: "#FF6B35" }}>
+            ⚠️ Retrait impossible pour l'instant : vos coordonnées bancaires ne sont pas encore validées par Stripe.
+            Fermez cette fenêtre et appuyez sur « Configurer » en haut de l'écran. Votre solde est conservé.
+          </Text>
+        )}
         <Text style={{ marginBottom: 8, fontSize: 12, color: "#6B7280" }}>
-          Le virement sera effectué sur votre IBAN enregistré, sous 1 à 3 jours ouvrés. Configurez vos coordonnées
-          bancaires Stripe ci-dessus pour être payé automatiquement à l'avenir, sans passer par un retrait manuel.
+          Le montant est envoyé tout de suite sur votre compte Stripe, puis Stripe le verse sur votre banque selon son
+          propre délai (en général quelques jours ouvrés, plus long pour un compte récent). Après validation de votre
+          compte bancaire, vos prochaines livraisons sont payées automatiquement, sans retrait à faire.
         </Text>
+        {errorText && <Text style={{ marginBottom: 8, fontSize: 13, fontWeight: "600", color: "#DC2626" }}>❌ {errorText}</Text>}
 
         <Pressable
           onPress={handleConfirm}
