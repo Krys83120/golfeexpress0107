@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { getSupabaseClient } from "@/services/supabaseClient";
 
 export class UploadError extends Error {}
@@ -15,6 +16,85 @@ function mimeTypeForExtension(ext: string): string {
   return "image/jpeg";
 }
 
+
+// Une photo prise avec un téléphone pèse souvent 3 à 8 Mo : bien au-dessus de la
+// limite de 2 Mo des buckets. Sur le web, expo-image-picker renvoie le fichier
+// tel quel (l'option `quality` n'y réduit rien), donc l'upload était refusé --
+// et comme Alert.alert ne fait rien sur le web, le livreur ne voyait aucun
+// message : la photo s'affichait une seconde puis disparaissait (06/10/2026).
+// On réduit donc l'image AVANT l'envoi.
+const TARGET_MAX_BYTES = 1_700_000; // marge sous les 2 Mo
+const MAX_IMAGE_SIDE_PX = 1600;
+
+function canvasToJpegBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", quality));
+}
+
+async function decodeImage(blob: Blob): Promise<{ source: CanvasImageSource; width: number; height: number; release: () => void }> {
+  if (typeof createImageBitmap === "function") {
+    // Respecte l'orientation EXIF des photos de téléphone.
+    const bitmap = await createImageBitmap(blob, { imageOrientation: "from-image" } as ImageBitmapOptions);
+    return { source: bitmap, width: bitmap.width, height: bitmap.height, release: () => bitmap.close() };
+  }
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("decode"));
+    img.src = url;
+  });
+  return { source: img, width: img.naturalWidth, height: img.naturalHeight, release: () => URL.revokeObjectURL(url) };
+}
+
+/**
+ * Web uniquement : redimensionne (1600 px max) et recompresse en JPEG une image
+ * trop lourde. Renvoie le blob d'origine si elle passe déjà, si on n'est pas sur
+ * le web, ou si elle ne peut pas être décodée (le contrôle de taille s'applique
+ * alors et affiche un message clair).
+ */
+async function shrinkImageOnWeb(original: Blob): Promise<Blob> {
+  if (Platform.OS !== "web" || typeof document === "undefined") return original;
+  if (original.size <= TARGET_MAX_BYTES) return original;
+  try {
+    const decoded = await decodeImage(original);
+    try {
+      let scale = Math.min(1, MAX_IMAGE_SIDE_PX / Math.max(decoded.width, decoded.height));
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(decoded.width * scale));
+        canvas.height = Math.max(1, Math.round(decoded.height * scale));
+        const context = canvas.getContext("2d");
+        if (!context) return original;
+        context.drawImage(decoded.source, 0, 0, canvas.width, canvas.height);
+        for (const quality of [0.85, 0.72, 0.6]) {
+          const blob = await canvasToJpegBlob(canvas, quality);
+          if (blob && blob.size <= TARGET_MAX_BYTES) return blob;
+        }
+        scale *= 0.7;
+      }
+      return original;
+    } finally {
+      decoded.release();
+    }
+  } catch {
+    return original;
+  }
+}
+
+/** Lit l'image choisie par le livreur, la réduit si besoin et vérifie la taille finale. */
+async function prepareImage(localUri: string, tooHeavyMessage = "Image trop lourde (2 Mo maximum)."): Promise<{ blob: Blob; ext: string; contentType: string }> {
+  const response = await fetch(localUri);
+  const original = await response.blob();
+  const blob = await shrinkImageOnWeb(original);
+  const shrunk = blob !== original;
+  const ext = shrunk ? "jpg" : extensionFromUri(localUri);
+  const contentType = shrunk ? "image/jpeg" : original.type || mimeTypeForExtension(ext);
+  if (blob.size > MAX_FILE_SIZE_BYTES) {
+    throw new UploadError(tooHeavyMessage);
+  }
+  return { blob, ext, contentType };
+}
+
 /**
  * Upload la photo de profil de l'utilisateur connecté. Chemin
  * "{userId}/avatar.ext" — écrase systématiquement le fichier précédent.
@@ -28,15 +108,7 @@ function mimeTypeForExtension(ext: string): string {
  * natif (iOS/Android), et le SDK Supabase accepte un Blob directement.
  */
 export async function uploadAvatar(userId: string, localUri: string): Promise<string> {
-  const response = await fetch(localUri);
-  const blob = await response.blob();
-
-  if (blob.size > MAX_FILE_SIZE_BYTES) {
-    throw new UploadError("Image trop lourde (2 Mo maximum).");
-  }
-
-  const ext = extensionFromUri(localUri);
-  const contentType = blob.type || mimeTypeForExtension(ext);
+  const { blob, ext, contentType } = await prepareImage(localUri, "Image trop lourde (2 Mo maximum).");
 
   const supabase = getSupabaseClient();
   const path = `${userId}/avatar.${ext}`;
@@ -68,15 +140,7 @@ export function withCacheBust(url: string): string {
  * champs sont indépendants (voir RiderKycScreen vs RiderProfileScreen).
  */
 export async function uploadRiderProfilePhoto(userId: string, localUri: string): Promise<string> {
-  const response = await fetch(localUri);
-  const blob = await response.blob();
-
-  if (blob.size > MAX_FILE_SIZE_BYTES) {
-    throw new UploadError("Image trop lourde (2 Mo maximum).");
-  }
-
-  const ext = extensionFromUri(localUri);
-  const contentType = blob.type || mimeTypeForExtension(ext);
+  const { blob, ext, contentType } = await prepareImage(localUri, "Image trop lourde (2 Mo maximum).");
 
   const supabase = getSupabaseClient();
   const path = `${userId}/rider-profile.${ext}`;
@@ -115,15 +179,7 @@ export async function uploadKycDocument(
   kind: "id-front" | "id-back" | "selfie",
   localUri: string
 ): Promise<string> {
-  const response = await fetch(localUri);
-  const blob = await response.blob();
-
-  if (blob.size > MAX_FILE_SIZE_BYTES) {
-    throw new UploadError("Image trop lourde (2 Mo maximum).");
-  }
-
-  const ext = extensionFromUri(localUri);
-  const contentType = blob.type || mimeTypeForExtension(ext);
+  const { blob, ext, contentType } = await prepareImage(localUri, "Image trop lourde (2 Mo maximum).");
 
   const supabase = getSupabaseClient();
   const path = `${userId}/${kind}.${ext}`;
@@ -148,15 +204,7 @@ export async function uploadKycDocument(
  * "{orderId}/proof.ext" : une seule preuve conservée par commande.
  */
 export async function uploadDeliveryProof(orderId: string, localUri: string): Promise<string> {
-  const response = await fetch(localUri);
-  const blob = await response.blob();
-
-  if (blob.size > MAX_FILE_SIZE_BYTES) {
-    throw new UploadError("Photo trop lourde (2 Mo maximum).");
-  }
-
-  const ext = extensionFromUri(localUri);
-  const contentType = blob.type || mimeTypeForExtension(ext);
+  const { blob, ext, contentType } = await prepareImage(localUri, "Photo trop lourde (2 Mo maximum).");
 
   const supabase = getSupabaseClient();
   const path = `${orderId}/proof.${ext}`;
@@ -182,15 +230,7 @@ export async function uploadDeliveryProof(orderId: string, localUri: string): Pr
  * pour supporter plusieurs signalements sur une même commande.
  */
 export async function uploadReportPhoto(orderId: string, localUri: string): Promise<string> {
-  const response = await fetch(localUri);
-  const blob = await response.blob();
-
-  if (blob.size > MAX_FILE_SIZE_BYTES) {
-    throw new UploadError("Photo trop lourde (2 Mo maximum).");
-  }
-
-  const ext = extensionFromUri(localUri);
-  const contentType = blob.type || mimeTypeForExtension(ext);
+  const { blob, ext, contentType } = await prepareImage(localUri, "Photo trop lourde (2 Mo maximum).");
 
   const supabase = getSupabaseClient();
   const path = `${orderId}/${Date.now()}.${ext}`;

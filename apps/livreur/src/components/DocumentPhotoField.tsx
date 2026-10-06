@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, Image, ActivityIndicator, Alert, StyleSheet } from "react-native";
+import { View, Text, Pressable, Image, ActivityIndicator, StyleSheet } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
 interface DocumentPhotoFieldProps {
@@ -20,16 +20,21 @@ interface DocumentPhotoFieldProps {
 export function DocumentPhotoField({ label, hint, currentImageUrl, isSelfie, onUpload }: DocumentPhotoFieldProps) {
   const [uploading, setUploading] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
+  // Message d'erreur affiché dans le champ : Alert.alert ne fait rien sur le web
+  // (cible de l'app Livreur), l'échec d'un envoi y était donc totalement
+  // silencieux (06/10/2026).
+  const [errorText, setErrorText] = useState<string | null>(null);
 
   async function handleUploadResult(result: ImagePicker.ImagePickerResult) {
     if (result.canceled || !result.assets[0]) return;
     const localUri = result.assets[0].uri;
     setPreviewUri(localUri);
+    setErrorText(null);
     setUploading(true);
     try {
       await onUpload(localUri);
     } catch (err) {
-      Alert.alert("Erreur", err instanceof Error ? err.message : "Échec de l'upload de la photo.");
+      setErrorText(err instanceof Error ? err.message : "Échec de l'envoi de la photo. Réessayez.");
       setPreviewUri(null);
     } finally {
       setUploading(false);
@@ -39,7 +44,7 @@ export function DocumentPhotoField({ label, hint, currentImageUrl, isSelfie, onU
   async function handleTakePhoto() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission requise", "Autorisez l'accès à l'appareil photo pour prendre cette photo.");
+      setErrorText("Autorisez l'accès à l'appareil photo (réglages du navigateur) pour prendre cette photo.");
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -55,7 +60,7 @@ export function DocumentPhotoField({ label, hint, currentImageUrl, isSelfie, onU
   async function handlePickFromGallery() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission requise", "Autorisez l'accès à vos photos.");
+      setErrorText("Autorisez l'accès à vos photos (réglages du navigateur).");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -90,12 +95,14 @@ export function DocumentPhotoField({ label, hint, currentImageUrl, isSelfie, onU
       </View>
 
       {uploading && <ActivityIndicator style={{ marginTop: 8 }} color="#2ECC71" />}
+      {errorText && <Text style={styles.errorText}>❌ {errorText}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: "700", color: "#1A1A2E" },
+  errorText: { marginTop: 8, fontSize: 12, color: "#E74C3C" },
   hint: { marginTop: 2, fontSize: 11, color: "#6B7280" },
   preview: { marginTop: 8, width: "100%", aspectRatio: 16 / 10, borderRadius: 8, backgroundColor: "#F3F4F6" },
   btn: {
