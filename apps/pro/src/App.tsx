@@ -16,6 +16,7 @@ import { NotificationsPage } from "@/pages/NotificationsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { CookieConsent } from "@/components/CookieConsent";
+import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { ContactWidget } from "@/components/ContactWidget";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -186,6 +187,7 @@ export default function App() {
     return (
       <>
         <MainApp />
+        <InstallAppPrompt />
         <CookieConsent />
         <SmartlookLoader />
       </>
@@ -195,6 +197,7 @@ export default function App() {
   return (
     <>
       <LoginPage />
+      <InstallAppPrompt />
       <CookieConsent />
       <SmartlookLoader />
     </>

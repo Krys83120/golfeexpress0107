@@ -15,6 +15,7 @@ import { useRiderSessionStore } from "@/store/useRiderSessionStore";
 import { useRiderStatsStore } from "@/store/useRiderStatsStore";
 import { SplashLoader } from "@/components/SplashLoader";
 import { CookieConsent } from "@/components/CookieConsent";
+import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { ContactWidget } from "@/components/ContactWidget";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
@@ -195,6 +196,9 @@ export default function App() {
       ) : (
         <AuthScreen />
       )}
+      {/* Pastille "Installer l'appli" (PWA) -- remontée au-dessus de la barre de
+          navigation quand le livreur est connecté. */}
+      {!showSplash && <InstallAppPrompt bottomOffset={status === "authenticated" ? 84 : 16} />}
       <CookieConsent />
       <SmartlookLoader />
     </SafeAreaProvider>

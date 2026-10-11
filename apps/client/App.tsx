@@ -1,6 +1,6 @@
 import "./global.css";
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, Modal } from "react-native";
+import { View, Text, Pressable, Modal, Platform } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import type { Order } from "@golfeexpress/types";
@@ -14,6 +14,7 @@ import {
 } from "@/services/brandingApi";
 import { SplashLoader } from "@/components/SplashLoader";
 import { CookieConsent } from "@/components/CookieConsent";
+import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { ContactWidget } from "@/components/ContactWidget";
 import { AuthGate } from "@/components/AuthGate";
@@ -406,6 +407,14 @@ export default function App() {
     return new URLSearchParams(window.location.search).get("reset_token");
   });
 
+  // Service worker minimal (web uniquement) : rend l'app installable sur tous
+  // les Android/Chrome. Il ne met rien en cache -- voir public/service-worker.js.
+  useEffect(() => {
+    if (Platform.OS === "web" && typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+    }
+  }, []);
+
   useEffect(() => {
     restoreSession();
     getCachedBrandingSplashUrl().then((cached) => {
@@ -456,6 +465,9 @@ export default function App() {
         // -- jamais en bloquant l'accès au catalogue lui-même.
         <MainApp />
       )}
+      {/* Pastille "Installer l'appli" (PWA), remontée au-dessus de la barre
+          de navigation du bas. */}
+      {!showSplash && <InstallAppPrompt bottomOffset={84} />}
       <CookieConsent />
       <SmartlookLoader />
     </SafeAreaProvider>
