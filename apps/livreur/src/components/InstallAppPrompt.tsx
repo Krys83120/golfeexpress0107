@@ -64,6 +64,16 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+/* Filet de sécurité : Chrome ne propose l'installation que si la page déclare un
+   manifest. Expo web ignore web/index.html : le lien n'est ajouté que si le script
+   de déploiement l'a injecté. S'il manque, on l'ajoute ici. */
+if (typeof document !== "undefined" && document.head && !document.querySelector('link[rel="manifest"]')) {
+  const link = document.createElement("link");
+  link.rel = "manifest";
+  link.href = "/manifest.json";
+  document.head.appendChild(link);
+}
+
 /* Capture très précoce de l'évènement d'installation (module-level). */
 let deferredPrompt: InstallPromptEvent | null = null;
 const subscribers = new Set<() => void>();

@@ -157,11 +157,12 @@ export function EarningsScreen() {
               <Text style={styles.infoTitle}>ℹ️ Comment sont payés vos gains ?</Text>
               <Text style={styles.infoText}>
                 {stripeStatus?.payoutsEnabled
-                  ? "Vos coordonnées bancaires sont actives : à chaque livraison validée (scan du QR du client ou code à 4 chiffres), votre gain est envoyé automatiquement sur votre compte Stripe, puis versé sur votre banque sous quelques jours ouvrés. Aucun retrait à faire."
+                  ? "Vos coordonnées bancaires sont actives : à chaque livraison validée (scan du QR du client ou code à 4 chiffres), votre gain est envoyé automatiquement sur votre compte Stripe, puis versé sur votre banque sous quelques jours ouvrés (Stripe garde d'abord l'argent « en attente » le temps que le paiement du client soit disponible). Aucun retrait à faire."
                   : "1. Configurez vos coordonnées bancaires (bouton ci-dessus, une seule fois, via Stripe).\n2. Après chaque livraison validée (scan du QR du client ou code à 4 chiffres), votre gain est ajouté ici.\n3. Tant que Stripe n'a pas validé votre compte, vos gains restent dans « Solde disponible » et le retrait est impossible. Une fois validé, vous pouvez retirer ce solde, et les prochaines livraisons sont payées automatiquement."}
               </Text>
               <Text style={styles.infoText}>
                 {"\n"}« En attente » = gains pas encore disponibles. Une livraison non validée par le scan n'est pas payée.
+                {"\n\n"}Premier versement : pour un compte Stripe récent, Stripe retarde le tout premier versement vers votre banque par mesure de sécurité (comptez 7 à 14 jours, une seule fois). Vos gains sont bien enregistrés pendant ce temps, et les suivants arrivent plus vite.
               </Text>
             </View>
 

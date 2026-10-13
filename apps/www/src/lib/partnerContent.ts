@@ -31,7 +31,7 @@ export const PRO_FAQ: FaqItem[] = [
   { q: "L'inscription est-elle payante ?", a: "Non, l'inscription est gratuite et le pack Free est disponible sans engagement. Vous pouvez souscrire à un pack payant à tout moment si vous souhaitez réduire votre commission." },
   { q: "Ai-je besoin d'un SIRET pour vendre ?", a: "Oui, la vente de produits doit être déclarée. Un numéro SIRET valide et un extrait Kbis à jour sont nécessaires pour activer votre compte." },
   { q: "Puis-je changer de pack ou résilier ?", a: "Oui, à tout moment, directement depuis votre espace Pro, sans engagement de durée." },
-  { q: "Comment suis-je payé ?", a: "Les sommes dues sont reversées via Stripe Connect, déduction faite de la commission de votre pack. Vos factures restent consultables à tout moment." },
+  { q: "Comment suis-je payé ?", a: "Dès qu'une commande est livrée, votre part (déduction faite de la commission de votre pack) est transférée automatiquement sur votre compte Stripe Connect, puis versée sur votre banque en général sous 2 à 7 jours ouvrés. Pour un compte récent, Stripe retarde le tout premier versement par mesure de sécurité (comptez 7 à 14 jours, une seule fois). Vos factures restent consultables à tout moment." },
   { q: "Vous êtes une enseigne avec plusieurs établissements et votre propre système de caisse ?", a: "Nous étudions au cas par cas une intégration directe avec votre système de caisse (POS), en plus de l'application Pro classique. Contactez-nous pour en discuter avec notre équipe." },
 ];
 
@@ -60,5 +60,5 @@ export const RIDER_FAQ: FaqItem[] = [
   { q: "Puis-je choisir mes horaires ?", a: "Oui, entièrement. Vous passez en ligne quand vous le souhaitez, sur les zones que vous choisissez, et pouvez refuser une course sans justification." },
   { q: "Pourquoi la photo de profil est-elle obligatoire ?", a: "C'est elle qui rassure le client pendant sa livraison — comme sur les plateformes comparables, il doit pouvoir identifier son livreur. Votre dossier ne peut pas être validé sans elle." },
   { q: "Le sac isotherme est-il vraiment obligatoire ?", a: "Oui. C'est lui qui garantit que les plats chauds arrivent chauds et que les produits nécessitant du froid (desserts glacés, produits frais...) restent à bonne température jusqu'au Client, dans des conditions d'hygiène irréprochables. Vous devez vous en équiper avant votre première course — c'est une condition rappelée dans nos Conditions Générales." },
-  { q: "Comment suis-je payé ?", a: "Chaque course affiche son montant avant acceptation. Vos gains sont visibles en temps réel et peuvent être retirés vers votre compte bancaire via Stripe Connect." },
+  { q: "Comment suis-je payé ?", a: "Chaque course affiche son montant avant acceptation. Dès que la livraison est validée, votre gain est envoyé automatiquement sur votre compte Stripe Connect, puis versé sur votre banque en général sous quelques jours ouvrés. Pour un compte récent, Stripe retarde le tout premier versement par mesure de sécurité (comptez 7 à 14 jours, une seule fois)." },
 ];

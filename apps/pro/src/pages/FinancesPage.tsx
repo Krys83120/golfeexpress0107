@@ -216,14 +216,21 @@ export function FinancesPage() {
             est transférée automatiquement sur votre compte Stripe. Vous n'avez aucun retrait à demander.
           </li>
           <li>
-            <span className="font-semibold text-nuit">Sur votre banque</span> : Stripe verse ensuite l'argent sur votre
-            compte bancaire, en général sous 2 à 7 jours ouvrés (le premier versement peut prendre un peu plus de temps).
+            <span className="font-semibold text-nuit">Sur votre banque</span> : Stripe garde d'abord l'argent « en
+            attente » quelques jours, le temps que le paiement du client soit disponible, puis le verse sur votre compte
+            bancaire (en général sous 2 à 7 jours ouvrés).
           </li>
         </ol>
         <p className="mt-3 text-xs text-gris">
           Tant que vos coordonnées ne sont pas validées par Stripe, vos gains sont conservés et vous êtes payé une fois
           la configuration terminée : pensez à la finir rapidement. La commande n'est « Livrée » que lorsque le livreur
           a scanné la remise chez le client, ce qui sécurise votre paiement.
+        </p>
+        <p className="mt-2 text-xs text-gris">
+          <span className="font-semibold text-nuit">Premier versement :</span> pour un compte Stripe récent, Stripe
+          retarde le tout premier versement vers votre banque par mesure de sécurité (comptez 7 à 14 jours, une seule
+          fois, ce délai est imposé par Stripe). Vos gains sont bien enregistrés pendant ce temps, et les versements
+          suivants sont plus rapides.
         </p>
       </div>
 
