@@ -60,15 +60,15 @@ if ($html -notmatch [regex]::Escape($pwaTags)) {
 # balises Open Graph qui y sont ecrites n'arrivaient JAMAIS en production --
 # Facebook/WhatsApp ne trouvaient ni titre, ni description, ni image sur
 # commander.doyougeckoo.fr, et affichaient leur avertissement "arnaque" sur les
-# liens partages (constate le 04/10/2026). On les injecte donc ici aussi, avec
-# le noindex (qui n'etait lui non plus jamais publie). Accents ecrits en
+# liens partages (constate le 04/10/2026). On les injecte donc ici aussi.
+# Depuis le 14/10/2026 le Client est volontairement INDEXABLE : plus de meta
+# robots noindex (voir aussi public/robots.txt). Accents ecrits en
 # entites HTML pour que ce script reste en ASCII pur (PowerShell 5 lit les
 # fichiers sans BOM en ANSI).
-Step "Injection des balises Open Graph + noindex dans dist/index.html (client)"
+Step "Injection des balises Open Graph dans dist/index.html (client)"
 $html = Get-Content $indexPath -Raw
 if ($html -notmatch 'property="og:title"') {
-    $ogTags = '<meta name="robots" content="noindex, nofollow">' +
-        '<meta property="og:type" content="website">' +
+    $ogTags = '<meta property="og:type" content="website">' +
         '<meta property="og:site_name" content="Do You Geckoo">' +
         '<meta property="og:title" content="Do You Geckoo">' +
         '<meta property="og:description" content="Restaurant ? Courses ? Colis ? Geckoo it. Livraison locale du Golfe de Saint-Tropez.">' +
