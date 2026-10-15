@@ -1,5 +1,6 @@
 import { Nav } from "@/components/Nav";
 import { Hero } from "@/components/Hero";
+import { PromoVideo } from "@/components/PromoVideo";
 import { EconomicsComparison } from "@/components/EconomicsComparison";
 import { HowItWorks } from "@/components/HowItWorks";
 import { CommercantsCategories } from "@/components/CommercantsCategories";
@@ -15,6 +16,7 @@ export default function HomePage() {
       <Nav />
       <main>
         <Hero />
+        <PromoVideo />
         <EconomicsComparison />
         <HowItWorks />
         <CommercantsCategories />
