@@ -1672,3 +1672,32 @@ model Prospect {
   @@index([email])
   @@map("prospects")
 }
+
+// ==================== ÉTUDES DE MARCHÉ (MIROFISH) ====================
+
+/// Trace des études de marché réalisées avec MiroFish (ajout du 16/10/2026,
+/// demande de Krys) : commerçants, clients, livreurs. MiroFish tourne en
+/// local, les résultats sont saisis à la main depuis Admin > Études.
+/// Table créée par add_market_studies_table.sql (à lancer dans Supabase).
+model MarketStudy {
+  id           String   @id @default(uuid())
+  /// MERCHANTS | CLIENTS | RIDERS
+  audience     String
+  title        String
+  question     String?
+  summary      String?
+  findings     String?
+  /// [{ id, text, done }]
+  actions      Json     @default("[]")
+  simulationId String?  @map("simulation_id")
+  reportId     String?  @map("report_id")
+  rounds       Int?
+  agents       Int?
+  limitsNote   String?  @map("limits_note")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([audience])
+  @@map("market_studies")
+}

@@ -11,6 +11,7 @@ import { ValidationsPage } from "./pages/ValidationsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { ProsPage } from "./pages/ProsPage";
 import { ProspectionPage } from "./pages/ProspectionPage";
+import { StudiesPage } from "./pages/StudiesPage";
 import { RidersPage } from "./pages/RidersPage";
 import { AdminFinancesPage } from "./pages/AdminFinancesPage";
 import { PartnerPacksPage } from "./pages/PartnerPacksPage";
@@ -66,6 +67,8 @@ function MainApp() {
         return <ProsPage />;
       case "prospection":
         return <ProspectionPage />;
+      case "studies":
+        return <StudiesPage />;
       case "riders":
         return <RidersPage />;
       case "finances":
