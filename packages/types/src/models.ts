@@ -40,6 +40,10 @@ export interface User {
   status: UserStatus;
   createdAt: string;
   updatedAt: string;
+  /** Admin > Utilisateurs uniquement : IP vue à l'inscription (null avant le 17/10/2026). */
+  signupIp?: string | null;
+  /** Admin > Utilisateurs uniquement : adresse postale principale connue (livreur, adresse enregistrée ou commerce). */
+  postalAddress?: string | null;
   /** Non-null uniquement si role === PRO_EMPLOYEE — voir ProEmployee. */
   employeeOfPro?: ProEmployee | null;
 }

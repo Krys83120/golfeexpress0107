@@ -52,7 +52,8 @@ async function getHandler(req: NextRequest) {
   // requireAuth(req, [UserRole.PRO]), jamais sur ce booléen.
   const isEmployee = !!employeeOfPro;
 
-  return NextResponse.json({ user: userBase, profile, isEmployee });
+  // signupIp est une donnée interne (Admin uniquement) : jamais renvoyée aux apps.
+  return NextResponse.json({ user: { ...userBase, signupIp: undefined }, profile, isEmployee });
 }
 
 /**
@@ -101,7 +102,7 @@ async function patchHandler(req: NextRequest) {
     data: parsed.data,
   });
 
-  return NextResponse.json({ user });
+  return NextResponse.json({ user: { ...user, signupIp: undefined } });
 }
 
 // Statuts non-terminaux d'une commande -- voir OrderStatus dans
@@ -200,6 +201,7 @@ async function deleteHandler(req: NextRequest) {
         email: anonEmail,
         phone: anonPhone,
         avatar: null,
+        signupIp: null,
         status: "SUSPENDED",
       },
     });

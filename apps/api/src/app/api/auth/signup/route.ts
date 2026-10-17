@@ -6,7 +6,7 @@ import { ApiError, withErrorHandling } from "@/middleware/auth";
 import { sendWelcomeEmail } from "@/lib/emails/authEmails";
 import { sendNewProPendingAlert, sendNewRiderPendingAlert } from "@/lib/emails/adminEmails";
 import { PORTAL_URLS } from "@/lib/emails/shared";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { enforceRateLimit, getClientIp } from "@/lib/rateLimit";
 
 function portalUrlForSignupRole(role: string): string {
   switch (role) {
@@ -76,6 +76,17 @@ async function handler(req: NextRequest) {
 
   if (!data.user) {
     throw new ApiError(500, "La création du compte a échoué de manière inattendue.");
+  }
+
+  // Trace de l'IP d'inscription (ajout du 17/10/2026, demande de Krys) --
+  // visible dans Admin > Utilisateurs. Best-effort : un échec ici ne doit
+  // jamais empêcher la création du compte. updateMany (et non update) pour ne
+  // rien lever si la ligne User n'est pas encore là.
+  const clientIp = getClientIp(req);
+  if (clientIp !== "unknown") {
+    await prisma.user
+      .updateMany({ where: { id: data.user.id }, data: { signupIp: clientIp } })
+      .catch((err) => console.error("[signup] Échec enregistrement IP d'inscription:", err));
   }
 
   // Le trigger Postgres tourne de façon asynchrone par rapport à cette

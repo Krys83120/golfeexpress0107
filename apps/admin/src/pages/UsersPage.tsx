@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Search, MoreVertical, X, Trash2 } from "lucide-react";
+import { Search, MoreVertical, X, Trash2, Download } from "lucide-react";
 import { UserRole, type User } from "@golfeexpress/types";
 import { ROLE_LABELS, STATUS_LABELS } from "@/services/userLabels";
 import { fetchAdminUsers, updateAdminUser, deleteAdminUser } from "@/services/adminEntitiesApi";
+import { downloadCsv } from "@/services/csvExport";
 
 type RoleFilter = "ALL" | UserRole;
 
@@ -56,6 +57,25 @@ export function UsersPage() {
       });
   }, [roleFilter, debouncedSearch]);
 
+  // Export CSV de la liste affichée (filtres rôle/recherche inclus). Les
+  // dates sont en heure de Paris, au format lisible dans Excel.
+  function exportUsersCsv() {
+    const headers = ["Prénom", "Nom", "Email", "Téléphone", "Rôle", "Statut", "Adresse postale", "IP d'inscription", "Date d'inscription"];
+    const rows = users.map((user) => [
+      user.firstName,
+      user.lastName,
+      user.email,
+      user.phone,
+      ROLE_LABELS[user.role]?.label ?? user.role,
+      STATUS_LABELS[user.status]?.label ?? user.status,
+      user.postalAddress ?? "",
+      user.signupIp ?? "",
+      new Date(user.createdAt).toLocaleString("fr-FR", { timeZone: "Europe/Paris" }),
+    ]);
+    const today = new Date().toISOString().slice(0, 10);
+    downloadCsv(`utilisateurs-${today}.csv`, headers, rows);
+  }
+
   function openEditModal(user: User) {
     setEditingUser(user);
     setEditForm({
@@ -90,7 +110,10 @@ export function UsersPage() {
         status: editForm.status,
       });
 
-      setUsers((currentUsers) => currentUsers.map((user) => (user.id === updatedUser.id ? updatedUser : user)));
+      // La réponse du PATCH ne contient pas l'adresse calculée : on garde celle de la liste.
+      setUsers((currentUsers) =>
+        currentUsers.map((user) => (user.id === updatedUser.id ? { ...updatedUser, postalAddress: user.postalAddress } : user))
+      );
       closeEditModal();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Impossible de modifier cet utilisateur.");
@@ -136,6 +159,15 @@ export function UsersPage() {
           <h1 className="font-heading text-2xl font-extrabold text-nuit">Utilisateurs</h1>
           <p className="text-sm text-gris">{users.length} comptes sur la plateforme</p>
         </div>
+        <button
+          type="button"
+          onClick={exportUsersCsv}
+          disabled={users.length === 0}
+          className="inline-flex items-center gap-2 rounded-sm border border-gris-light bg-white px-4 py-2 text-sm font-semibold text-nuit hover:bg-gris-light disabled:opacity-60"
+        >
+          <Download size={16} />
+          Exporter en CSV
+        </button>
       </div>
 
       <div className="mb-4 flex items-center gap-3">
@@ -175,9 +207,10 @@ export function UsersPage() {
               <tr className="border-b border-gris-light text-xs uppercase tracking-wide text-gris">
                 <th className="py-2 pr-4 font-medium">Utilisateur</th>
                 <th className="py-2 pr-4 font-medium">Contact</th>
+                <th className="py-2 pr-4 font-medium">Adresse postale</th>
                 <th className="py-2 pr-4 font-medium">Rôle</th>
                 <th className="py-2 pr-4 font-medium">Statut</th>
-                <th className="py-2 pr-4 font-medium">Inscrit le</th>
+                <th className="py-2 pr-4 font-medium">Inscription (date et IP)</th>
                 <th className="py-2 pr-4 font-medium"></th>
               </tr>
             </thead>
@@ -202,6 +235,9 @@ export function UsersPage() {
                       <p>{user.email}</p>
                       <p className="text-xs">{user.phone}</p>
                     </td>
+                    <td className="py-3 pr-4 text-sm text-gris">
+                      {user.postalAddress ?? <span className="text-xs">Non renseignée</span>}
+                    </td>
                     <td className="py-3 pr-4 text-sm text-nuit">
                       {roleMeta.emoji} {roleMeta.label}
                     </td>
@@ -214,7 +250,17 @@ export function UsersPage() {
                       </span>
                     </td>
                     <td className="py-3 pr-4 text-sm text-gris">
-                      {new Date(user.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+                      <p>
+                        {new Date(user.createdAt).toLocaleString("fr-FR", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          timeZone: "Europe/Paris",
+                        })}
+                      </p>
+                      <p className="font-mono text-xs">{user.signupIp ?? "IP non enregistrée"}</p>
                     </td>
                     <td className="py-3 pr-4 text-right">
                       <div className="flex items-center justify-end gap-1">

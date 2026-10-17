@@ -24,7 +24,7 @@ interface RateLimitOptions {
  * tel quel). On prend la première valeur de la liste (le visiteur réel, les
  * éventuels proxys suivants s'ajoutant après).
  */
-function getClientIp(req: Request): string {
+export function getClientIp(req: Request): string {
   const forwardedFor = req.headers.get("x-forwarded-for");
   if (forwardedFor) return forwardedFor.split(",")[0].trim();
   return req.headers.get("x-real-ip") ?? "unknown";

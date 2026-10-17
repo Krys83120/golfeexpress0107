@@ -14,6 +14,9 @@ const roleQuerySchema = z.enum(ROLE_VALUES);
  * "Utilisateurs". Query params optionnels :
  *   ?role=CLIENT (filtre par rôle)
  *   ?search=sophie (recherche sur prénom/nom/email)
+ *
+ * Renvoie aussi, pour l'admin uniquement : signupIp (IP d'inscription) et
+ * postalAddress (adresse postale principale connue, ou null).
  */
 async function getHandler(req: NextRequest) {
   await requireAuth(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN]);
@@ -38,10 +41,28 @@ async function getHandler(req: NextRequest) {
         : {}),
     },
     orderBy: { createdAt: "desc" },
-    take: 200,
+    take: 1000,
+    include: {
+      addresses: { orderBy: { isDefault: "desc" }, take: 1 },
+      riderProfile: { select: { street: true, zipCode: true, city: true } },
+      proProfile: { select: { addresses: { orderBy: { isDefault: "desc" }, take: 1 } } },
+    },
   });
 
-  return NextResponse.json({ users });
+  // Adresse postale principale : celle du dossier livreur si renseignée,
+  // sinon l'adresse enregistrée du compte (client), sinon celle du commerce.
+  const result = users.map(({ addresses, riderProfile, proProfile, ...user }) => {
+    const parts: (string | null | undefined)[] = riderProfile?.street
+      ? [riderProfile.street, [riderProfile.zipCode, riderProfile.city].filter(Boolean).join(" ")]
+      : (() => {
+          const a = addresses[0] ?? proProfile?.addresses[0];
+          return a ? [a.street, a.complement, [a.zipCode, a.city].filter(Boolean).join(" ")] : [];
+        })();
+    const postalAddress = parts.filter(Boolean).join(", ") || null;
+    return { ...user, postalAddress };
+  });
+
+  return NextResponse.json({ users: result });
 }
 
 export const GET = withErrorHandling(getHandler);

@@ -208,6 +208,11 @@ model User {
   status        UserStatus @default(ACTIVE)
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
+  /// Adresse IP vue par l'API lors de l'inscription (ajout du 17/10/2026,
+  /// demande de Krys, visible uniquement dans Admin > Utilisateurs). Donnée
+  /// personnelle (RGPD) : jamais renvoyée aux apps clients, effacée à la
+  /// suppression du compte. null pour les comptes créés avant cette date.
+  signupIp      String?   @map("signup_ip")
 
   // Relations
   clientProfile   Client?
