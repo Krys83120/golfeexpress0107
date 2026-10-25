@@ -108,14 +108,14 @@ export async function Footer() {
               alt="Badge FranceSaaS"
               width={200}
               height={44}
-              style={{ height: "auto" }}
+              className="h-11 w-auto"
             />
           </a>
           {/* Badge Unikt "Vu sur" (ajout du 25/10/2026, demande de Krys) --
               image découpée sans son cadre sombre, voir public/badge-unikt.png. */}
           <a href="https://unikt.fr/" target="_blank" rel="noopener" title="Do You Geckoo sur Unikt">
             {/* eslint-disable-next-line @next/next/no-img-element -- petit badge statique local */}
-            <img src="/badge-unikt.png" alt="Vu sur Unikt" width={145} height={44} style={{ height: "auto" }} />
+            <img src="/badge-unikt.png" alt="Vu sur Unikt" width={145} height={44} className="h-11 w-auto" />
           </a>
         </div>
 
