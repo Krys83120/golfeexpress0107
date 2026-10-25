@@ -36,7 +36,7 @@ export async function Footer() {
             </div>
             <p className="mt-4 max-w-sm text-sm">
               La livraison locale du Golfe de Saint-Tropez. Créée pour que les commerçants gardent plus de marge et
-              que les livreurs soient mieux payés — sans rien changer au prix pour le client.
+              que les livreurs soient mieux payés — les commerçants restent seuls maîtres de leurs prix.
             </p>
           </div>
 
@@ -56,9 +56,15 @@ export async function Footer() {
               <li><Link href="/notre-modele" className="hover:text-white">Notre modèle économique</Link></li>
               <li><Link href="/comment-ca-marche" className="hover:text-white">Comment ça marche</Link></li>
               <li><Link href="/colis-express" className="hover:text-white">Colis Express</Link></li>
+              <li><Link href="/blog" className="hover:text-white">Blog</Link></li>
               <li><Link href="/avis" className="hover:text-white">Avis clients</Link></li>
               <li><Link href="/devenir-partenaire" className="hover:text-white">Devenir partenaire</Link></li>
               <li><Link href="/devenir-livreur" className="hover:text-white">Devenir livreur</Link></li>
+              {/* Flyer PDF ajouté le 26/09/2026 (demande de Krys) -- placé ici,
+                  discrètement dans la liste de liens existante, plutôt qu'en
+                  gros bouton visible : un simple lien de téléchargement, pas
+                  un appel à l'action supplémentaire sur la page. */}
+              <li><a href="/flyer-doyougeckoo.pdf" download className="hover:text-white">Télécharger notre flyer (PDF)</a></li>
               <li><Link href="/conditions-generales" className="hover:text-white">Conditions générales</Link></li>
               <li><Link href="/confidentialite" className="hover:text-white">Confidentialité</Link></li>
               <li><CookiePreferencesLink /></li>
@@ -87,7 +93,27 @@ export async function Footer() {
           </div>
         )}
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-xs sm:flex-row">
+        {/* Badge FranceSaaS (ajout du 25/10/2026, demande de Krys) -- lien vers
+            la fiche Do You Geckoo sur francesaas.fr, code fourni par le site. */}
+        <div className="mt-10 border-t border-white/10 pt-8">
+          <a
+            href="https://francesaas.fr/saas/do-you-geckoo"
+            target="_blank"
+            rel="noopener"
+            title="Profil du SaaS Do You Geckoo sur FranceSaaS.fr"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- badge SVG externe fourni par FranceSaaS */}
+            <img
+              src="https://francesaas.fr/badge-francesaas.svg"
+              alt="Badge FranceSaaS"
+              width={200}
+              height={44}
+              style={{ height: "auto" }}
+            />
+          </a>
+        </div>
+
+        <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-xs sm:flex-row">
           <p>© {new Date().getFullYear()} Do You Geckoo — Sainte-Maxime, Golfe de Saint-Tropez</p>
           <p>Fait avec ♥️ dans le Golfe de Saint-Tropez</p>
         </div>
