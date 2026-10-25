@@ -95,7 +95,7 @@ export async function Footer() {
 
         {/* Badge FranceSaaS (ajout du 25/10/2026, demande de Krys) -- lien vers
             la fiche Do You Geckoo sur francesaas.fr, code fourni par le site. */}
-        <div className="mt-10 border-t border-white/10 pt-8">
+        <div className="mt-10 flex flex-wrap items-center gap-4 border-t border-white/10 pt-8">
           <a
             href="https://francesaas.fr/saas/do-you-geckoo"
             target="_blank"
@@ -110,6 +110,12 @@ export async function Footer() {
               height={44}
               style={{ height: "auto" }}
             />
+          </a>
+          {/* Badge Unikt "Vu sur" (ajout du 25/10/2026, demande de Krys) --
+              image découpée sans son cadre sombre, voir public/badge-unikt.png. */}
+          <a href="https://unikt.fr/" target="_blank" rel="noopener" title="Do You Geckoo sur Unikt">
+            {/* eslint-disable-next-line @next/next/no-img-element -- petit badge statique local */}
+            <img src="/badge-unikt.png" alt="Vu sur Unikt" width={145} height={44} style={{ height: "auto" }} />
           </a>
         </div>
 
