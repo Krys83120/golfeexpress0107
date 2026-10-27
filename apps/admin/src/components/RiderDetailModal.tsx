@@ -158,7 +158,7 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
 
   return (
     <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded bg-white p-6 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded bg-white p-6 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {rider.profilePhotoUrl ? (
@@ -476,7 +476,7 @@ export function RiderDetailModal({ rider, onClose, onUpdated }: RiderDetailModal
 
         {error && <div className="mb-4 rounded-sm bg-red-50 p-3 text-sm text-red-500">{error}</div>}
 
-        <div className="flex justify-end gap-3">
+        <div className="sticky bottom-0 -mx-6 -mb-6 flex justify-end gap-3 border-t border-gris-light bg-white px-6 py-4">
           <button
             type="button"
             onClick={onClose}
