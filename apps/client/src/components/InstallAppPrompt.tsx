@@ -222,7 +222,11 @@ export function InstallAppPrompt({ bottomOffset = 16 }: Props) {
 
   useEffect(() => {
     if (!isWeb) return;
-    if (isAlreadyInstalled() || readDismissed()) {
+    // `?install=1` : visiteur venu du bouton « Installer l'appli » du site vitrine
+    // (www.doyougeckoo.fr) -- on ouvre directement la carte d'installation, même
+    // si la pastille avait été masquée avant.
+    const forced = new URLSearchParams(window.location.search).get("install") === "1";
+    if (isAlreadyInstalled() || (!forced && readDismissed())) {
       setView("hidden");
       return;
     }
@@ -231,7 +235,7 @@ export function InstallAppPrompt({ bottomOffset = 16 }: Props) {
     const start = () => {
       if (timer) return;
       if (CONFIG.waitForCookie && !hasCookie(CONFIG.waitForCookie)) return;
-      timer = setTimeout(() => setView((v) => (v === "hidden" ? "bar" : v)), CONFIG.showDelayMs);
+      timer = setTimeout(() => setView((v) => (v === "hidden" ? (forced ? "card" : "bar") : v)), CONFIG.showDelayMs);
     };
     start();
     const poll = CONFIG.waitForCookie ? setInterval(start, 1000) : undefined;

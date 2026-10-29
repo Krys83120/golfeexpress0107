@@ -6,10 +6,11 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { ContactWidget } from "@/components/ContactWidget";
 import { VerifiedReviewsBadge } from "@/components/VerifiedReviewsBadge";
 import { VisitTracker } from "@/components/VisitTracker";
+import { InstallAppsButton } from "@/components/InstallAppsButton";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { fetchWwwOgText } from "@/lib/brandingApi";
 import { isSeoPublicLaunchEnabled } from "@/lib/seoSettings";
-import { fetchPublicServiceCities } from "@/lib/publicApi";
+import { fetchPublicServiceCities, fetchPlatformReviewStats } from "@/lib/publicApi";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -180,6 +181,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const cities = await fetchPublicServiceCities();
   const activeCityNames = cities.filter((c) => c.isActive && c.seoIndexable).map((c) => c.name);
   const serviceJsonLd = buildServiceJsonLd(activeCityNames);
+  // Même condition d'affichage que VerifiedReviewsBadge : si le badge « Avis
+  // vérifiés » occupe le coin bas-gauche, la pastille d'installation se place au-dessus.
+  const reviewStats = await fetchPlatformReviewStats();
+  const hasReviewsBadge = Boolean(reviewStats.average) && reviewStats.count > 0;
 
   return (
     <html lang="fr" className={`${montserrat.variable} ${inter.variable}`}>
@@ -196,6 +201,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <CookieConsent />
         <ContactWidget />
         <VerifiedReviewsBadge />
+        <InstallAppsButton stackAboveBadge={hasReviewsBadge} />
         <VisitTracker />
         <SmartlookLoader />
       </body>
