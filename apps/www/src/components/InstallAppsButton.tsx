@@ -45,7 +45,7 @@ const APPS = [
     name: "App Commerçant",
     desc: "Recevez et gérez vos commandes plus vite.",
     href: "https://pro.doyougeckoo.fr/?install=1",
-    icon: null,
+    icon: "/app-icon-pro.png",
   },
 ] as const;
 
@@ -91,16 +91,6 @@ function CloseIcon() {
   return (
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
       <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
-
-function StoreIcon() {
-  return (
-    <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 9l1.5-5h15L21 9" />
-      <path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" />
-      <path d="M5 12v8h14v-8" />
     </svg>
   );
 }
@@ -205,13 +195,7 @@ export function InstallAppsButton({ stackAboveBadge = false }: { stackAboveBadge
                   href={app.href}
                   className="flex items-center gap-3 rounded-xl border border-gris-light bg-white p-2.5 transition hover:border-golfe-green hover:bg-sable"
                 >
-                  {app.icon ? (
-                    <img src={app.icon} alt="" width={44} height={44} className="h-11 w-11 flex-none rounded-xl object-cover" />
-                  ) : (
-                    <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-corail">
-                      <StoreIcon />
-                    </span>
-                  )}
+                  <img src={app.icon} alt="" width={44} height={44} className="h-11 w-11 flex-none rounded-xl object-cover" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-bold text-nuit">{app.name}</span>
                     <span className="block text-xs leading-snug text-gris">{app.desc}</span>
