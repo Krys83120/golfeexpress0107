@@ -29,9 +29,21 @@ if (!supabaseUrl || !serviceRoleKey) {
   );
 }
 
+/**
+ * 12/11/2026 : on désactive le cache de données de Next.js pour TOUTES les
+ * requêtes de ce client. Next 14 met en cache les `fetch` côté serveur ;
+ * supabase-js passant par `fetch`, un même appel (ex: createSignedUrl pour
+ * un même fichier) pouvait renvoyer l'ancienne réponse -- donc une URL
+ * signée déjà périmée (symptôme : images KYC cassées dans Admin avec
+ * "exp claim timestamp check failed", jeton émis plusieurs heures plus tôt).
+ * Un client service_role ne doit jamais servir de réponses en cache.
+ */
 export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  global: {
+    fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
   },
 });
