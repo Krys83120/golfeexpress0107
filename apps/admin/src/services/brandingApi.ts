@@ -10,17 +10,28 @@ function getPublicStorageClient() {
     throw new Error("VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY doivent être définis (voir .env.example).");
   }
 
-  // IMPORTANT : contrairement à getSupabaseClient() (utilisé ailleurs dans
-  // l'app pour transporter le JWT courant), on n'injecte PAS le token
-  // custom de l'app ici. Ce token n'est pas émis par Supabase Auth, donc
-  // Supabase le rejette au niveau de sa passerelle (403 "AccessDenied")
-  // AVANT même d'évaluer nos policies RLS Postgres — peu importe que ces
-  // policies soient permissives. Le bucket branding-assets a des policies
-  // "TO public" volontairement larges (voir migration RLS), donc la clé
-  // anon seule suffit : pas besoin d'un token d'auth ici.
+  // Client anon SANS le token custom de l'app (il n'est pas émis par
+  // Supabase Auth : la passerelle le rejetterait). Sert à lire l'URL
+  // publique et à envoyer un fichier avec un jeton d'upload signé.
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+
+/**
+ * Upload un fichier dans le bucket branding-assets SANS policy d'écriture
+ * publique (04/10/2026) : on demande d'abord à l'API (réservée aux admins)
+ * un jeton d'upload signé pour ce chemin précis, puis on envoie le fichier
+ * à Supabase avec ce jeton (le fichier ne passe pas par l'API/Vercel).
+ */
+async function uploadBrandingFile(path: string, file: Blob, contentType: string): Promise<void> {
+  const { token } = await apiFetch<{ path: string; token: string }>("/api/admin/storage/signed-upload", {
+    method: "POST",
+    body: { path },
+  });
+  const supabase = getPublicStorageClient();
+  const { error } = await supabase.storage.from(BUCKET).uploadToSignedUrl(path, token, file, { contentType });
+  if (error) throw new Error(`Échec de l'upload : ${error.message}`);
 }
 
 /**
@@ -347,8 +358,7 @@ async function uploadLogoToSetting(file: File, pathPrefix: string, settingKey: s
   const supabase = getPublicStorageClient();
   const path = `${pathPrefix}${file.name.split(".").pop() ?? "png"}`;
 
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type });
-  if (error) throw new Error(`Échec de l'upload : ${error.message}`);
+  await uploadBrandingFile(path, file, file.type);
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   const url = `${data.publicUrl}?t=${Date.now()}`; // cache-bust
@@ -486,8 +496,7 @@ export async function generateAndUploadOgImage(
 
   const supabase = getPublicStorageClient();
   const path = `og-${app}.png`;
-  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: "image/png" });
-  if (error) throw new Error(`Échec de l'upload : ${error.message}`);
+  await uploadBrandingFile(path, blob, "image/png");
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   return data.publicUrl;
