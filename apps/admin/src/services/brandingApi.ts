@@ -555,3 +555,57 @@ export async function saveSeoPublicLaunch(enabled: boolean): Promise<void> {
     body: { value: { enabled } },
   });
 }
+
+// ==================== PARTENAIRES DU FOOTER (19/11/2026) ====================
+//
+// Logos + liens affichés dans le pied de page du site vitrine, juste au-dessus
+// de "Livraison par ville". Stockés dans un GlobalSetting ("footer.partners",
+// valeur { items: [...] }) -- aucune migration de base de données -- et lus
+// par le site via la route publique GET /api/settings/footer-partners.
+// Les logos vont dans le bucket branding-assets (chemin "partner-{id}.{ext}",
+// upload par jeton signé, comme les autres images de cette page).
+
+export interface FooterPartner {
+  id: string;
+  name: string;
+  url: string;
+  logoUrl: string;
+}
+
+const FOOTER_PARTNERS_SETTING_KEY = "footer.partners";
+
+export async function fetchFooterPartners(): Promise<FooterPartner[]> {
+  try {
+    const data = await apiFetch<{ setting: { value: { items?: FooterPartner[] } } }>(
+      `/api/admin/settings/${FOOTER_PARTNERS_SETTING_KEY}`
+    );
+    return data.setting?.value?.items ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveFooterPartners(items: FooterPartner[]): Promise<void> {
+  await apiFetch(`/api/admin/settings/${FOOTER_PARTNERS_SETTING_KEY}`, {
+    method: "PUT",
+    body: { value: { items } },
+  });
+}
+
+/** Identifiant court (lettres minuscules + chiffres) utilisé dans le nom de fichier du logo. */
+export function newFooterPartnerId(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let id = "";
+  for (let i = 0; i < 10; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
+
+/** Upload le logo d'un partenaire et renvoie son URL publique (avec anti-cache). */
+export async function uploadFooterPartnerLogo(partnerId: string, file: File): Promise<string> {
+  const ext = (file.name.split(".").pop() ?? "png").toLowerCase();
+  const path = `partner-${partnerId}.${ext}`;
+  await uploadBrandingFile(path, file, file.type);
+  const supabase = getPublicStorageClient();
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return `${data.publicUrl}?t=${Date.now()}`;
+}

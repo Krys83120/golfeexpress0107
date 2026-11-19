@@ -35,6 +35,8 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   new RegExp(`^splash-runner-${APPS}\\.${EXT}$`, "i"),
   new RegExp(`^og-bg-${OG_APPS}\\.${EXT}$`, "i"),
   new RegExp(`^og-${OG_APPS}\\.png$`, "i"),
+  // Logos des partenaires du footer du site vitrine (Admin > Branding)
+  new RegExp(`^partner-[a-z0-9]{6,16}\\.${EXT}$`, "i"),
 ];
 
 const bodySchema = z.object({ path: z.string().min(3).max(100) });

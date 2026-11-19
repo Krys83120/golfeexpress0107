@@ -12,6 +12,7 @@ import {
   type AppLogoKey,
   type AppSplashKey,
 } from "@/services/brandingApi";
+import { FooterPartnersSection } from "@/components/FooterPartnersSection";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -355,6 +356,9 @@ export function BrandingPage() {
           </div>
         )}
       </div>
+
+      {/* Partenaires affichés dans le footer du site vitrine (logos + liens) */}
+      <FooterPartnersSection />
     </div>
   );
 }

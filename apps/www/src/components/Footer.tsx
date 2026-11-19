@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fetchWwwLogoUrl } from "@/lib/brandingApi";
 import { fetchPublicServiceCities } from "@/lib/publicApi";
+import { fetchFooterPartners } from "@/lib/footerPartnersApi";
 import { CookiePreferencesLink } from "@/components/CookiePreferencesLink";
 
 /**
@@ -11,7 +12,11 @@ import { CookiePreferencesLink } from "@/components/CookiePreferencesLink";
  * footer gardait l'emoji codé en dur.
  */
 export async function Footer() {
-  const [logoUrl, cities] = await Promise.all([fetchWwwLogoUrl(), fetchPublicServiceCities()]);
+  const [logoUrl, cities, partners] = await Promise.all([
+    fetchWwwLogoUrl(),
+    fetchPublicServiceCities(),
+    fetchFooterPartners(),
+  ]);
   // Maillage interne /livraison/[ville] (23/08/2026, mission SEO/GEO) --
   // uniquement les villes réellement indexables ET dotées d'un slug, jamais
   // une liste statique codée en dur qui listerait des communes sans page
@@ -72,6 +77,31 @@ export async function Footer() {
           </div>
 
         </div>
+
+        {/* Partenaires (ajout du 19/11/2026, demande de Krys) -- logos + liens
+            gérés depuis Admin > Branding, affichés juste au-dessus de
+            "Livraison par ville". Pastille blanche derrière chaque logo pour
+            qu'il reste lisible quel que soit son fond (footer sombre). */}
+        {partners.length > 0 && (
+          <div className="mt-10 border-t border-white/10 pt-8">
+            <p className="mb-4 text-xs font-bold uppercase tracking-wide text-white/40">Nos partenaires</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-4">
+              {partners.map((partner) => (
+                <a
+                  key={partner.id}
+                  href={partner.url}
+                  target="_blank"
+                  rel="noopener"
+                  title={partner.name}
+                  className="flex h-14 items-center rounded-md bg-white px-4 opacity-90 transition hover:opacity-100"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- logo dynamique (URL Supabase Storage) */}
+                  <img src={partner.logoUrl} alt={partner.name} loading="lazy" className="max-h-9 w-auto max-w-[150px] object-contain" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Villes en ligne propre et compacte (flex-wrap) plutôt qu'une
             colonne verticale du grid ci-dessus -- une simple liste verticale
