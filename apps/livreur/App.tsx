@@ -16,6 +16,7 @@ import { useRiderStatsStore } from "@/store/useRiderStatsStore";
 import { SplashLoader } from "@/components/SplashLoader";
 import { CookieConsent } from "@/components/CookieConsent";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
+import { LaunchPopup } from "@/components/LaunchPopup";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { ContactWidget } from "@/components/ContactWidget";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
@@ -199,6 +200,8 @@ export default function App() {
       {/* Pastille "Installer l'appli" (PWA) -- remontée au-dessus de la barre de
           navigation quand le livreur est connecté. */}
       {!showSplash && <InstallAppPrompt bottomOffset={status === "authenticated" ? 84 : 16} />}
+      {/* Popup d'accueil livreurs (04/10/2026) : tant que le livreur n'est pas connecté. */}
+      {!showSplash && status !== "authenticated" && <LaunchPopup />}
       <CookieConsent />
       <SmartlookLoader />
     </SafeAreaProvider>

@@ -15,6 +15,7 @@ import {
 import { SplashLoader } from "@/components/SplashLoader";
 import { CookieConsent } from "@/components/CookieConsent";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
+import { LaunchPopup } from "@/components/LaunchPopup";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { ContactWidget } from "@/components/ContactWidget";
 import { AuthGate } from "@/components/AuthGate";
@@ -468,6 +469,8 @@ export default function App() {
       {/* Pastille "Installer l'appli" (PWA), remontée au-dessus de la barre
           de navigation du bas. */}
       {!showSplash && <InstallAppPrompt bottomOffset={84} />}
+      {/* Popup « Le site ouvre bientôt » (04/10/2026). */}
+      {!showSplash && <LaunchPopup />}
       <CookieConsent />
       <SmartlookLoader />
     </SafeAreaProvider>

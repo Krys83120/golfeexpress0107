@@ -128,6 +128,28 @@ function isIos() {
   return /iphone|ipad|ipod/i.test(ua) || (ua.includes("Macintosh") && window.navigator.maxTouchPoints > 1);
 }
 
+/** Évènement envoyé par le popup d'accueil (LaunchPopup) pour ouvrir la carte d'installation. */
+const OPEN_CARD_EVENT = "dyg-open-install-card";
+
+export function openInstallCard() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(OPEN_CARD_EVENT));
+}
+
+/** Vrai quand l'installation est réellement possible ici (fenêtre native ou consigne iPhone). */
+export function useCanInstall(): boolean {
+  const [can, setCan] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const sync = () => setCan(!isAlreadyInstalled() && (deferredPrompt !== null || isIos()));
+    sync();
+    subscribers.add(sync);
+    return () => {
+      subscribers.delete(sync);
+    };
+  }, []);
+  return can;
+}
+
 const gradient = `linear-gradient(135deg, ${CONFIG.primaryColor}, ${CONFIG.secondaryColor})`;
 
 function DownloadIcon({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
@@ -243,6 +265,17 @@ export function InstallAppPrompt({ bottomOffset = 16 }: Props) {
       if (timer) clearTimeout(timer);
       if (poll) clearInterval(poll);
     };
+  }, []);
+
+  useEffect(() => {
+    if (!isWeb) return;
+    const open = () => {
+      setIos(isIos());
+      setShowIosHint(false);
+      setView("card");
+    };
+    window.addEventListener(OPEN_CARD_EVENT, open);
+    return () => window.removeEventListener(OPEN_CARD_EVENT, open);
   }, []);
 
   if (!isWeb || view === "hidden" || !canInstall) return null;

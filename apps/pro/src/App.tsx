@@ -17,6 +17,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { CookieConsent } from "@/components/CookieConsent";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
+import { LaunchPopup } from "@/components/LaunchPopup";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { ContactWidget } from "@/components/ContactWidget";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -198,6 +199,8 @@ export default function App() {
     <>
       <LoginPage />
       <InstallAppPrompt />
+      {/* Popup d'accueil commerçants (04/10/2026) : uniquement avant connexion. */}
+      <LaunchPopup />
       <CookieConsent />
       <SmartlookLoader />
     </>

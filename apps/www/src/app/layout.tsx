@@ -7,6 +7,7 @@ import { ContactWidget } from "@/components/ContactWidget";
 import { VerifiedReviewsBadge } from "@/components/VerifiedReviewsBadge";
 import { VisitTracker } from "@/components/VisitTracker";
 import { InstallAppsButton } from "@/components/InstallAppsButton";
+import { LaunchPopup } from "@/components/LaunchPopup";
 import { SmartlookLoader } from "@/components/SmartlookLoader";
 import { fetchWwwOgText } from "@/lib/brandingApi";
 import { isSeoPublicLaunchEnabled } from "@/lib/seoSettings";
@@ -202,6 +203,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ContactWidget />
         <VerifiedReviewsBadge />
         <InstallAppsButton stackAboveBadge={hasReviewsBadge} />
+        <LaunchPopup />
         <VisitTracker />
         <SmartlookLoader />
       </body>
